@@ -67,7 +67,7 @@ const AI_PERSONAS = [
     shortLabel: "응원",
     description: "밝게 밀어주는 치어 코치",
     tone: "칭찬과 에너지",
-    imageSrc: "/personas/cheer_sis.svg",
+    imageSrc: "/personas/cheer_sis.jpg",
     imageAlt: "밝은 치어 코치 스타일의 응원 누나 아바타",
     accent: "from-rose-400 to-amber-400",
     selectedClass: "border-rose-300 bg-rose-50 text-rose-700",
@@ -78,7 +78,7 @@ const AI_PERSONAS = [
     shortLabel: "다정",
     description: "무리하지 않게 챙기는 선배",
     tone: "안심과 회복",
-    imageSrc: "/personas/soft_senior.svg",
+    imageSrc: "/personas/soft_senior.jpg",
     imageAlt: "부드럽게 챙겨주는 다정 선배 아바타",
     accent: "from-teal-400 to-emerald-500",
     selectedClass: "border-emerald-300 bg-emerald-50 text-emerald-700",
@@ -89,7 +89,7 @@ const AI_PERSONAS = [
     shortLabel: "직진",
     description: "짧고 단호한 실행 코치",
     tone: "명확한 지시",
-    imageSrc: "/personas/strict_trainer.svg",
+    imageSrc: "/personas/strict_trainer.jpg",
     imageAlt: "헤드셋을 낀 단호한 직진 PT쌤 아바타",
     accent: "from-slate-700 to-zinc-500",
     selectedClass: "border-slate-300 bg-slate-100 text-slate-800",
@@ -100,7 +100,7 @@ const AI_PERSONAS = [
     shortLabel: "분석",
     description: "이유와 근거를 차분히 설명",
     tone: "납득과 효율",
-    imageSrc: "/personas/science_coach.svg",
+    imageSrc: "/personas/science_coach.jpg",
     imageAlt: "안경과 차트가 있는 분석 코치 아바타",
     accent: "from-sky-500 to-cyan-400",
     selectedClass: "border-sky-300 bg-sky-50 text-sky-700",
@@ -111,7 +111,7 @@ const AI_PERSONAS = [
     shortLabel: "메이트",
     description: "가볍게 같이 움직이는 친구",
     tone: "친근한 동행",
-    imageSrc: "/personas/playful_buddy.svg",
+    imageSrc: "/personas/playful_buddy.jpg",
     imageAlt: "캐주얼한 운동 메이트 아바타",
     accent: "from-violet-500 to-fuchsia-400",
     selectedClass: "border-violet-300 bg-violet-50 text-violet-700",
@@ -122,7 +122,7 @@ const AI_PERSONAS = [
     shortLabel: "관리",
     description: "루틴과 일정을 깔끔하게 정리",
     tone: "체계적인 관리",
-    imageSrc: "/personas/daily_manager.svg",
+    imageSrc: "/personas/daily_manager.jpg",
     imageAlt: "체크리스트를 든 생활 매니저 아바타",
     accent: "from-lime-500 to-green-500",
     selectedClass: "border-lime-300 bg-lime-50 text-lime-700",
@@ -678,7 +678,7 @@ export default function ChatPage() {
                   “{personaConversation.intro}”
                 </p>
               </div>
-              <div className="mt-6 grid w-full gap-2 sm:grid-cols-3">
+              <div className="mt-6 grid w-full gap-2 sm:grid-cols-2">
                 {PERSONA_CHAT_STARTERS.map((starter) => (
                   <button
                     key={starter.label}

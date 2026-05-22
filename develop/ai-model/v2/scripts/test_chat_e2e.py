@@ -700,7 +700,7 @@ async def main() -> None:
 
             care = await run_request(client, care_user, MSG_CARE)
             care_debug = care["debug_state"]
-            require(care_debug["action_intent"] == "casual", "care action_intent mismatch")
+            require(care_debug["action_intent"] == "care", "care action_intent mismatch")
             require(care_debug["support_mode"] == "care", "care support_mode mismatch")
 
             safety = await run_request(client, safety_user, MSG_SAFETY)

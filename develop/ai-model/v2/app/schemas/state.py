@@ -34,6 +34,7 @@ ActionIntent = Literal[
     "info",
     "record",
     "approval",
+    "care",
     "casual",
     "safety",
     "fallback",

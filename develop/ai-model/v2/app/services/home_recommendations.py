@@ -722,7 +722,7 @@ def _normalize_workout_item(
         return None
 
     calories = max(0, int(item.calories or 0))
-    summary = item.summary.strip()
+    summary = _compact_display_text(item.summary.strip(), limit=46)
 
     if slot == "cardio":
         duration_minutes = int(item.duration_minutes or 20)
@@ -748,12 +748,33 @@ def _normalize_diet_item(item: DietRecommendationItem | None) -> DietRecommendat
     if item is None:
         return None
 
-    food_name = item.food_name.strip()
+    food_name = _compact_food_name(item.food_name.strip())
     if not food_name:
         return None
 
     return DietRecommendationItem(
         food_name=food_name,
-        summary=item.summary.strip(),
+        summary=_compact_display_text(item.summary.strip(), limit=46),
         calories=max(0, int(item.calories or 0)),
     )
+
+
+def _compact_display_text(value: str, *, limit: int) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rstrip() + "…"
+
+
+def _compact_food_name(value: str) -> str:
+    text = " ".join(str(value or "").split())
+    if not text:
+        return ""
+
+    primary = text.split("/", 1)[0].strip()
+    for marker in ("알레르기", "질환", "고려", "제외", "대체", "목표", "제약"):
+        marker_index = primary.find(marker)
+        if marker_index > 0:
+            primary = primary[:marker_index].strip(" ,·/+")
+
+    return _compact_display_text(primary, limit=34)

@@ -284,6 +284,8 @@ def _normalize_plan_item(item: Any, plan_type: str) -> dict[str, Any] | None:
         item.get("summary"),
         default=None,
     )
+    if plan_type == "diet":
+        detail = _clean_diet_plan_detail(detail)
     day = _normalize_day(
         item.get("day") or item.get("date"),
         name=name,
@@ -297,6 +299,8 @@ def _normalize_plan_item(item: Any, plan_type: str) -> dict[str, Any] | None:
         raw_ex_list = item.get("exercises")
 
     ex_list = [] if plan_type == "diet" else _normalize_exercises(raw_ex_list)
+    if plan_type == "workout":
+        name = _normalize_workout_category_name(name, detail, ex_list)
 
     normalized = WASPlanItem(
         name=name,
@@ -305,6 +309,145 @@ def _normalize_plan_item(item: Any, plan_type: str) -> dict[str, Any] | None:
         ex_list=ex_list,
     )
     return normalized.model_dump(exclude_none=True)
+
+
+_DIET_DETAIL_EXPLANATION_MARKERS = (
+    "알레르기",
+    "식이 제약",
+    "질환",
+    "고려",
+    "제외",
+    "대체",
+    "목표",
+    "제약",
+    "반영",
+    "프로필",
+    "위험",
+    "안전",
+    "allergy",
+    "constraint",
+    "goal",
+    "profile",
+    "because",
+    "avoid",
+    "replace",
+)
+_DIET_DETAIL_SPLIT_RE = re.compile(r"\s*(?:/|;|\||\n|•|·|\s+-\s+|(?<=[.!?。])\s+)\s*")
+_DIET_DETAIL_BRACKET_RE = re.compile(
+    r"\s*[\(\[][^\)\]]*(?:"
+    + "|".join(re.escape(marker) for marker in _DIET_DETAIL_EXPLANATION_MARKERS)
+    + r")[^\)\]]*[\)\]]",
+    re.IGNORECASE,
+)
+_DIET_RATIONALE_PREFIX_MARKERS = (
+    "혈당",
+    "감량",
+    "증량",
+    "근육",
+    "체중",
+    "칼로리",
+    "안정",
+    "회복",
+    "질환",
+    "부상",
+    "rationale",
+)
+
+
+def _clean_diet_plan_detail(detail: str | None) -> str | None:
+    text = str(detail or "").strip()
+    if not text:
+        return detail
+    text = re.sub(r"\s+", " ", _DIET_DETAIL_BRACKET_RE.sub("", text)).strip()
+    pieces = [piece.strip() for piece in _DIET_DETAIL_SPLIT_RE.split(text) if piece.strip()]
+    concrete = [_clean_diet_detail_piece(piece) for piece in pieces]
+    concrete = [piece for piece in concrete if piece and not _is_explanatory_diet_piece(piece)]
+    if not concrete and pieces:
+        concrete = [_clean_diet_detail_piece(pieces[0])]
+    return _bound_diet_detail(" / ".join(piece for piece in concrete if piece).strip()) or None
+
+
+def _clean_diet_detail_piece(piece: str) -> str:
+    text = _DIET_DETAIL_BRACKET_RE.sub("", str(piece or "")).strip()
+    if not text:
+        return ""
+
+    lowered = text.lower()
+    marker_positions = [
+        lowered.find(marker.lower())
+        for marker in _DIET_DETAIL_EXPLANATION_MARKERS
+        if marker.lower() in lowered
+    ]
+    if marker_positions:
+        marker_index = min(position for position in marker_positions if position >= 0)
+        if marker_index <= 0:
+            return ""
+        prefix = text[:marker_index].rstrip(" -:,.()[]")
+        if _looks_like_diet_rationale_prefix(prefix):
+            return ""
+        text = prefix
+
+    text = re.sub(r"\s*(?:때문에|위해서|위해|맞춰|반영해|반영하여).*$", "", text).strip()
+    return text.strip(" -:,.")
+
+
+def _looks_like_diet_rationale_prefix(prefix: str) -> bool:
+    text = str(prefix or "").strip().lower()
+    if not text:
+        return True
+    if len(text) <= 12 and any(marker in text for marker in _DIET_RATIONALE_PREFIX_MARKERS):
+        return True
+    return False
+
+
+def _is_explanatory_diet_piece(piece: str) -> bool:
+    lowered = str(piece or "").lower()
+    return any(marker.lower() in lowered for marker in _DIET_DETAIL_EXPLANATION_MARKERS)
+
+
+def _bound_diet_detail(detail: str) -> str:
+    text = re.sub(r"\s+", " ", str(detail or "")).strip()
+    if len(text) <= 80:
+        return text
+
+    parts = [
+        part.strip()
+        for part in re.split(r"\s*(?:,|/|\+|와|과)\s*", text)
+        if part.strip()
+    ]
+    if len(parts) >= 2:
+        text = ", ".join(parts[:3]).strip()
+    return text[:80].rstrip(" ,/+")
+
+
+def _normalize_workout_category_name(
+    name: str | None,
+    detail: str | None,
+    ex_list: list[dict[str, Any]],
+) -> str:
+    current = str(name or "운동 계획").strip() or "운동 계획"
+    text = " ".join(
+        [
+            current,
+            str(detail or ""),
+            " ".join(str(item.get("exercise_name") or "") for item in ex_list if isinstance(item, dict)),
+        ]
+    ).lower()
+
+    strong_stretching = any(
+        marker in text
+        for marker in ("스트레칭", "stretch", "요가", "이완", "mobility", "가동성", "폼롤")
+    )
+    if strong_stretching:
+        return "스트레칭 루틴"
+
+    if any(marker in text for marker in ("upper_body", "상체", "푸시업", "푸쉬업", "로우", "가슴", "등", "어깨")):
+        return "상체 루틴"
+    if any(marker in text for marker in ("lower_body", "하체", "스쿼트", "런지", "브릿지", "둔근")):
+        return "하체 루틴"
+    if any(marker in text for marker in ("cardio", "유산소", "걷기", "러닝", "달리기", "자전거", "사이클")):
+        return "유산소 루틴"
+    return current
 
 
 def _infer_item_plan_type(item: Any, default_plan_type: str) -> str:

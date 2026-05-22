@@ -102,9 +102,30 @@ def infer_domain(text: str | None) -> Domain:
     if not normalized:
         return "general"
 
-    if any(keyword in normalized for keyword in _DIET_KEYWORDS):
+    explicit_diet_hits = sum(
+        1
+        for keyword in ("식단", "식사", "메뉴", "아침", "점심", "저녁", "meal", "diet")
+        if keyword in normalized
+    )
+    explicit_workout_hits = sum(
+        1
+        for keyword in ("운동", "러닝", "헬스", "근력", "유산소", "스트레칭", "산책", "웨이트", "workout", "exercise")
+        if keyword in normalized
+    )
+    if explicit_diet_hits and explicit_workout_hits:
+        return "general"
+    if explicit_workout_hits:
+        return "workout"
+    if explicit_diet_hits:
         return "diet"
-    if any(keyword in normalized for keyword in _WORKOUT_KEYWORDS):
+
+    diet_hits = sum(1 for keyword in _DIET_KEYWORDS if keyword in normalized)
+    workout_hits = sum(1 for keyword in _WORKOUT_KEYWORDS if keyword in normalized)
+    if diet_hits and workout_hits:
+        return "general"
+    if diet_hits:
+        return "diet"
+    if workout_hits:
         return "workout"
     if any(keyword in normalized for keyword in _PROFILE_KEYWORDS):
         return "profile"
