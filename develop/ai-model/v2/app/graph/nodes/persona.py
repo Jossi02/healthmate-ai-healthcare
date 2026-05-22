@@ -54,11 +54,9 @@ def _is_plan_flow_intent(intent: str) -> bool:
     return intent in {"계획", "수정", "계획_승인"}
 
 
-def _restore_plan_preview_if_missing(text: str, state: GraphState, draft_components: dict) -> str:
+def _normalize_plan_flow_preview(text: str, state: GraphState, draft_components: dict) -> str:
     plan_preview = str(draft_components.get("plan_preview") or "").strip()
     if not plan_preview or not _is_plan_flow_intent(str(state.get("intent") or "")):
-        return text
-    if _plan_preview_is_visible(text, plan_preview):
         return text
 
     approval_question = str(draft_components.get("approval_question") or "").strip()
@@ -66,7 +64,10 @@ def _restore_plan_preview_if_missing(text: str, state: GraphState, draft_compone
     if not first_line or first_line.startswith("-") or (approval_question and approval_question in first_line):
         first_line = str(draft_components.get("core_message") or "").strip()
 
-    lines = [line for line in (first_line, plan_preview) if line]
+    if _first_nonempty_line(text).startswith("-"):
+        lines = [plan_preview]
+    else:
+        lines = [line for line in (first_line, plan_preview) if line]
     lines.extend(str(note).strip() for note in (draft_components.get("safety_notes") or [])[:2] if str(note).strip())
     if approval_question:
         lines.append(approval_question)
@@ -92,30 +93,6 @@ def _strip_plan_flow_preamble(text: str, state: GraphState) -> str:
     if removed <= 0 or removed >= len(lines):
         return text
     return "\n".join(lines[removed:]).strip()
-
-
-def _plan_preview_is_visible(text: str, plan_preview: str) -> bool:
-    if not text.strip():
-        return False
-
-    preview_dates = list(dict.fromkeys(re.findall(r"\d{4}-\d{2}-\d{2}", plan_preview)))
-    if preview_dates:
-        visible_dates = sum(1 for day in preview_dates if day in text)
-        required_dates = len(preview_dates) if len(preview_dates) <= 7 else min(4, len(preview_dates))
-        if visible_dates < required_dates:
-            return False
-
-    remainder_match = re.search(r"외\s*\d+\s*개", plan_preview)
-    if remainder_match and not re.search(r"외\s*\d+\s*개", text):
-        return False
-
-    if preview_dates:
-        return True
-
-    preview_lines = [line.strip() for line in plan_preview.splitlines() if line.strip().startswith("-")]
-    if not preview_lines:
-        return True
-    return any(_compact_for_visibility(line[:80]) in _compact_for_visibility(text) for line in preview_lines[:2])
 
 
 def _first_nonempty_line(text: str) -> str:
@@ -409,10 +386,10 @@ def make_persona_node(deps: NodeDeps):
                 message="Persona generation returned mostly English; using draft preview",
                 detail={"resolved_persona_id": resolved_persona_id},
             )
-            final_response = draft_response
+        final_response = draft_response
 
         final_response = _strip_plan_flow_preamble(final_response, state)
-        final_response = _restore_plan_preview_if_missing(final_response, state, draft_components)
+        final_response = _normalize_plan_flow_preview(final_response, state, draft_components)
 
         if state.get("intent") in {"怨꾪쉷", "?섏젙", "怨꾪쉷_?뱀씤"}:
             final_response = _dedupe_repeated_sentences(final_response)
