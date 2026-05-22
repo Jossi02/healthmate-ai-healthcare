@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +21,7 @@ from app.graph.nodes.generate import (
     _render_plan_preview_from_items,
     _workout_item_category,
 )
+from app.services.home_recommendations import kst_today_iso
 from app.schemas.was import to_plan_create_batches
 from app.services.home_recommendations import normalize_home_recommendations
 from app.schemas.home import (
@@ -214,29 +216,30 @@ def test_diet_payload_stores_food_only() -> None:
 
 
 def test_week_workout_plan_expands_from_one_day_request() -> None:
+    today = date.fromisoformat(kst_today_iso())
     base_plan = [
         {
             "name": "전신 루틴",
             "detail": "스쿼트, 푸쉬업",
-            "day": "2026-05-22",
+            "day": today.isoformat(),
             "ex_list": [{"exercise_name": "스쿼트", "sets": 2, "calories": 60}],
         },
         {
             "name": "유산소 루틴",
             "detail": "빠른 걷기",
-            "day": "2026-05-22",
+            "day": today.isoformat(),
             "ex_list": [{"exercise_name": "빠른 걷기", "duration_minutes": 18, "calories": 90}],
         },
         {
             "name": "하체 루틴",
             "detail": "홈트 의자 스쿼트",
-            "day": "2026-05-22",
+            "day": today.isoformat(),
             "ex_list": [{"exercise_name": "홈트 의자 스쿼트", "sets": 3, "calories": 70}],
         },
         {
             "name": "상체 루틴",
             "detail": "푸쉬업, 밴드 로우",
-            "day": "2026-05-22",
+            "day": today.isoformat(),
             "ex_list": [{"exercise_name": "푸쉬업", "sets": 3, "calories": 60}],
         },
     ]
@@ -250,16 +253,23 @@ def test_week_workout_plan_expands_from_one_day_request() -> None:
 
     assert_true(len(expanded) == 4, "one-week workout plan should keep the weekly session count")
     assert_true(
-        days == ["2026-05-22", "2026-05-23", "2026-05-25", "2026-05-27"],
+        days
+        == [
+            today.isoformat(),
+            (today + timedelta(days=1)).isoformat(),
+            (today + timedelta(days=3)).isoformat(),
+            (today + timedelta(days=5)).isoformat(),
+        ],
         "one-week workout sessions should be spread across the week",
     )
 
 
 def test_seven_day_diet_plan_expands_by_calendar_day() -> None:
+    today = date.fromisoformat(kst_today_iso())
     base_plan = [
-        {"name": "Breakfast", "detail": "오트밀, 두유, 바나나", "day": "2026-05-22", "ex_list": []},
-        {"name": "Lunch", "detail": "현미밥, 닭가슴살, 채소", "day": "2026-05-22", "ex_list": []},
-        {"name": "Dinner", "detail": "두부 샐러드, 고구마", "day": "2026-05-22", "ex_list": []},
+        {"name": "Breakfast", "detail": "오트밀, 두유, 바나나", "day": today.isoformat(), "ex_list": []},
+        {"name": "Lunch", "detail": "현미밥, 닭가슴살, 채소", "day": today.isoformat(), "ex_list": []},
+        {"name": "Dinner", "detail": "두부 샐러드, 고구마", "day": today.isoformat(), "ex_list": []},
     ]
 
     expanded = _expand_long_range_plan_if_requested(
@@ -273,11 +283,36 @@ def test_seven_day_diet_plan_expands_by_calendar_day() -> None:
     assert_true(len(expanded) == 21, "seven-day diet plan should repeat meal slots for each day")
 
 
-def test_month_diet_plan_expands_by_calendar_day() -> None:
+def test_week_plan_without_start_date_aligns_to_today() -> None:
+    today = date.fromisoformat(kst_today_iso())
+    future_start = today + timedelta(days=3)
     base_plan = [
-        {"name": "Breakfast", "detail": "오트밀, 두유, 바나나", "day": "2026-05-18", "ex_list": []},
-        {"name": "Lunch", "detail": "현미밥, 닭가슴살, 채소", "day": "2026-05-18", "ex_list": []},
-        {"name": "Dinner", "detail": "두부 샐러드, 고구마", "day": "2026-05-18", "ex_list": []},
+        {
+            "name": f"{offset + 1}일차 루틴",
+            "detail": "가벼운 운동",
+            "day": (future_start + timedelta(days=offset)).isoformat(),
+            "ex_list": [{"exercise_name": "가벼운 걷기", "duration_minutes": 20, "calories": 80}],
+        }
+        for offset in range(7)
+    ]
+
+    expanded = _expand_long_range_plan_if_requested(
+        {"user_message": "일주일 운동 플랜 짜줘"},
+        base_plan,
+        "workout",
+    )
+    days = sorted({item["day"] for item in expanded})
+
+    assert_true(days[0] == today.isoformat(), "weekly plan without explicit start date should start today")
+    assert_true(days[-1] == (today + timedelta(days=6)).isoformat(), "weekly plan should preserve the seven-day span")
+
+
+def test_month_diet_plan_expands_by_calendar_day() -> None:
+    today = date.fromisoformat(kst_today_iso())
+    base_plan = [
+        {"name": "Breakfast", "detail": "오트밀, 두유, 바나나", "day": today.isoformat(), "ex_list": []},
+        {"name": "Lunch", "detail": "현미밥, 닭가슴살, 채소", "day": today.isoformat(), "ex_list": []},
+        {"name": "Dinner", "detail": "두부 샐러드, 고구마", "day": today.isoformat(), "ex_list": []},
     ]
 
     expanded = _expand_long_range_plan_if_requested(
@@ -289,27 +324,28 @@ def test_month_diet_plan_expands_by_calendar_day() -> None:
 
     assert_true(len(days) == 30, "one-month diet plan should cover 30 calendar days")
     assert_true(len(expanded) == 90, "one-month diet plan should repeat meal slots for each day")
-    assert_true(expanded[0]["day"] == "2026-05-18", "expansion should start from the first plan date")
+    assert_true(expanded[0]["day"] == today.isoformat(), "expansion should start from today when no start date is explicit")
 
 
 def test_month_workout_plan_expands_weekly_sessions() -> None:
+    today = date.fromisoformat(kst_today_iso())
     base_plan = [
         {
             "name": "상체 루틴",
             "detail": "푸쉬업과 로우",
-            "day": "2026-05-18",
+            "day": today.isoformat(),
             "ex_list": [{"exercise_name": "푸쉬업", "sets": 3, "calories": 60}],
         },
         {
             "name": "하체 루틴",
             "detail": "스쿼트와 브릿지",
-            "day": "2026-05-19",
+            "day": (today + timedelta(days=1)).isoformat(),
             "ex_list": [{"exercise_name": "스쿼트", "sets": 3, "calories": 70}],
         },
         {
             "name": "유산소 루틴",
             "detail": "빠른 걷기",
-            "day": "2026-05-20",
+            "day": (today + timedelta(days=2)).isoformat(),
             "ex_list": [{"exercise_name": "빠른 걷기", "duration_minutes": 20, "calories": 90}],
         },
     ]
@@ -322,8 +358,8 @@ def test_month_workout_plan_expands_weekly_sessions() -> None:
     days = sorted({item["day"] for item in expanded})
 
     assert_true(len(expanded) == 12, "four-week workout plan should repeat weekly sessions")
-    assert_true(days[0] == "2026-05-18", "workout expansion should start from the first plan date")
-    assert_true(days[-1] >= "2026-06-10", "workout expansion should span the requested period")
+    assert_true(days[0] == today.isoformat(), "workout expansion should start from today when no start date is explicit")
+    assert_true(days[-1] >= (today + timedelta(days=23)).isoformat(), "workout expansion should span the requested period")
 
 
 def main() -> None:
@@ -338,6 +374,7 @@ def main() -> None:
         test_diet_payload_stores_food_only,
         test_week_workout_plan_expands_from_one_day_request,
         test_seven_day_diet_plan_expands_by_calendar_day,
+        test_week_plan_without_start_date_aligns_to_today,
         test_month_diet_plan_expands_by_calendar_day,
         test_month_workout_plan_expands_weekly_sessions,
     ]

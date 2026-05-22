@@ -1970,6 +1970,8 @@ def _expand_long_range_plan_if_requested(
     if not target_days:
         return proposed_plan
 
+    proposed_plan = _align_plan_start_to_today_if_implicit(state, proposed_plan)
+
     unique_dates = _plan_unique_iso_days(proposed_plan)
     if len(unique_dates) >= min(target_days, 21):
         return proposed_plan
@@ -2009,6 +2011,61 @@ def _requested_plan_days(message: str) -> int | None:
         return 30
 
     return None
+
+
+def _align_plan_start_to_today_if_implicit(state: GraphState, plan_items: list[dict]) -> list[dict]:
+    if not plan_items:
+        return plan_items
+    message = _resolved_user_message(state)
+    if _has_explicit_plan_start_date(message):
+        return plan_items
+
+    today = _parse_iso_date(kst_today_iso())
+    if today is None:
+        return plan_items
+
+    start_day = _plan_start_day(plan_items)
+    if start_day == today:
+        return plan_items
+
+    delta = today - start_day
+    aligned: list[dict] = []
+    for item in plan_items:
+        copied = dict(item)
+        parsed = _parse_iso_date(str(copied.get("day") or "").strip()[:10])
+        if parsed is not None:
+            copied["day"] = (parsed + delta).isoformat()
+        copied["ex_list"] = [dict(exercise) for exercise in copied.get("ex_list") or []]
+        aligned.append(copied)
+    return aligned or plan_items
+
+
+def _has_explicit_plan_start_date(message: str) -> bool:
+    normalized = str(message or "").strip().lower()
+    if not normalized:
+        return False
+    compact = re.sub(r"\s+", "", normalized)
+    if re.search(r"\d{4}\s*[-./]\s*\d{1,2}\s*[-./]\s*\d{1,2}", normalized):
+        return True
+    if re.search(r"\d{1,2}\s*월\s*\d{1,2}\s*일", normalized):
+        return True
+    return any(
+        marker in compact
+        for marker in (
+            "내일부터",
+            "모레부터",
+            "다음주",
+            "차주",
+            "다음달",
+            "월요일부터",
+            "화요일부터",
+            "수요일부터",
+            "목요일부터",
+            "금요일부터",
+            "토요일부터",
+            "일요일부터",
+        )
+    )
 
 
 def _plan_unique_iso_days(plan_items: list[dict]) -> set[str]:
