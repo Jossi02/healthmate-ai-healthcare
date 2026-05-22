@@ -2194,7 +2194,40 @@ def _expand_workout_plan_days(plan_items: list[dict], start_day: date, target_da
                 continue
             current_day = (start_day + timedelta(days=offset)).isoformat()
             expanded.append(_copy_plan_item_for_day(item, current_day))
+    if target_days <= 7:
+        expanded = _fill_weekly_workout_rest_days(expanded, start_day, target_days)
     return expanded or plan_items
+
+
+def _fill_weekly_workout_rest_days(plan_items: list[dict], start_day: date, target_days: int) -> list[dict]:
+    if target_days > 7:
+        return plan_items
+
+    existing_days = {
+        str(item.get("day") or "").strip()[:10]
+        for item in plan_items
+        if isinstance(item, dict) and _parse_iso_date(str(item.get("day") or "").strip()[:10])
+    }
+    completed = list(plan_items)
+    for offset in range(target_days):
+        current_day = (start_day + timedelta(days=offset)).isoformat()
+        if current_day in existing_days:
+            continue
+        completed.append(
+            {
+                "name": "휴식 또는 가벼운 스트레칭",
+                "detail": "회복 중심",
+                "day": current_day,
+                "ex_list": [
+                    {
+                        "exercise_name": "가벼운 전신 스트레칭",
+                        "sets": 1,
+                        "calories": 20,
+                    }
+                ],
+            }
+        )
+    return sorted(completed, key=lambda item: str(item.get("day") or ""))
 
 
 def _daily_plan_patterns(plan_items: list[dict], *, max_items_per_pattern: int) -> list[list[dict]]:
