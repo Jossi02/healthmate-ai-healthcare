@@ -26,6 +26,7 @@ import {
   type WorkoutSlot,
   appendRecommendationHistory,
 } from '@/lib/homeRecommendations';
+import { compactText } from '@/lib/planDisplay';
 
 export type TodoItem = {
   id: number;
@@ -1471,7 +1472,7 @@ return (
                     <Dumbbell className="w-7 h-7" />
                   </div>
                   <h4 className="font-bold text-gray-900 text-[15px] mb-1.5">{aiRecommendations.workout.strength.upper.name}</h4>
-                  <p className="text-xs text-gray-500 leading-relaxed">{aiRecommendations.workout.strength.upper.desc}</p>
+                  <p className="text-xs text-gray-500 leading-relaxed">{compactText(aiRecommendations.workout.strength.upper.desc, 42)}</p>
                   <p className="mt-2 text-[11px] font-bold text-blue-500">{aiRecommendations.workout.strength.upper.duration}</p>
                   {isWorkoutRecommendationAdded('upper_body', aiRecommendations.workout.strength.upper) && <p className="mt-1 text-[11px] font-bold text-emerald-500">추가됨</p>}
                 </div>
@@ -1505,7 +1506,7 @@ return (
                     <PersonStanding className="w-7 h-7" />
                   </div>
                   <h4 className="font-bold text-gray-900 text-[15px] mb-1.5">{aiRecommendations.workout.strength.lower.name}</h4>
-                  <p className="text-xs text-gray-500 leading-relaxed">{aiRecommendations.workout.strength.lower.desc}</p>
+                  <p className="text-xs text-gray-500 leading-relaxed">{compactText(aiRecommendations.workout.strength.lower.desc, 42)}</p>
                   <p className="mt-2 text-[11px] font-bold text-indigo-500">{aiRecommendations.workout.strength.lower.duration}</p>
                   {isWorkoutRecommendationAdded('lower_body', aiRecommendations.workout.strength.lower) && <p className="mt-1 text-[11px] font-bold text-emerald-500">추가됨</p>}
                 </div>
@@ -1539,7 +1540,7 @@ return (
                     <Heart className="w-7 h-7" />
                   </div>
                   <h4 className="font-bold text-gray-900 text-[15px] mb-1.5">{aiRecommendations.workout.cardio.name}</h4>
-                  <p className="text-xs text-gray-500 leading-relaxed">{aiRecommendations.workout.cardio.desc}</p>
+                  <p className="text-xs text-gray-500 leading-relaxed">{compactText(aiRecommendations.workout.cardio.desc, 42)}</p>
                   <p className="mt-2 text-[11px] font-bold text-rose-500">{aiRecommendations.workout.cardio.duration}</p>
                   {isWorkoutRecommendationAdded('cardio', aiRecommendations.workout.cardio) && <p className="mt-1 text-[11px] font-bold text-emerald-500">추가됨</p>}
                 </div>
@@ -1573,7 +1574,7 @@ return (
                     <Droplets className="w-7 h-7" />
                   </div>
                   <h4 className="font-bold text-gray-900 text-[15px] mb-1.5">{aiRecommendations.workout.stretching.name}</h4>
-                  <p className="text-xs text-gray-500 leading-relaxed">{aiRecommendations.workout.stretching.desc}</p>
+                  <p className="text-xs text-gray-500 leading-relaxed">{compactText(aiRecommendations.workout.stretching.desc, 42)}</p>
                   <p className="mt-2 text-[11px] font-bold text-emerald-500">{aiRecommendations.workout.stretching.duration}</p>
                   {isWorkoutRecommendationAdded('stretching', aiRecommendations.workout.stretching) && <p className="mt-1 text-[11px] font-bold text-emerald-500">추가됨</p>}
                 </div>
@@ -1630,8 +1631,8 @@ return (
                       <div className="w-full h-24 bg-orange-50/50 border border-orange-100 shadow-sm rounded-xl mb-3 flex items-center justify-center">
                         <span className="text-4xl">{getFoodEmoji(dietData.name)}</span>
                       </div>
-                      <h4 className="font-bold text-gray-900 text-sm mb-1">{dietData.name}</h4>
-                      <p className="text-xs text-gray-500 mb-2 flex-1">{dietData.desc}</p>
+                      <h4 className="font-bold text-gray-900 text-sm mb-1">{compactText(dietData.name, 30)}</h4>
+                      <p className="text-xs text-gray-500 mb-2 flex-1">{compactText(dietData.desc, 42)}</p>
                       <div className="text-xs font-bold text-orange-500">{dietData.calories} kcal</div>
                       {isDietRecommendationAdded(mealType, dietData) && <p className="mt-2 text-[11px] font-bold text-emerald-500">추가됨</p>}
                     </div>

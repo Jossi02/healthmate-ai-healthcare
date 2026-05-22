@@ -28,12 +28,19 @@ INTENT_HOME_RECOMMENDATION = "home_recommendation"
 
 _SAFETY_PATTERNS = re.compile(
     r"자해|자살|죽고\s*싶|살고\s*싶지|살기\s*싫|극단적\s*선택|위험|실행|마약|과다\s*복용|과복용|"
-    r"가슴.*조여|가슴.*조이|가슴.*아파|숨.*차|호흡.*힘들|어지럽|어지러|심한.*알레르기|"
+    r"가슴.*조여|가슴.*조이|가슴.*아파|가슴.*답답|흉통|식은땀|명치.*답답|숨.*차|호흡.*힘들|어지럽|어지러|심한.*알레르기|"
     r"심한.*통증|출혈|피가.*멈추지|기절|"
     r"약을.*많이.*먹|굶는?\s*식단|굶어서|단식.*살|물만\s*마시|물만.*식단|"
     r"일주일.*[5-9]\s*kg|[5-9]\s*kg.*빨리|빨리.*[5-9]\s*kg|"
     r"[5-9]\s*kg.*일주일|극단적.*다이어트|초저칼로리|"
     r"(?:[1-9]\d{2}|1000)\s*(?:kcal|칼로리)",
+    re.IGNORECASE,
+)
+_PHYSICAL_EMERGENCY_PATTERNS = re.compile(
+    r"(운동|뛰|러닝|걷|스쿼트|헬스|유산소|근력|하다가|도중).*"
+    r"(가슴|흉통|숨|호흡|식은땀|식은\s*땀|어지럽|어지러|실신|기절|쓰러질)|"
+    r"(가슴|흉통|숨|호흡|식은땀|식은\s*땀|어지럽|어지러|실신|기절|쓰러질).*"
+    r"(계속|해도\s*돼|해도\s*될|괜찮|운동|멈춰|중단|도중|하다가)",
     re.IGNORECASE,
 )
 _CASUAL_PATTERNS = re.compile(
@@ -104,7 +111,14 @@ _PLAN_REQUEST_KEYWORDS = (
     "루틴",
     "플랜",
     "계획",
+    "작성",
     "짜줘",
+    "짜 줘",
+    "세워줘",
+    "세워 줘",
+    "잡아줘",
+    "잡아 줘",
+    "잡아달",
     "구성",
     "설계",
     "만들어",
@@ -132,6 +146,18 @@ _PLAN_EXCLUDE_KEYWORDS = (
     "기록",
     "체크",
 )
+_NEW_PLAN_MARKERS = (
+    "새로",
+    "새로운",
+    "새 계획",
+    "새 플랜",
+    "새 루틴",
+    "다른 계획",
+    "다른 플랜",
+    "다른 루틴",
+    "처음부터",
+    "신규",
+)
 _MODIFY_KEYWORDS = (
     "수정",
     "바꿔",
@@ -145,6 +171,12 @@ _MODIFY_KEYWORDS = (
     "덜",
     "추가",
     "제외",
+    "대체",
+    "제거",
+    "짧게",
+    "가볍게",
+    "안전하게",
+    "현실적으로",
 )
 _APPROVAL_KEYWORDS = (
     "확인",
@@ -163,8 +195,11 @@ _APPROVAL_COMMITMENT_KEYWORDS = (
     "진행",
     "적용",
     "반영",
-    "해줘",
-    "해줘요",
+    "저장",
+    "확정",
+    "확인",
+    "이대로",
+    "그대로",
     "오케이",
     "좋아",
     "ok",
@@ -287,6 +322,12 @@ _PLAN_CHANGE_MARKERS = (
     "칼로리",
     "식사",
     "재료",
+    "안전하게",
+    "현실적으로",
+    "짧게",
+    "가볍게",
+    "대체",
+    "제거",
 )
 _SHORT_APPROVAL_RESPONSES = (
     "응",
@@ -330,6 +371,12 @@ _CARE_SUPPORT_MARKERS = (
     "부담",
     "겁나",
     "조급",
+    "자신감",
+    "할 수 있게",
+    "해낼 수",
+    "쉬어도",
+    "쉬어야",
+    "루틴이 망가",
 )
 _INFO_REQUEST_MARKERS = (
     "왜",
@@ -356,6 +403,14 @@ _INFO_REQUEST_MARKERS = (
     "쉬어야",
     "어떻게",
     "대신",
+    "설명",
+    "정리",
+    "판단",
+    "빠른지",
+    "적절",
+    "페이스",
+    "기준",
+    "맞는지",
 )
 _HEALTH_CONTEXT_KEYWORDS = (
     "컨디션",
@@ -379,6 +434,10 @@ _HEALTH_CONTEXT_KEYWORDS = (
     "휴식",
     "쉬어",
     "쉬고",
+    "페이스",
+    "강도",
+    "속도",
+    "루틴",
     "걷기",
     "산책",
     "스트레칭",
@@ -406,7 +465,7 @@ def make_intent_node(deps: NodeDeps):
         previous_intent = state.get("previous_intent")
         signals = _intent_signal_snapshot(message, routing_message, state)
 
-        if _SAFETY_PATTERNS.search(message):
+        if _looks_like_safety_request(message):
             return _build_result(INTENT_SAFETY, state)
 
         if _CASUAL_PATTERNS.match(message.strip()) and previous_intent != INTENT_CARE:
@@ -458,6 +517,42 @@ def make_intent_node(deps: NodeDeps):
         if _looks_like_context_setup(message) and not _looks_like_plan_request(routing_message):
             return _build_result(INTENT_CASUAL, state, confidence=0.82)
 
+        if _looks_like_plan_check_record(message) or _looks_like_plan_check_record(routing_message):
+            return _build_result(INTENT_RECORD, state, confidence=0.94, record_type="plan_check", is_today=True)
+
+        if _looks_like_profile_record(message) or _looks_like_profile_record(routing_message):
+            return _build_result(INTENT_RECORD, state, confidence=0.94, record_type="profile")
+
+        if _looks_like_emotional_care_request(message, routing_message):
+            return _build_result(INTENT_CARE, state, confidence=0.9)
+
+        if _looks_like_read_only_info_request(message, routing_message):
+            return _build_result(
+                INTENT_INFO,
+                state,
+                confidence=0.92,
+                search_targets=["vdb_external"],
+            )
+
+        if _looks_like_new_plan_request(message, routing_message):
+            return _build_result(
+                INTENT_PLAN,
+                state,
+                confidence=0.94,
+                search_targets=["vdb_external", "vdb_memory", "vdb_user_important", "web"],
+            )
+
+        awaiting_plan_confirmation = _has_pending_plan_confirmation_v2(state)
+
+        if awaiting_plan_confirmation and _looks_like_pending_plan_revision(message, routing_message, state):
+            return _build_result(
+                INTENT_MODIFY,
+                state,
+                confidence=0.96,
+                search_targets=["vdb_external", "vdb_memory", "vdb_user_important", "web"],
+                modify_target=_pending_plan_domain(state, routing_message),
+            )
+
         if (
             _looks_like_question_followup(routing_message)
             and not _looks_like_plan_request(routing_message)
@@ -470,7 +565,6 @@ def make_intent_node(deps: NodeDeps):
                 search_targets=["vdb_external"],
             )
 
-        awaiting_plan_confirmation = _has_pending_plan_confirmation_v2(state)
         if awaiting_plan_confirmation:
             deps.trace.record_current_event(
                 stage="confirm_gate",
@@ -493,6 +587,7 @@ def make_intent_node(deps: NodeDeps):
                 state,
                 confidence=0.93,
                 search_targets=["vdb_external", "vdb_memory", "vdb_user_important", "web"],
+                modify_target=_pending_plan_domain(state, routing_message),
             )
 
         if awaiting_plan_confirmation and _matches_hardcoded_confirmation_approval(message):
@@ -531,13 +626,14 @@ def make_intent_node(deps: NodeDeps):
                 state,
                 confidence=0.93,
                 search_targets=["vdb_external", "vdb_memory", "vdb_user_important", "web"],
+                modify_target=_pending_plan_domain(state, routing_message),
             )
 
         if not awaiting_plan_confirmation and _looks_like_plan_approval(routing_message, state):
             return _build_result(INTENT_APPROVAL, state, confidence=0.94)
 
         if (
-            _looks_like_care_request(routing_message)
+            (_looks_like_care_request(routing_message) or _looks_like_care_request(message))
             and not _looks_like_info_request(routing_message)
             and not _looks_like_plan_request(routing_message)
             and not _looks_like_modify_request(routing_message)
@@ -553,6 +649,7 @@ def make_intent_node(deps: NodeDeps):
                 state,
                 confidence=0.92,
                 search_targets=["vdb_external", "vdb_memory", "vdb_user_important", "web"],
+                modify_target=_pending_plan_domain(state, routing_message),
             )
 
         if _looks_like_plan_request(routing_message):
@@ -669,11 +766,15 @@ def _build_result(
     requires_past_memory: bool = False,
     should_save_episode: bool = False,
     short_term_memory_query: bool = False,
+    modify_target: str | None = None,
+    record_type: str | None = None,
+    is_today: bool | None = None,
 ) -> dict:
     is_profile_record = intent == INTENT_RECORD and _looks_like_profile_record(str(state.get("user_message") or ""))
+    resolved_record_type = record_type or ("profile" if is_profile_record else None)
     return {
         "intent": intent,
-        **_contract_fields(intent, state),
+        **_contract_fields(intent, state, record_type=resolved_record_type, modify_target=modify_target),
         "confidence": confidence,
         "emotion": state.get("emotion") or {"label": "중립", "intensity": 0.0},
         "previous_intent": state.get("intent"),
@@ -682,10 +783,10 @@ def _build_result(
         "should_save_episode": should_save_episode,
         "short_term_memory_query": short_term_memory_query,
         "has_fact_change": False,
-        "record_type": "profile" if is_profile_record else None,
+        "record_type": resolved_record_type,
         "profile_changes": None,
-        "is_today": None,
-        "modify_target": None,
+        "is_today": is_today,
+        "modify_target": modify_target,
         "search_targets": search_targets or [],
         "search_retry_count": 0,
         "fallback_count": state.get("fallback_count", 0),
@@ -716,7 +817,7 @@ def _intent_signal_snapshot(message: str, routing_message: str, state: GraphStat
         "resolved_domain": resolution.get("resolved_domain"),
         "context_ambiguous": bool(resolution.get("ambiguous")),
         "context_confidence": resolution.get("confidence"),
-        "safety_match": bool(_SAFETY_PATTERNS.search(message)),
+        "safety_match": _looks_like_safety_request(message),
         "care_match": _looks_like_care_request(routing_message),
         "health_context_match": _looks_like_health_context(routing_message),
         "offtopic_match": _looks_like_offtopic_request(routing_message),
@@ -798,7 +899,7 @@ def _action_intent_from_legacy(intent: str) -> str:
     if intent == INTENT_HOME_RECOMMENDATION:
         return "home_recommendation"
     if intent == INTENT_CARE:
-        return "casual"
+        return "care"
     return "fallback"
 
 
@@ -812,6 +913,29 @@ def _support_mode(
         return "care"
 
     normalized = str(routing_message or state.get("user_message") or "").lower()
+    if intent in {INTENT_PLAN, INTENT_MODIFY} and _looks_like_plan_request(normalized):
+        strong_care_markers = (
+            "지쳐",
+            "지쳤",
+            "힘들",
+            "불안",
+            "우울",
+            "무기력",
+            "스트레스",
+            "버겁",
+            "외롭",
+            "실패",
+            "못 하겠",
+            "못하겠",
+            "하기 싫",
+            "하기싫",
+            "폭식",
+            "망쳐",
+            "망했",
+        )
+        if not any(marker in normalized for marker in strong_care_markers):
+            return "normal"
+
     if any(marker in normalized for marker in _CARE_SUPPORT_MARKERS):
         return "care"
 
@@ -904,9 +1028,88 @@ def _has_pending_plan_confirmation_v2(state: GraphState) -> bool:
     return bool(active_proposal and active_proposal.get("items"))
 
 
+def _looks_like_safety_request(message: str) -> bool:
+    return bool(_SAFETY_PATTERNS.search(message) or _PHYSICAL_EMERGENCY_PATTERNS.search(message))
+
+
+def _pending_plan_domain(state: GraphState, message: str | None = None) -> str | None:
+    inferred = infer_domain(message or state.get("user_message"))
+    if inferred in {"workout", "diet"}:
+        return inferred
+
+    active_proposal = state.get("active_proposal") or {}
+    active_domain = active_proposal.get("domain")
+    if active_domain in {"workout", "diet"}:
+        return str(active_domain)
+    proposed_plan_type = state.get("proposed_plan_type")
+    if proposed_plan_type in {"workout", "diet"}:
+        return str(proposed_plan_type)
+    return None
+
+
+def _looks_like_pending_plan_revision(message: str, routing_message: str, state: GraphState) -> bool:
+    if not _has_pending_plan_confirmation_v2(state):
+        return False
+
+    combined_normalized = " ".join(
+        candidate.strip().lower() for candidate in (message, routing_message) if candidate.strip()
+    )
+    if _looks_like_ambiguous_mixed_plan_request(combined_normalized):
+        return False
+    if _looks_like_read_only_info_request(message, routing_message) or _looks_like_new_plan_request(message, routing_message):
+        return False
+    if _looks_like_modified_plan_acceptance(combined_normalized):
+        return False
+
+    candidates = [message, routing_message]
+    for candidate in candidates:
+        if _looks_like_explicit_plan_change(candidate, state) or _looks_like_modify_request(candidate):
+            return True
+
+    if not combined_normalized:
+        return False
+
+    has_reference = any(
+        keyword in combined_normalized
+        for keyword in (*_PLAN_REFERENCE_KEYWORDS, *_PLAN_CONFIRMATION_REFERENCE_KEYWORDS)
+    )
+    has_revision_language = any(
+        marker in combined_normalized
+        for marker in (
+            "더 안전",
+            "안전하게",
+            "현실적으로",
+            "짧게",
+            "가볍게",
+            "10분",
+            "15분",
+            "부담",
+            "무리",
+            "제외",
+            "대체",
+            "빼고",
+        )
+    )
+    return has_reference and has_revision_language
+
+
+def _looks_like_ambiguous_mixed_plan_request(message: str) -> bool:
+    normalized = message.strip().lower()
+    if not normalized:
+        return False
+    has_plan_request = _looks_like_plan_request(normalized)
+    has_workout = any(keyword in normalized for keyword in ("운동", "러닝", "헬스", "근력", "유산소", "스트레칭", "산책", "workout", "exercise"))
+    has_diet = any(keyword in normalized for keyword in ("식단", "식사", "메뉴", "아침", "점심", "저녁", "meal", "diet"))
+    explicit_both = any(marker in normalized for marker in ("같이", "함께", "둘 다", "둘다", "both", "운동과 식단", "운동 및 식단", "운동 계획과 식단"))
+    return has_plan_request and has_workout and has_diet and not explicit_both
+
+
 def _matches_hardcoded_confirmation_approval(message: str) -> bool:
     normalized = re.sub(r"\s+", " ", message.strip().lower())
     if not normalized:
+        return False
+
+    if _looks_like_pending_plan_revision(message, message, {"awaiting_plan_confirmation": True, "proposed_plan": [{}]}):
         return False
 
     if normalized in {phrase.lower() for phrase in _EXPLICIT_PLAN_APPROVAL_PHRASES}:
@@ -990,6 +1193,8 @@ def _looks_like_explicit_plan_change(message: str, state: GraphState | dict) -> 
     normalized = message.strip().lower()
     if not normalized:
         return False
+    if _looks_like_read_only_info_request(normalized) or _looks_like_new_plan_request(normalized):
+        return False
 
     has_change_marker = any(marker in normalized for marker in _PLAN_CHANGE_MARKERS)
     has_modify_keyword = any(keyword in normalized for keyword in _MODIFY_KEYWORDS)
@@ -998,13 +1203,7 @@ def _looks_like_explicit_plan_change(message: str, state: GraphState | dict) -> 
     looks_like_referential_acceptance = has_confirmation_reference and has_commitment_keyword and not (
         has_change_marker or has_modify_keyword
     )
-    looks_like_modified_plan_acceptance = (
-        has_commitment_keyword
-        and any(marker in normalized for marker in ("수정한 계획", "수정된 계획", "수정안", "방금 수정"))
-        and not any(marker in normalized for marker in ("말고", "대신", "다시 바꿔", "다시 수정", "변경해"))
-    )
-
-    if looks_like_modified_plan_acceptance:
+    if _looks_like_modified_plan_acceptance(normalized):
         return False
 
     if has_modify_keyword and not looks_like_referential_acceptance:
@@ -1012,6 +1211,15 @@ def _looks_like_explicit_plan_change(message: str, state: GraphState | dict) -> 
     if has_change_marker and not looks_like_referential_acceptance:
         return True
     return False
+
+
+def _looks_like_modified_plan_acceptance(normalized: str) -> bool:
+    has_commitment_keyword = any(keyword in normalized for keyword in _APPROVAL_COMMITMENT_KEYWORDS)
+    return (
+        has_commitment_keyword
+        and any(marker in normalized for marker in ("수정한 계획", "수정된 계획", "수정안", "방금 수정"))
+        and not any(marker in normalized for marker in ("말고", "대신", "다시 바꿔", "다시 수정", "변경해"))
+    )
 
 
 def _looks_like_plan_acceptance_followup(message: str, state: GraphState) -> bool:
@@ -1022,7 +1230,7 @@ def _looks_like_plan_acceptance_followup(message: str, state: GraphState) -> boo
         return False
     if _looks_like_profile_record(message):
         return False
-    if _SAFETY_PATTERNS.search(message):
+    if _looks_like_safety_request(message):
         return False
 
     is_short_ack = normalized in {item.lower() for item in _SHORT_APPROVAL_RESPONSES}
@@ -1055,9 +1263,49 @@ def _looks_like_plan_request(message: str) -> bool:
     return has_domain_keyword and has_request_keyword and not has_excluded_keyword
 
 
+def _looks_like_new_plan_request(message: str, routing_message: str | None = None) -> bool:
+    candidates = [message, routing_message or ""]
+    for candidate in candidates:
+        normalized = candidate.strip().lower()
+        if not normalized:
+            continue
+        has_new_marker = any(marker in normalized for marker in _NEW_PLAN_MARKERS)
+        if has_new_marker and _looks_like_plan_request(normalized):
+            return True
+    return False
+
+
 def _looks_like_care_request(message: str) -> bool:
     normalized = message.strip().lower()
     return any(marker in normalized for marker in _CARE_SUPPORT_MARKERS)
+
+
+def _looks_like_emotional_care_request(message: str, routing_message: str | None = None) -> bool:
+    combined = " ".join(candidate.strip().lower() for candidate in (message, routing_message or "") if candidate.strip())
+    if not combined:
+        return False
+    if _looks_like_plan_request(combined) or _looks_like_modify_request(combined) or _looks_like_plan_check_record(combined):
+        return False
+    if not _looks_like_care_request(combined):
+        return False
+    if any(marker in combined for marker in ("궁금", "되는지", "해도 될", "해도 되는")) and not any(
+        marker in combined for marker in ("망가", "말해줘", "자신감", "할 수", "해낼", "위로", "응원")
+    ):
+        return False
+    reassurance_markers = (
+        "말해줘",
+        "망가지는",
+        "망가지",
+        "할 수",
+        "자신감",
+        "루틴",
+        "쉬어도",
+        "쉬어야",
+        "해낼",
+        "위로",
+        "응원",
+    )
+    return any(marker in combined for marker in reassurance_markers)
 
 
 def _looks_like_health_context(message: str) -> bool:
@@ -1069,7 +1317,7 @@ def _looks_like_offtopic_request(message: str) -> bool:
     normalized = message.strip().lower()
     if not normalized:
         return False
-    if _SAFETY_PATTERNS.search(normalized):
+    if _looks_like_safety_request(normalized):
         return False
     if (
         any(keyword in normalized for keyword in _PLAN_DOMAIN_KEYWORDS)
@@ -1116,6 +1364,37 @@ def _looks_like_question_followup(message: str) -> bool:
     return normalized.endswith("?")
 
 
+def _looks_like_read_only_info_request(message: str, routing_message: str | None = None) -> bool:
+    combined = " ".join(candidate.strip().lower() for candidate in (message, routing_message or "") if candidate.strip())
+    if not combined:
+        return False
+
+    readonly_markers = (
+        "이유",
+        "근거",
+        "설명",
+        "정리",
+        "판단",
+        "알려줘",
+        "피해야",
+        "괜찮",
+        "될까",
+        "되는지",
+        "궁금",
+        "쉬어도",
+        "빠른지",
+        "적절한지",
+        "맞는지",
+    )
+    if not any(marker in combined for marker in readonly_markers):
+        return False
+    if any(marker in combined for marker in ("저장", "반영", "적용", "진행", "확정", "체크해", "완료")):
+        return False
+    if _looks_like_new_plan_request(message, routing_message):
+        return False
+    return _looks_like_info_request(combined) or _looks_like_question_followup(combined)
+
+
 def _looks_like_info_request(message: str) -> bool:
     normalized = message.strip().lower()
     has_domain_keyword = any(keyword in normalized for keyword in _PLAN_DOMAIN_KEYWORDS) or any(
@@ -1133,7 +1412,61 @@ def _looks_like_modify_request(message: str) -> bool:
     normalized = message.strip().lower()
     has_domain_keyword = any(keyword in normalized for keyword in _PLAN_DOMAIN_KEYWORDS)
     has_modify_keyword = any(keyword in normalized for keyword in _MODIFY_KEYWORDS)
+    has_hard_modify_keyword = any(
+        keyword in normalized
+        for keyword in (
+            "수정",
+            "바꿔",
+            "변경",
+            "교체",
+            "조정",
+            "빼",
+            "다시",
+            "줄여",
+            "늘려",
+            "추가",
+            "제외",
+            "대체",
+            "제거",
+        )
+    )
+    if _looks_like_plan_request(normalized) and not has_hard_modify_keyword:
+        return False
     return has_domain_keyword and has_modify_keyword
+
+
+def _looks_like_plan_check_record(message: str) -> bool:
+    normalized = message.strip().lower()
+    if not normalized or _looks_like_profile_record(normalized):
+        return False
+    has_plan_context = any(
+        marker in normalized
+        for marker in (
+            "운동",
+            "식단",
+            "계획",
+            "플랜",
+            "루틴",
+            "첫 번째",
+            "첫번째",
+            "방금 저장한",
+            "저장한 계획",
+        )
+    )
+    has_record_marker = any(
+        marker in normalized
+        for marker in (
+            "완료",
+            "완료했",
+            "했어",
+            "했어요",
+            "체크",
+            "체크해",
+            "처리해",
+            "처리",
+        )
+    )
+    return has_plan_context and has_record_marker
 
 
 def _looks_like_plan_approval(message: str, state: GraphState) -> bool:
@@ -1152,6 +1485,8 @@ def _looks_like_plan_approval(message: str, state: GraphState) -> bool:
         or _assistant_requested_plan_confirmation(state)
     )
 
+    if _looks_like_explicit_plan_change(message, state) or _looks_like_pending_plan_revision(message, message, state):
+        return False
     if has_plan_context and has_explicit_approval_phrase and not has_profile_keyword:
         return True
     if has_plan_context and has_confirmation_reference and has_commitment_keyword and not has_profile_keyword:

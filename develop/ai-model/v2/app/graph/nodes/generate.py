@@ -5,6 +5,7 @@ import json
 import logging
 import re
 import time
+from datetime import date, timedelta
 
 from app.core.draft_contract import normalize_draft_components, render_draft_preview
 from app.core.prompt_loader import compose_prompts, load_prompt
@@ -48,7 +49,7 @@ _SELF_EVAL_INTENTS = {INTENT_SAFETY, INTENT_CARE}
 
 _PLAN_TYPE_KEYWORDS = {
     "diet": ("식단", "식사", "영양", "칼로리", "다이어트", "meal", "diet", "nutrition", "calorie"),
-    "workout": ("운동", "러닝", "달리기", "헬스", "근력", "유산소", "웨이트", "exercise", "workout", "training", "run"),
+    "workout": ("운동", "러닝", "달리기", "헬스", "근력", "유산소", "스트레칭", "산책", "웨이트", "exercise", "workout", "training", "run"),
 }
 _WORKOUT_CATEGORY_LABELS = {
     "stretching": "스트레칭",
@@ -242,6 +243,15 @@ def make_generate_node(deps: NodeDeps):
             )
             return direct_past_memory_draft
 
+        if intent in {INTENT_PLAN, INTENT_MODIFY} and _is_mixed_plan_type_request(_resolved_user_message(state)):
+            deps.trace.record_current_event(
+                stage="generate",
+                status="ok",
+                title="Mixed workout/diet plan request clarified",
+                duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
+            )
+            return _build_mixed_plan_clarification_draft()
+
         context = _build_draft_context(state)
         system_prompt = _build_draft_system_prompt(state, failure_reason)
 
@@ -307,8 +317,22 @@ def make_generate_node(deps: NodeDeps):
                 proposed_plan_type,
                 state,
             )
+            proposed_plan = _expand_long_range_plan_if_requested(
+                state,
+                proposed_plan,
+                proposed_plan_type,
+            )
             if proposed_plan:
                 draft_components["plan_preview"] = _render_plan_preview_from_items(proposed_plan)
+                draft_components = _normalize_plan_approval_question(
+                    draft_components,
+                    proposed_plan_type,
+                    proposed_plan_action,
+                )
+                draft_components = _minimize_plan_exposition(
+                    draft_components,
+                    proposed_plan_type,
+                )
             draft_text = render_draft_preview(draft_components)
         elif intent == INTENT_INFO:
             draft_components = _apply_info_profile_guardrails(draft_components, state)
@@ -644,7 +668,9 @@ def _apply_profile_quality_guardrails(
         else:
             patched["search_grounding_summary"] = constraint_note
 
-    if proposed_plan_type == "workout":
+    if _has_mixed_workout_diet_items(plan):
+        plan = _adjust_mixed_plan_for_profile(plan, profile)
+    elif proposed_plan_type == "workout":
         category_note = _workout_category_balance_note(profile)
         if category_note:
             _append_unique(patched["reason_points"], category_note)
@@ -912,7 +938,6 @@ def _empathy_note(profile: dict, state: GraphState) -> str:
         str(value)
         for value in (
             profile.get("emotional_context"),
-            state.get("support_mode"),
             (state.get("emotion") or {}).get("label") if state.get("emotion") else None,
         )
         if value
@@ -1011,6 +1036,8 @@ def _workout_item_category(item: dict) -> str | None:
         if isinstance(exercise, dict):
             text_parts.append(str(exercise.get("exercise_name") or ""))
     text = " ".join(text_parts).lower()
+    if any(keyword.lower() in text for keyword in _WORKOUT_CATEGORY_KEYWORDS["stretching"]):
+        return "stretching"
     scores: dict[str, int] = {}
     for category, keywords in _WORKOUT_CATEGORY_KEYWORDS.items():
         scores[category] = sum(1 for keyword in keywords if keyword.lower() in text)
@@ -1329,25 +1356,95 @@ def _adjust_diet_plan_for_profile(plan: list[dict], profile: dict) -> list[dict]
     if not plan:
         return plan
     allergies = _as_text_list(profile.get("allergies") or profile.get("dietary_restrictions"))
-    conditions = _as_text_list(profile.get("medical_conditions") or profile.get("conditions"))
-    goal = str(profile.get("goal") or "").lower()
-    diet_goal = _diet_goal_note(profile)
     adjusted: list[dict] = []
     for item in plan:
         next_item = dict(item)
         detail = _sanitize_diet_detail_for_profile(str(next_item.get("detail") or "").strip(), allergies)
-        notes: list[str] = []
-        if allergies:
-            notes.append(f"알레르기({', '.join(allergies)}) 제외/대체")
-        if conditions:
-            notes.append(f"질환({', '.join(conditions)}) 고려")
-        if diet_goal:
-            notes.append(diet_goal)
-        if "extreme" in goal or "급" in goal:
-            notes.append("굶지 않는 지속 가능한 감량")
-        if notes:
-            next_item["detail"] = f"{detail} / " + " / ".join(notes) if detail else " / ".join(notes)
+        detail = _adapt_diet_detail_for_profile(detail, profile)
+        next_item["detail"] = _strip_plan_detail_explanations(detail)
         adjusted.append(next_item)
+    return adjusted
+
+
+def _has_mixed_workout_diet_items(plan: list[dict]) -> bool:
+    has_workout = False
+    has_diet = False
+    for item in plan:
+        if _is_diet_plan_item(item):
+            has_diet = True
+        elif isinstance(item, dict) and item.get("ex_list"):
+            has_workout = True
+    return has_workout and has_diet
+
+
+def _is_diet_plan_item(item: dict) -> bool:
+    text = f"{item.get('name') or ''} {item.get('detail') or ''}".lower()
+    return any(
+        marker in text
+        for marker in (
+            "breakfast",
+            "lunch",
+            "dinner",
+            "snack",
+            "meal",
+            "아침",
+            "점심",
+            "저녁",
+            "간식",
+            "식단",
+            "식사",
+        )
+    )
+
+
+def _adjust_mixed_plan_for_profile(plan: list[dict], profile: dict) -> list[dict]:
+    adjusted: list[dict] = []
+    for item in plan:
+        next_item = dict(item)
+        if _is_diet_plan_item(next_item):
+            next_item["ex_list"] = []
+            adjusted.extend(_adjust_diet_plan_for_profile([next_item], profile))
+            continue
+        adjusted.append(_adjust_single_workout_item_for_profile(next_item, profile))
+    return adjusted
+
+
+def _adjust_single_workout_item_for_profile(item: dict, profile: dict) -> dict:
+    adjusted = dict(item)
+    available = _safe_int(profile.get("available_time_minutes"))
+    level = str(profile.get("exercise_level") or profile.get("fitness_level") or profile.get("activity_level") or "").lower()
+    beginner = any(marker in level for marker in ("beginner", "초보", "low", "낮"))
+    advanced = any(marker in level for marker in ("advanced", "숙련", "상급", "고급"))
+    older = (_safe_int(profile.get("age")) or 0) >= 65
+    constraints = [
+        *_as_text_list(profile.get("injury_history")),
+        *_as_text_list(profile.get("pain_points")),
+        *_as_text_list(profile.get("medical_conditions") or profile.get("conditions")),
+    ]
+    cap_sets = 2 if beginner or older or constraints else 4 if advanced else 3
+    duration_cap = max(5, min(20, available or 20)) if beginner or older or constraints or (available and available <= 20) else None
+
+    detail = str(adjusted.get("detail") or "").strip()
+    detail_parts = [detail] if detail else []
+    if beginner:
+        detail_parts.append("초보자 기준 저강도")
+    if available:
+        detail_parts.append(f"가능 시간 {available}분 안에서 진행")
+    if constraints:
+        detail_parts.append(f"제약({', '.join(constraints)}) 고려")
+    adjusted["detail"] = " / ".join(dict.fromkeys(part for part in detail_parts if part))
+
+    ex_list = []
+    for exercise in adjusted.get("ex_list") or []:
+        next_exercise = dict(exercise)
+        sets = next_exercise.get("sets")
+        if isinstance(sets, int) and sets > cap_sets:
+            next_exercise["sets"] = cap_sets
+        duration = next_exercise.get("duration_minutes")
+        if duration_cap and isinstance(duration, int) and duration > duration_cap:
+            next_exercise["duration_minutes"] = duration_cap
+        ex_list.append(next_exercise)
+    adjusted["ex_list"] = ex_list
     return adjusted
 
 
@@ -1359,24 +1456,82 @@ def _sanitize_diet_detail_for_profile(detail: str, allergies: list[str]) -> str:
     if any(marker in allergy_text for marker in ("우유", "유당", "dairy", "milk")):
         next_detail = re.sub(
             r"그릭요거트|요거트|우유|유제품|greek\s+yogurts?|greek\s+yoghurts?|yogurts?|yoghurts?|milk|dairy",
-            "무가당 콩요거트 또는 두유 대체식",
+            "무가당 콩요거트",
             next_detail,
             flags=re.IGNORECASE,
         )
     if any(marker in allergy_text for marker in ("견과", "땅콩", "캐슈", "nut", "peanut", "cashew")):
         next_detail = re.sub(
             r"견과류|땅콩버터|땅콩|캐슈넛|캐슈|nuts?|peanuts?|peanut\s+butter|cashews?",
-            "오트 또는 씨앗류 대체식",
+            "오트",
             next_detail,
             flags=re.IGNORECASE,
         )
     if any(marker in allergy_text for marker in ("계란", "egg")):
-        next_detail = re.sub(r"계란|달걀|egg", "두부 또는 콩 단백질 대체식", next_detail, flags=re.IGNORECASE)
+        next_detail = re.sub(r"계란|달걀|egg", "두부", next_detail, flags=re.IGNORECASE)
     if any(marker in allergy_text for marker in ("갑각류", "새우", "shellfish", "shrimp")):
-        next_detail = re.sub(r"새우|갑각류|shrimp|shellfish", "생선 또는 두부 대체식", next_detail, flags=re.IGNORECASE)
+        next_detail = re.sub(r"새우|갑각류|shrimp|shellfish", "두부", next_detail, flags=re.IGNORECASE)
     if any(marker in allergy_text for marker in ("양파", "onion")):
         next_detail = re.sub(r"양파|onion", "저자극 채소", next_detail, flags=re.IGNORECASE)
     return next_detail
+
+
+def _adapt_diet_detail_for_profile(detail: str, profile: dict) -> str:
+    if not detail:
+        return detail
+
+    next_detail = detail
+    if _is_plant_based_diet(profile):
+        replacements = (
+            (r"chicken\s+breast|chicken|닭가슴살|닭고기", "두부 스테이크"),
+            (r"salmon|fish|연어|생선", "렌틸콩"),
+            (r"greek\s+yogurts?|greek\s+yoghurts?|yogurts?|yoghurts?|milk|dairy|그릭요거트|요거트|우유|유제품", "무가당 콩요거트"),
+            (r"계란|달걀|egg", "두부"),
+            (r"beef|pork|meat|소고기|돼지고기|고기", "콩 단백질"),
+        )
+        for pattern, replacement in replacements:
+            next_detail = re.sub(pattern, replacement, next_detail, flags=re.IGNORECASE)
+
+    goal_text = _profile_goal_text(profile)
+    condition_text = " ".join(
+        str(value)
+        for value in (
+            profile.get("medical_conditions"),
+            profile.get("conditions"),
+            profile.get("diet_goal"),
+            profile.get("primary_goal"),
+        )
+        if value
+    ).lower()
+    if any(marker in f"{goal_text} {condition_text}" for marker in ("glucose", "blood sugar", "diabetes", "당뇨", "혈당")):
+        next_detail = re.sub(r"\bfruit\b|과일", "블루베리", next_detail, flags=re.IGNORECASE)
+        next_detail = re.sub(r"white rice|흰쌀밥|쌀밥", "현미밥", next_detail, flags=re.IGNORECASE)
+
+    if any(marker in f"{goal_text} {condition_text}" for marker in ("hypertension", "blood pressure", "고혈압", "혈압")):
+        next_detail = re.sub(r"ramen|라면|햄|소시지|소세지", "현미밥과 데친 채소", next_detail, flags=re.IGNORECASE)
+
+    if any(marker in goal_text for marker in ("muscle", "strength", "근육", "근력", "증량")):
+        lower = next_detail.lower()
+        if not any(marker in lower for marker in ("chicken", "두부", "콩", "렌틸", "salmon", "egg", "단백")):
+            next_detail = f"{next_detail} + 두부"
+
+    return next_detail
+
+
+def _is_plant_based_diet(profile: dict) -> bool:
+    text = " ".join(
+        str(value)
+        for value in (
+            profile.get("diet_type"),
+            profile.get("diet_goal"),
+            profile.get("primary_goal"),
+            profile.get("lifestyle"),
+            profile.get("schedule"),
+            " ".join(_as_text_list(profile.get("context_notes"))),
+        )
+        if value
+    ).lower()
+    return any(marker in text for marker in ("vegan", "vegetarian", "plant based", "plant-based", "비건", "채식"))
 
 
 def _profile_weight(profile: dict) -> int | None:
@@ -1448,7 +1603,7 @@ def _render_plan_preview(draft_result: DraftResponse, state: GraphState) -> str:
         return ""
 
     lines: list[str] = []
-    for item in plan_items[:6]:
+    for item in plan_items[:4]:
         title = _plan_item_title(item)
         detail = _plan_item_detail(item)
         if detail:
@@ -1456,7 +1611,7 @@ def _render_plan_preview(draft_result: DraftResponse, state: GraphState) -> str:
         else:
             lines.append(f"- {title}")
 
-    remaining = len(plan_items) - 6
+    remaining = len(plan_items) - 4
     if remaining > 0:
         lines.append(f"- 외 {remaining}개 세부 항목")
 
@@ -1468,10 +1623,13 @@ def _render_plan_preview_from_items(plan_items: list[dict]) -> str:
         return ""
 
     lines: list[str] = []
-    for item in plan_items[:6]:
+    for item in plan_items[:4]:
         title = _plan_item_title(item)
         detail = _plan_item_detail(item)
         lines.append(f"- {title}: {detail}" if detail else f"- {title}")
+    remaining = len(plan_items) - 4
+    if remaining > 0:
+        lines.append(f"- 외 {remaining}개 세부 항목")
     return "\n".join(lines)
 
 
@@ -1482,13 +1640,126 @@ def _plan_item_title(item: dict) -> str:
 
 
 def _plan_item_detail(item: dict) -> str:
-    detail = str(item.get("detail") or "").strip()
+    detail = _strip_plan_detail_explanations(str(item.get("detail") or "").strip())
     exercise_lines = _exercise_preview(item.get("ex_list") or [])
-    if detail and exercise_lines:
-        return f"{detail} / {exercise_lines}"
     if exercise_lines:
         return exercise_lines
     return detail
+
+
+_PLAN_DETAIL_EXPLANATION_MARKERS = (
+    "알레르기",
+    "식이 제약",
+    "질환",
+    "고려",
+    "제외",
+    "대체",
+    "목표",
+    "제약",
+    "반영",
+    "프로필",
+    "가능 시간",
+    "성향",
+    "위험",
+    "안전",
+    "allergy",
+    "constraint",
+    "goal",
+    "profile",
+    "because",
+    "avoid",
+    "replace",
+)
+_PLAN_DETAIL_SPLIT_RE = re.compile(r"\s*(?:/|;|\||\n|•|·|\s+-\s+|(?<=[.!?。])\s+)\s*")
+_PLAN_DETAIL_BRACKET_RE = re.compile(
+    r"\s*[\(\[][^\)\]]*(?:"
+    + "|".join(re.escape(marker) for marker in _PLAN_DETAIL_EXPLANATION_MARKERS)
+    + r")[^\)\]]*[\)\]]",
+    re.IGNORECASE,
+)
+_PLAN_RATIONALE_PREFIX_MARKERS = (
+    "혈당",
+    "감량",
+    "증량",
+    "근육",
+    "체중",
+    "칼로리",
+    "안정",
+    "회복",
+    "질환",
+    "부상",
+    "rationale",
+)
+
+
+def _strip_plan_detail_explanations(detail: str) -> str:
+    if not detail:
+        return ""
+
+    detail = re.sub(r"\s+", " ", _PLAN_DETAIL_BRACKET_RE.sub("", detail)).strip()
+    pieces = [
+        piece.strip()
+        for piece in _PLAN_DETAIL_SPLIT_RE.split(detail)
+        if piece.strip()
+    ]
+    concrete = [_clean_plan_detail_piece(piece) for piece in pieces]
+    concrete = [piece for piece in concrete if piece and not _is_explanatory_plan_piece(piece)]
+    if not concrete and pieces:
+        concrete = [_clean_plan_detail_piece(pieces[0])]
+    return _bound_plan_detail(" / ".join(piece for piece in concrete if piece).strip())
+
+
+def _clean_plan_detail_piece(piece: str) -> str:
+    text = _PLAN_DETAIL_BRACKET_RE.sub("", str(piece or "")).strip()
+    if not text:
+        return ""
+
+    lowered = text.lower()
+    marker_positions = [
+        lowered.find(marker.lower())
+        for marker in _PLAN_DETAIL_EXPLANATION_MARKERS
+        if marker.lower() in lowered
+    ]
+    if marker_positions:
+        marker_index = min(position for position in marker_positions if position >= 0)
+        if marker_index <= 0:
+            return ""
+        prefix = text[:marker_index].rstrip(" -:,.()[]")
+        if _looks_like_plan_rationale_prefix(prefix):
+            return ""
+        text = prefix
+
+    text = re.sub(r"\s*(?:때문에|위해서|위해|맞춰|반영해|반영하여).*$", "", text).strip()
+    return text.strip(" -:,.")
+
+
+def _looks_like_plan_rationale_prefix(prefix: str) -> bool:
+    text = str(prefix or "").strip().lower()
+    if not text:
+        return True
+    if len(text) <= 12 and any(marker in text for marker in _PLAN_RATIONALE_PREFIX_MARKERS):
+        return True
+    return False
+
+
+def _is_explanatory_plan_piece(piece: str) -> bool:
+    lowered = str(piece or "").lower()
+    return any(marker.lower() in lowered for marker in _PLAN_DETAIL_EXPLANATION_MARKERS)
+
+
+def _bound_plan_detail(detail: str) -> str:
+    text = re.sub(r"\s+", " ", str(detail or "")).strip()
+    if len(text) <= 96:
+        return text
+
+    parts = [
+        part.strip()
+        for part in re.split(r"\s*(?:,|/|\+|와|과)\s*", text)
+        if part.strip()
+    ]
+    if len(parts) >= 2:
+        text = ", ".join(parts[:3]).strip()
+    return text[:96].rstrip(" ,/+")
 
 
 def _exercise_preview(ex_list: list[dict]) -> str:
@@ -1496,7 +1767,7 @@ def _exercise_preview(ex_list: list[dict]) -> str:
         return ""
 
     parts: list[str] = []
-    for exercise in ex_list[:4]:
+    for exercise in ex_list[:3]:
         exercise_name = str(exercise.get("exercise_name") or "").strip()
         if not exercise_name:
             continue
@@ -1510,11 +1781,103 @@ def _exercise_preview(ex_list: list[dict]) -> str:
         else:
             parts.append(exercise_name)
 
-    remaining = len(ex_list) - 4
+    remaining = len(ex_list) - 3
     if remaining > 0:
         parts.append(f"외 {remaining}종목")
 
     return ", ".join(parts)
+
+
+def _normalize_plan_approval_question(
+    components: DraftComponents,
+    proposed_plan_type: str | None,
+    proposed_plan_action: str | None,
+) -> DraftComponents:
+    patched = normalize_draft_components(dict(components))
+    plan_label = "식단" if proposed_plan_type == "diet" else "운동"
+    action_label = "수정할까요" if proposed_plan_action == "update" else "작성할까요"
+    patched["approval_question"] = f"이 {plan_label} 플랜으로 {action_label}?"
+    return patched
+
+
+def _minimize_plan_exposition(
+    components: DraftComponents,
+    proposed_plan_type: str | None,
+) -> DraftComponents:
+    patched = normalize_draft_components(dict(components))
+    patched["reason_points"] = []
+    patched["suggested_action"] = ""
+    patched["search_grounding_summary"] = ""
+    patched["safety_notes"] = [
+        note
+        for note in patched["safety_notes"]
+        if _is_essential_plan_safety_note(note, proposed_plan_type)
+    ]
+    return patched
+
+
+def _is_essential_plan_safety_note(note: str, proposed_plan_type: str | None) -> bool:
+    text = note.strip()
+    if not text:
+        return False
+    if proposed_plan_type == "diet" and ("알레르기" in text or "식이 제약" in text):
+        return False
+    return any(
+        marker in text
+        for marker in (
+            "즉시 중단",
+            "통증",
+            "119",
+            "응급",
+            "단기간",
+            "굶",
+            "성장기",
+            "낮은 체중",
+        )
+    )
+
+
+def _has_explicit_workout_domain(message: str) -> bool:
+    lowered = message.lower()
+    return any(keyword in lowered for keyword in ("운동", "러닝", "헬스", "근력", "유산소", "스트레칭", "산책", "웨이트", "workout", "exercise"))
+
+
+def _has_explicit_diet_domain(message: str) -> bool:
+    lowered = message.lower()
+    return any(keyword in lowered for keyword in ("식단", "식사", "메뉴", "아침", "점심", "저녁", "meal", "diet"))
+
+
+def _is_mixed_plan_type_request(message: str) -> bool:
+    lowered = message.lower()
+    has_plan_request = any(keyword in lowered for keyword in ("플랜", "계획", "작성", "추천", "짜줘", "세워", "잡아", "만들어", "루틴"))
+    if not (has_plan_request and _has_explicit_workout_domain(lowered) and _has_explicit_diet_domain(lowered)):
+        return False
+    if any(marker in lowered for marker in ("같이", "함께", "둘 다", "둘다", "both", "운동과 식단", "운동 및 식단", "운동 계획과 식단")):
+        return False
+    return True
+
+
+def _build_mixed_plan_clarification_draft() -> dict:
+    components = normalize_draft_components(
+        {
+            "core_message": "운동 플랜과 식단 플랜은 따로 작성할게요. 먼저 하나를 골라주세요.",
+            "reason_points": [],
+            "suggested_action": "",
+            "approval_question": None,
+            "search_grounding_summary": "",
+            "proposed_plan": [],
+        }
+    )
+    return {
+        "draft_response": render_draft_preview(components),
+        "draft_components": components,
+        "proposed_plan": [],
+        "proposed_plan_type": None,
+        "proposed_plan_action": None,
+        "awaiting_plan_confirmation": False,
+        "self_eval_count": 0,
+        "self_eval_failure_reason": None,
+    }
 
 
 def _build_starter_plan_fallback(
@@ -1527,8 +1890,6 @@ def _build_starter_plan_fallback(
     profile = state.get("user_profile") or {}
 
     if plan_type == "diet":
-        allergies = [str(item).strip() for item in (profile.get("allergies") or []) if str(item).strip()]
-        allergy_note = f"알레르기 정보({', '.join(allergies)})는 제외해서 구성했어요." if allergies else ""
         proposed_plan = [
             {
                 "name": "Breakfast",
@@ -1551,14 +1912,11 @@ def _build_starter_plan_fallback(
         ]
         components = normalize_draft_components(
             {
-                "core_message": "지금 정보만으로도 바로 시작할 수 있는 기본 식단안을 먼저 제안할게요.",
-                "reason_points": [
-                    "정보가 적을 때도 무리 없이 시작할 수 있도록 균형형 구성으로 잡았어요.",
-                    "다음 턴에서 목표나 선호 음식에 맞춰 더 세밀하게 조정할 수 있어요.",
-                ],
-                "suggested_action": "원하면 선호 음식, 알레르기, 식사 시간대에 맞춰 바로 수정해드릴게요.",
-                "approval_question": "이 기본 식단안으로 먼저 진행할까요?",
-                "search_grounding_summary": allergy_note or "기본 영양 균형과 안전한 시작 기준을 반영했어요.",
+                "core_message": "기본 식단안을 제안할게요.",
+                "reason_points": [],
+                "suggested_action": "",
+                "approval_question": "이 식단 플랜으로 작성할까요?",
+                "search_grounding_summary": "",
             }
         )
     else:
@@ -1584,20 +1942,173 @@ def _build_starter_plan_fallback(
         ]
         components = normalize_draft_components(
             {
-                "core_message": "지금 정보만으로도 바로 시작할 수 있는 가벼운 운동 계획을 먼저 제안할게요.",
-                "reason_points": [
-                    "추가 정보가 적어도 안전하게 시작할 수 있도록 저강도와 전신 균형 중심으로 구성했어요.",
-                    "다음 턴에서 목표나 선호 운동에 맞춰 강도와 종목을 더 정교하게 조정할 수 있어요.",
-                ],
-                "suggested_action": "부담되는 동작이 있으면 바로 말해 주세요. 강도나 종목을 바로 바꿔드릴게요.",
-                "approval_question": "이 기본 운동안으로 먼저 진행할까요?",
-                "search_grounding_summary": "기본 안전 원칙과 지속 가능한 시작 기준을 반영했어요.",
+                "core_message": "가벼운 운동 계획을 제안할게요.",
+                "reason_points": [],
+                "suggested_action": "",
+                "approval_question": "이 운동 플랜으로 작성할까요?",
+                "search_grounding_summary": "",
             }
         )
 
+    proposed_plan = _expand_long_range_plan_if_requested(state, proposed_plan, plan_type)
     components["plan_preview"] = _render_plan_preview_from_items(proposed_plan)
+    components = _normalize_plan_approval_question(components, plan_type, "create")
+    components = _minimize_plan_exposition(components, plan_type)
     draft_text = render_draft_preview(components)
     return components, draft_text, proposed_plan, plan_type, "create"
+
+
+def _expand_long_range_plan_if_requested(
+    state: GraphState,
+    proposed_plan: list[dict],
+    proposed_plan_type: str | None,
+) -> list[dict]:
+    if proposed_plan_type not in {"workout", "diet"} or not proposed_plan:
+        return proposed_plan
+
+    target_days = _requested_plan_days(_resolved_user_message(state))
+    if not target_days:
+        return proposed_plan
+
+    unique_dates = _plan_unique_iso_days(proposed_plan)
+    if len(unique_dates) >= min(target_days, 21):
+        return proposed_plan
+
+    start_day = _plan_start_day(proposed_plan)
+    if proposed_plan_type == "diet":
+        return _expand_diet_plan_days(proposed_plan, start_day, target_days)
+    return _expand_workout_plan_days(proposed_plan, start_day, target_days)
+
+
+def _requested_plan_days(message: str) -> int | None:
+    lowered = re.sub(r"\s+", "", str(message or "").lower())
+    spaced = str(message or "").lower()
+
+    if any(marker in lowered for marker in ("한달", "1달", "1개월", "월간", "monthly", "onemonth")):
+        return 30
+    if re.search(r"30\s*일", spaced):
+        return 30
+
+    week_match = re.search(r"(\d+)\s*주", spaced)
+    if week_match:
+        weeks = int(week_match.group(1))
+        if 2 <= weeks <= 6:
+            return min(weeks * 7, 31)
+
+    day_match = re.search(r"(\d+)\s*일", spaced)
+    if day_match:
+        days = int(day_match.group(1))
+        if 10 <= days <= 31:
+            return days
+
+    month_match = re.search(r"(\d+)\s*(?:달|개월|month)", spaced)
+    if month_match and int(month_match.group(1)) >= 1:
+        return 30
+
+    return None
+
+
+def _plan_unique_iso_days(plan_items: list[dict]) -> set[str]:
+    days: set[str] = set()
+    for item in plan_items:
+        if not isinstance(item, dict):
+            continue
+        day_text = str(item.get("day") or "").strip()[:10]
+        if _parse_iso_date(day_text):
+            days.add(day_text)
+    return days
+
+
+def _plan_start_day(plan_items: list[dict]) -> date:
+    parsed_days = [
+        parsed
+        for item in plan_items
+        if isinstance(item, dict)
+        for parsed in [_parse_iso_date(str(item.get("day") or "").strip()[:10])]
+        if parsed is not None
+    ]
+    if parsed_days:
+        return min(parsed_days)
+    return _parse_iso_date(kst_today_iso()) or date.today()
+
+
+def _parse_iso_date(value: str) -> date | None:
+    try:
+        return date.fromisoformat(str(value or "").strip())
+    except ValueError:
+        return None
+
+
+def _expand_diet_plan_days(plan_items: list[dict], start_day: date, target_days: int) -> list[dict]:
+    patterns = _daily_plan_patterns(plan_items, max_items_per_pattern=4)
+    if not patterns:
+        return plan_items
+
+    expanded: list[dict] = []
+    for offset in range(target_days):
+        current_day = (start_day + timedelta(days=offset)).isoformat()
+        pattern = patterns[offset % len(patterns)]
+        for item in pattern:
+            next_item = _copy_plan_item_for_day(item, current_day)
+            next_item["ex_list"] = []
+            expanded.append(next_item)
+    return expanded or plan_items
+
+
+def _expand_workout_plan_days(plan_items: list[dict], start_day: date, target_days: int) -> list[dict]:
+    sessions = [dict(item) for item in plan_items if isinstance(item, dict)]
+    if not sessions:
+        return plan_items
+
+    weekly_offsets = _workout_weekly_offsets(len(sessions))
+    expanded: list[dict] = []
+    for week_start in range(0, target_days, 7):
+        for index, item in enumerate(sessions):
+            offset = week_start + weekly_offsets[index % len(weekly_offsets)]
+            if offset >= target_days:
+                continue
+            current_day = (start_day + timedelta(days=offset)).isoformat()
+            expanded.append(_copy_plan_item_for_day(item, current_day))
+    return expanded or plan_items
+
+
+def _daily_plan_patterns(plan_items: list[dict], *, max_items_per_pattern: int) -> list[list[dict]]:
+    grouped: dict[str, list[dict]] = {}
+    order: list[str] = []
+    for index, item in enumerate(plan_items):
+        if not isinstance(item, dict):
+            continue
+        key = str(item.get("day") or "").strip() or f"pattern-{index // max_items_per_pattern}"
+        if key not in grouped:
+            grouped[key] = []
+            order.append(key)
+        grouped[key].append(dict(item))
+
+    return [
+        grouped[key][:max_items_per_pattern]
+        for key in order
+        if grouped.get(key)
+    ]
+
+
+def _workout_weekly_offsets(session_count: int) -> list[int]:
+    if session_count <= 1:
+        return [0]
+    if session_count == 2:
+        return [0, 3]
+    if session_count == 3:
+        return [0, 2, 4]
+    if session_count == 4:
+        return [0, 1, 3, 5]
+    return [0, 1, 2, 4, 5, 6, 3]
+
+
+def _copy_plan_item_for_day(item: dict, day: str) -> dict:
+    copied = dict(item)
+    copied.pop("id", None)
+    copied["day"] = day
+    copied["ex_list"] = [dict(exercise) for exercise in copied.get("ex_list") or []]
+    return copied
 
 
 def _memory_results(state: GraphState) -> list[dict]:
@@ -2070,6 +2581,15 @@ def _resolve_proposed_plan_action(state: GraphState, proposed_plan: list[dict]) 
 
 def _infer_plan_type_from_message(message: str) -> str | None:
     lowered = message.lower()
+    explicit_workout = _has_explicit_workout_domain(lowered)
+    explicit_diet = _has_explicit_diet_domain(lowered)
+    if explicit_workout and not explicit_diet:
+        return "workout"
+    if explicit_diet and not explicit_workout:
+        return "diet"
+    if explicit_workout and explicit_diet:
+        return None
+
     diet_hits = sum(1 for keyword in _PLAN_TYPE_KEYWORDS["diet"] if keyword in lowered)
     workout_hits = sum(1 for keyword in _PLAN_TYPE_KEYWORDS["workout"] if keyword in lowered)
 

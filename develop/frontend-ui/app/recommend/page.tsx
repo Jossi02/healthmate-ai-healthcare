@@ -3,7 +3,15 @@
 import { Info, Clock, Flame, ChevronRight, Apple, Calendar as CalendarIcon, ChevronLeft, X } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { usePlan, DailyPlan, getPlanItemKey } from '../context/PlanContext';
+import { usePlan, DailyPlan, DietItem, WorkoutItem, getPlanItemKey } from '../context/PlanContext';
+import {
+  WORKOUT_GROUP_META,
+  classifyWorkoutGroup,
+  cleanPlannerDetail,
+  compactText,
+  getDietDisplay,
+  groupWorkoutsByCategory,
+} from '@/lib/planDisplay';
 
 const getFoodEmoji = (name: string) => {
   if (name.includes('샐러드') || name.includes('야채')) return '🥗';
@@ -19,19 +27,40 @@ const getFoodEmoji = (name: string) => {
   return '🥗'; // 기본 음식 아이콘
 };
 
-const mapWorkoutType = (typeRaw: string) => {
-  if (!typeRaw) return '상체 운동';
-  const normalized = typeRaw.toLowerCase();
-  if (normalized.includes('upper_body')) return '상체 운동';
-  if (normalized.includes('lower_body')) return '하체 운동';
-  if (normalized.includes('cardio')) return '유산소';
-  if (normalized.includes('stretching')) return '스트레칭';
-  if (normalized.includes('core') || normalized.includes('full_body')) return '전신 운동';
-  if (typeRaw.includes('하체') || typeRaw.includes('스쿼트')) return '하체 운동';
-  if (typeRaw.includes('유산소') || typeRaw.includes('조깅') || typeRaw.includes('고강도') || typeRaw.includes('자전거') || typeRaw.includes('걷는') || typeRaw.includes('걷기')) return '유산소';
-  if (typeRaw.includes('스트레칭') || typeRaw.includes('요가') || typeRaw.includes('이완')) return '스트레칭';
-  return '전신 운동';
+const mapWorkoutType = (typeRaw: string, title = '') => {
+  const groupKey = classifyWorkoutGroup({ type: typeRaw, title });
+  return WORKOUT_GROUP_META[groupKey].label;
 };
+
+type WorkoutDetailItem = {
+  item: WorkoutItem;
+  index: number;
+  updateId: string;
+  isCompleted: boolean;
+  isHighlighted: boolean;
+};
+
+type DietDetailItem = {
+  item: DietItem;
+  index: number;
+  updateId: string;
+  isCompleted: boolean;
+  isHighlighted: boolean;
+};
+
+type DetailPopupState =
+  | {
+      kind: 'workout';
+      title: string;
+      dateStr: string;
+      items: WorkoutDetailItem[];
+    }
+  | {
+      kind: 'diet';
+      title: string;
+      dateStr: string;
+      items: DietDetailItem[];
+    };
 
 const hasHighlightedItems = (plan: DailyPlan, highlightedIds: string[]) => {
   return (
@@ -84,7 +113,36 @@ export default function RecommendPage() {
 
   const [selectedPlan, setSelectedPlan] = useState<DailyPlan | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [detailPopup, setDetailPopup] = useState<DetailPopupState | null>(null);
   const todayPlan = getPlanByDate(today);
+
+  const buildWorkoutDetailItems = (plan: DailyPlan, groupItems: Array<{ item: WorkoutItem; index: number }>) =>
+    groupItems.map(({ item, index }) => {
+      const updateId = getPlanItemKey(plan.date, 'workout', item, index);
+      return {
+        item,
+        index,
+        updateId,
+        isCompleted: (completedTasks[plan.date]?.workouts || []).includes(index),
+        isHighlighted: highlightedPlanItemIds.includes(updateId),
+      };
+    });
+
+  const buildDietDetailItems = (plan: DailyPlan, items: Array<{ item: DietItem; index: number }>) =>
+    items.map(({ item, index }) => {
+      const updateId = getPlanItemKey(plan.date, 'diet', item, index);
+      return {
+        item,
+        index,
+        updateId,
+        isCompleted: (completedTasks[plan.date]?.diets || []).includes(index),
+        isHighlighted: highlightedPlanItemIds.includes(updateId),
+      };
+    });
+
+  const dismissUpdateIds = (ids: string[]) => {
+    ids.forEach((id) => dismissPlanUpdate(id));
+  };
 
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const currentYear = currentDate.getFullYear();
@@ -340,30 +398,47 @@ export default function RecommendPage() {
           </div>
           {todayPlan && todayPlan.exercises && todayPlan.exercises.length > 0 ? (
             <div className="space-y-4">
-              {todayPlan.exercises.map((ex, idx) => {
+              {groupWorkoutsByCategory(todayPlan.exercises).map((group) => {
                 const todayDateStr = todayPlan.date;
-                const isCompleted = (completedTasks[todayDateStr]?.workouts || []).includes(idx);
-                const updateId = getPlanItemKey(todayDateStr, 'workout', ex, idx);
-                const isHighlighted = highlightedPlanItemIds.includes(updateId);
+                const detailItems = buildWorkoutDetailItems(todayPlan, group.items);
+                const highlightIds = detailItems
+                  .filter((detail) => detail.isHighlighted)
+                  .map((detail) => detail.updateId);
+                const isHighlighted = highlightIds.length > 0;
+                const completedCount = detailItems.filter((detail) => detail.isCompleted).length;
+                const groupMeta = WORKOUT_GROUP_META[group.key];
+                const preview = group.items
+                  .slice(0, 2)
+                  .map(({ item }) => item.title)
+                  .join(', ');
 
                 return (
-                  <div
-                    key={updateId}
+                  <button
+                    key={`${todayDateStr}-${group.key}`}
+                    type="button"
                     data-plan-update-highlight={isHighlighted ? 'true' : undefined}
                     onMouseEnter={() => {
-                      if (isHighlighted) dismissPlanUpdate(updateId);
+                      if (isHighlighted) dismissUpdateIds(highlightIds);
                     }}
                     onPointerDown={() => {
-                      if (isHighlighted) dismissPlanUpdate(updateId);
+                      if (isHighlighted) dismissUpdateIds(highlightIds);
                     }}
-                    className={`relative rounded-2xl p-5 shadow-[0_4px_16px_-6px_rgba(0,0,0,0.06)] border flex items-center hover:shadow-[0_8px_24px_-6px_rgba(37,99,235,0.12)] hover:-translate-y-1 transition-all duration-300 group ${isHighlighted ? 'bg-rose-50/70 border-rose-200 ring-2 ring-rose-200' : 'bg-white border-gray-100'}`}
+                    onClick={() =>
+                      setDetailPopup({
+                        kind: 'workout',
+                        title: group.label,
+                        dateStr: todayDateStr,
+                        items: detailItems,
+                      })
+                    }
+                    className={`relative w-full rounded-2xl p-5 text-left shadow-[0_4px_16px_-6px_rgba(0,0,0,0.06)] border flex items-center hover:shadow-[0_8px_24px_-6px_rgba(37,99,235,0.12)] hover:-translate-y-1 transition-all duration-300 group ${isHighlighted ? 'bg-rose-50/70 border-rose-200 ring-2 ring-rose-200' : 'bg-white border-gray-100'}`}
                   >
                     {isHighlighted && (
                       <span className="absolute right-4 top-3 rounded-full bg-rose-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
                         새로 반영됨
                       </span>
                     )}
-                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${ex.color} flex items-center justify-center text-white shadow-inner flex-shrink-0`}>
+                    <div className={`w-14 h-14 rounded-2xl border ${groupMeta.panelClass} flex items-center justify-center text-orange-500 shadow-inner flex-shrink-0`}>
                       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -371,25 +446,20 @@ export default function RecommendPage() {
                     </div>
                     <div className={`ml-4 flex-1`}>
                       <div className="flex items-center space-x-2 mb-1">
-                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full shadow-sm">{mapWorkoutType(ex.type || '')}</span>
-                        <h3 className="font-bold text-gray-900 text-[17px] pr-20">{ex.title}</h3>
+                        <span className={`text-[10px] font-bold border px-2.5 py-1 rounded-full shadow-sm ${groupMeta.badgeClass}`}>
+                          {groupMeta.shortLabel}
+                        </span>
+                        <h3 className="font-bold text-gray-900 text-[17px] pr-20">{group.label}</h3>
                       </div>
-                      <div className="flex items-center space-x-3 text-xs font-semibold text-gray-500">
-                        <span className="flex items-center"><Clock className="w-3.5 h-3.5 mr-1" />{ex.time}</span>
+                      <p className="text-xs font-semibold text-gray-500">{compactText(preview, 48)}</p>
+                      <div className="mt-2 flex items-center space-x-3 text-xs font-semibold text-gray-500">
+                        <span className="flex items-center"><Clock className="w-3.5 h-3.5 mr-1" />{group.items.length}개 항목</span>
                         <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                        <span className="text-[#2563eb]">{ex.level}</span>
-                        <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                        <span>{ex.calories}</span>
+                        <span className="text-[#2563eb]">{completedCount}/{group.items.length} 완료</span>
                       </div>
                     </div>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); if (!isCompleted) handleWorkoutComplete(todayDateStr, ex.title, idx); }}
-                      disabled={isCompleted}
-                      className={`ml-4 text-sm px-4 py-2 rounded-xl font-bold transition-all shadow-sm ${isCompleted ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                    >
-                      {isCompleted ? '완료!' : '완료'}
-                    </button>
-                  </div>
+                    <ChevronRight className="ml-4 h-5 w-5 flex-shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-500" />
+                  </button>
                 );
               })}
             </div>
@@ -415,6 +485,7 @@ export default function RecommendPage() {
                 const isCompleted = (completedTasks[todayDateStr]?.diets || []).includes(idx);
                 const updateId = getPlanItemKey(todayDateStr, 'diet', diet, idx);
                 const isHighlighted = highlightedPlanItemIds.includes(updateId);
+                const display = getDietDisplay(diet);
 
                 return (
                   <div
@@ -426,7 +497,15 @@ export default function RecommendPage() {
                     onPointerDown={() => {
                       if (isHighlighted) dismissPlanUpdate(updateId);
                     }}
-                    className={`relative rounded-2xl p-5 flex flex-col items-center text-center shadow-[0_4px_16px_-6px_rgba(0,0,0,0.06)] border hover:shadow-[0_8px_24px_-6px_rgba(37,99,235,0.12)] transition-all shrink-0 ${isHighlighted ? 'bg-rose-50/70 border-rose-200 ring-2 ring-rose-200' : 'bg-white border-gray-100'} ${isCompleted ? 'opacity-50 grayscale bg-gray-50/50' : ''}`}
+                    onClick={() =>
+                      setDetailPopup({
+                        kind: 'diet',
+                        title: display.mealLabel,
+                        dateStr: todayDateStr,
+                        items: buildDietDetailItems(todayPlan, [{ item: diet, index: idx }]),
+                      })
+                    }
+                    className={`relative rounded-2xl p-5 flex flex-col items-center text-center shadow-[0_4px_16px_-6px_rgba(0,0,0,0.06)] border hover:shadow-[0_8px_24px_-6px_rgba(37,99,235,0.12)] transition-all shrink-0 cursor-pointer ${isHighlighted ? 'bg-rose-50/70 border-rose-200 ring-2 ring-rose-200' : 'bg-white border-gray-100'} ${isCompleted ? 'opacity-50 grayscale bg-gray-50/50' : ''}`}
                   >
                     {isHighlighted && (
                       <span className="absolute right-3 top-3 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
@@ -434,15 +513,15 @@ export default function RecommendPage() {
                       </span>
                     )}
                     <div className="text-xs font-bold text-[#2563eb] bg-blue-50 px-3 py-1 rounded-full mb-3">
-                      {diet.type}
+                      {display.mealLabel}
                     </div>
                     <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center text-3xl mb-4 shadow-sm">
                       {getFoodEmoji(diet.name)}
                     </div>
-                    <h3 className={`font-bold text-[15px] mb-1 ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{diet.name}</h3>
-                    <p className={`text-xs font-semibold mb-2 ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-500'}`}>{diet.desc}</p>
+                    <h3 className={`font-bold text-[15px] mb-1 ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{display.title}</h3>
+                    <p className={`min-h-[32px] text-xs font-semibold mb-2 ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-500'}`}>{display.subtitle || '상세 식단 보기'}</p>
                     <div className="mt-auto pt-3 pb-3 w-full border-t border-gray-50">
-                      <span className={`text-xs font-bold ${isCompleted ? 'text-gray-400' : 'text-[#2563eb]'}`}>{diet.kcal}</span>
+                      <span className={`text-xs font-bold ${isCompleted ? 'text-gray-400' : 'text-[#2563eb]'}`}>{display.kcal}</span>
                     </div>
                     <button 
                       onClick={(e) => { e.stopPropagation(); if(!isCompleted) handleDietComplete(todayDateStr, diet.name, idx); }}
@@ -497,41 +576,57 @@ export default function RecommendPage() {
                     <h4 className="font-bold text-gray-900">추천 운동</h4>
                   </div>
                   <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 space-y-3">
-                    {selectedPlan.exercises.map((ex, idx) => {
-                      const isCompleted = (completedTasks[selectedPlan.date]?.workouts || []).includes(idx);
-                      const updateId = getPlanItemKey(selectedPlan.date, 'workout', ex, idx);
-                      const isHighlighted = highlightedPlanItemIds.includes(updateId);
+                    {groupWorkoutsByCategory(selectedPlan.exercises).map((group) => {
+                      const detailItems = buildWorkoutDetailItems(selectedPlan, group.items);
+                      const highlightIds = detailItems
+                        .filter((detail) => detail.isHighlighted)
+                        .map((detail) => detail.updateId);
+                      const isHighlighted = highlightIds.length > 0;
+                      const completedCount = detailItems.filter((detail) => detail.isCompleted).length;
+                      const groupMeta = WORKOUT_GROUP_META[group.key];
+                      const preview = group.items
+                        .slice(0, 2)
+                        .map(({ item }) => item.title)
+                        .join(', ');
                       return (
-                        <div
-                          key={updateId}
+                        <button
+                          key={`${selectedPlan.date}-${group.key}`}
+                          type="button"
                           data-plan-update-highlight={isHighlighted ? 'true' : undefined}
                           onMouseEnter={() => {
-                            if (isHighlighted) dismissPlanUpdate(updateId);
+                            if (isHighlighted) dismissUpdateIds(highlightIds);
                           }}
                           onPointerDown={() => {
-                            if (isHighlighted) dismissPlanUpdate(updateId);
+                            if (isHighlighted) dismissUpdateIds(highlightIds);
                           }}
-                          className={`relative flex justify-between items-center group rounded-xl px-2 py-2 transition-colors ${isHighlighted ? 'bg-rose-50 ring-1 ring-rose-200' : ''}`}
+                          onClick={() =>
+                            setDetailPopup({
+                              kind: 'workout',
+                              title: group.label,
+                              dateStr: selectedPlan.date,
+                              items: detailItems,
+                            })
+                          }
+                          className={`relative flex w-full items-center justify-between rounded-xl px-3 py-3 text-left transition-colors ${isHighlighted ? 'bg-rose-50 ring-1 ring-rose-200' : 'bg-white/70 hover:bg-white'}`}
                         >
-                          <div className="flex items-center flex-1 pr-3">
-                            <span className={`text-[10px] font-bold ${isCompleted ? 'text-gray-400 bg-gray-100 border-gray-200' : 'text-orange-700 bg-orange-50'} px-2.5 py-1 rounded-full shadow-sm whitespace-nowrap transition-colors`}>
-                              {mapWorkoutType(ex.type || '')}
+                          <div className="flex min-w-0 flex-1 items-center pr-3">
+                            <span className={`text-[10px] font-bold border px-2.5 py-1 rounded-full shadow-sm whitespace-nowrap ${groupMeta.badgeClass}`}>
+                              {groupMeta.shortLabel}
                             </span>
-                            <span className={`text-sm font-bold text-left ml-4 transition-all ${isCompleted ? 'text-gray-400 line-through decoration-gray-400' : 'text-gray-900'}`}>{ex.title}</span>
+                            <div className="ml-3 min-w-0">
+                              <span className="block text-sm font-bold text-gray-900">{group.label}</span>
+                              <span className="block truncate text-xs font-semibold text-gray-500">
+                                {compactText(preview, 42)}
+                              </span>
+                            </div>
                           </div>
                           {isHighlighted && (
                             <span className="mr-2 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
                               새로 반영됨
                             </span>
                           )}
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); if(!isCompleted) handleWorkoutComplete(selectedPlan.date, ex.title, idx); }}
-                            disabled={isCompleted}
-                            className={`text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all shadow-sm ${isCompleted ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
-                          >
-                            {isCompleted ? '완료!' : '완료'}
-                          </button>
-                        </div>
+                          <span className="text-[11px] font-bold text-orange-600">{completedCount}/{group.items.length}</span>
+                        </button>
                       );
                     })}
                   </div>
@@ -547,6 +642,131 @@ export default function RecommendPage() {
                       const isCompleted = (completedTasks[selectedPlan.date]?.diets || []).includes(idx);
                       const updateId = getPlanItemKey(selectedPlan.date, 'diet', diet, idx);
                       const isHighlighted = highlightedPlanItemIds.includes(updateId);
+                      const display = getDietDisplay(diet);
+                      return (
+                        <button
+                          key={updateId}
+                          type="button"
+                          data-plan-update-highlight={isHighlighted ? 'true' : undefined}
+                          onMouseEnter={() => {
+                            if (isHighlighted) dismissPlanUpdate(updateId);
+                          }}
+                          onPointerDown={() => {
+                            if (isHighlighted) dismissPlanUpdate(updateId);
+                          }}
+                          onClick={() =>
+                            setDetailPopup({
+                              kind: 'diet',
+                              title: display.mealLabel,
+                              dateStr: selectedPlan.date,
+                              items: buildDietDetailItems(selectedPlan, [{ item: diet, index: idx }]),
+                            })
+                          }
+                          className={`flex w-full justify-between items-center rounded-xl px-3 py-3 text-left transition-colors ${isHighlighted ? 'bg-rose-50 ring-1 ring-rose-200' : 'bg-white/70 hover:bg-white'}`}
+                        >
+                          <div className="flex items-center flex-1 pr-3">
+                            <span className={`text-[10px] font-bold ${isCompleted ? 'text-gray-400 bg-gray-100 border-gray-200' : 'text-green-700 bg-green-50'} px-2.5 py-1 rounded-full shadow-sm whitespace-nowrap transition-colors`}>
+                              {display.mealLabel}
+                            </span>
+                            <div className="ml-3 min-w-0">
+                              <span className={`block truncate text-sm font-bold transition-all ${isCompleted ? 'text-gray-400 line-through decoration-gray-400' : 'text-gray-900'}`}>{display.title}</span>
+                              <span className="block truncate text-xs font-semibold text-gray-500">{display.subtitle || display.kcal}</span>
+                            </div>
+                          </div>
+                          {isHighlighted && (
+                            <span className="mr-2 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                              새로 반영됨
+                            </span>
+                          )}
+                          <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-300" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Group Detail Popup */}
+      <AnimatePresence>
+        {detailPopup && (
+          <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
+              onClick={() => setDetailPopup(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="z-10 w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-xl"
+            >
+              <div className={`flex items-center justify-between border-b border-gray-100 p-6 ${detailPopup.kind === 'workout' ? 'bg-orange-50/70' : 'bg-green-50/70'}`}>
+                <div className="flex items-center space-x-2">
+                  {detailPopup.kind === 'workout' ? (
+                    <Flame className="h-5 w-5 text-orange-500" />
+                  ) : (
+                    <Apple className="h-5 w-5 text-green-500" />
+                  )}
+                  <h3 className="font-bold text-lg text-gray-900">{detailPopup.title} 상세</h3>
+                </div>
+                <button onClick={() => setDetailPopup(null)} className="rounded-full bg-white p-1 text-gray-400 shadow-sm transition-colors hover:text-gray-600">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="max-h-[60vh] space-y-3 overflow-y-auto p-5">
+                {detailPopup.kind === 'workout'
+                  ? detailPopup.items.map(({ item, index, updateId, isCompleted, isHighlighted }) => (
+                      <div
+                        key={updateId}
+                        data-plan-update-highlight={isHighlighted ? 'true' : undefined}
+                        onMouseEnter={() => {
+                          if (isHighlighted) dismissPlanUpdate(updateId);
+                        }}
+                        onPointerDown={() => {
+                          if (isHighlighted) dismissPlanUpdate(updateId);
+                        }}
+                        className={`rounded-2xl border p-4 transition-colors ${isHighlighted ? 'border-rose-200 bg-rose-50 ring-1 ring-rose-200' : 'border-gray-100 bg-white'}`}
+                      >
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <span className="mb-2 inline-flex rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-bold text-orange-700">
+                              {mapWorkoutType(item.type || '', item.title)}
+                            </span>
+                            <h4 className={`font-bold text-gray-900 ${isCompleted ? 'text-gray-400 line-through' : ''}`}>{item.title}</h4>
+                          </div>
+                          {isHighlighted && (
+                            <span className="shrink-0 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                              새로 반영됨
+                            </span>
+                          )}
+                        </div>
+                        <div className="mb-4 flex flex-wrap gap-2 text-xs font-semibold text-gray-500">
+                          <span className="rounded-lg bg-gray-50 px-2 py-1">{item.time}</span>
+                          <span className="rounded-lg bg-gray-50 px-2 py-1">{item.calories}</span>
+                          <span className="rounded-lg bg-gray-50 px-2 py-1">{cleanPlannerDetail(item.level)}</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (!isCompleted) handleWorkoutComplete(detailPopup.dateStr, item.title, index);
+                          }}
+                          disabled={isCompleted}
+                          className={`w-full rounded-xl py-2 text-sm font-bold shadow-sm transition-all ${isCompleted ? 'cursor-not-allowed bg-gray-400 text-white' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
+                        >
+                          {isCompleted ? '완료!' : '완료'}
+                        </button>
+                      </div>
+                    ))
+                  : detailPopup.items.map(({ item, index, updateId, isCompleted, isHighlighted }) => {
+                      const display = getDietDisplay(item);
                       return (
                         <div
                           key={updateId}
@@ -557,31 +777,37 @@ export default function RecommendPage() {
                           onPointerDown={() => {
                             if (isHighlighted) dismissPlanUpdate(updateId);
                           }}
-                          className={`flex justify-between items-center group rounded-xl px-2 py-2 transition-colors ${isHighlighted ? 'bg-rose-50 ring-1 ring-rose-200' : ''}`}
+                          className={`rounded-2xl border p-4 transition-colors ${isHighlighted ? 'border-rose-200 bg-rose-50 ring-1 ring-rose-200' : 'border-gray-100 bg-white'}`}
                         >
-                          <div className="flex items-center flex-1 pr-3">
-                            <span className={`text-[10px] font-bold ${isCompleted ? 'text-gray-400 bg-gray-100 border-gray-200' : 'text-green-700 bg-green-50'} px-2.5 py-1 rounded-full shadow-sm whitespace-nowrap transition-colors`}>
-                              {diet.type}
-                            </span>
-                            <span className={`text-sm font-bold text-left ml-4 transition-all ${isCompleted ? 'text-gray-400 line-through decoration-gray-400' : 'text-gray-900'}`}>{diet.name}</span>
+                          <div className="mb-3 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <span className="mb-2 inline-flex rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-bold text-green-700">
+                                {display.mealLabel}
+                              </span>
+                              <h4 className={`font-bold text-gray-900 ${isCompleted ? 'text-gray-400 line-through' : ''}`}>{display.title}</h4>
+                            </div>
+                            {isHighlighted && (
+                              <span className="shrink-0 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                                새로 반영됨
+                              </span>
+                            )}
                           </div>
-                          {isHighlighted && (
-                            <span className="mr-2 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                              새로 반영됨
-                            </span>
-                          )}
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); if(!isCompleted) handleDietComplete(selectedPlan.date, diet.name, idx); }}
+                          <p className="mb-3 rounded-2xl bg-green-50/60 p-3 text-sm font-semibold leading-relaxed text-gray-700">
+                            {display.detail}
+                          </p>
+                          <div className="mb-4 text-xs font-bold text-green-600">{display.kcal}</div>
+                          <button
+                            onClick={() => {
+                              if (!isCompleted) handleDietComplete(detailPopup.dateStr, item.name, index);
+                            }}
                             disabled={isCompleted}
-                            className={`text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all shadow-sm ${isCompleted ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-green-500 text-white hover:bg-green-600'}`}
+                            className={`w-full rounded-xl py-2 text-sm font-bold shadow-sm transition-all ${isCompleted ? 'cursor-not-allowed bg-gray-400 text-white' : 'bg-green-500 text-white hover:bg-green-600'}`}
                           >
                             {isCompleted ? '완료!' : '완료'}
                           </button>
                         </div>
                       );
                     })}
-                  </div>
-                </div>
               </div>
             </motion.div>
           </div>

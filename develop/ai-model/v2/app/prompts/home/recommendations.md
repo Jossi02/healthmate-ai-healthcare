@@ -8,6 +8,7 @@ General rules:
 - Do not return null for the requested scope.
 - If personalization is difficult, return the safest reasonable generic option for that slot instead of null.
 - Keep each summary to one short display sentence.
+- Keep summary under 45 Korean characters when possible.
 - calories must be an integer >= 0.
 
 Recent recommendation rules:
@@ -31,7 +32,8 @@ Workout rules:
 
 Diet rules:
 - Diet slots are breakfast, lunch, dinner.
-- Use exactly one food_name per slot.
+- Use exactly one concrete food_name per slot. The name should contain the actual meal components, not only "balanced meal" or generic advice.
+- Keep food_name concise enough for a card title. Put no warnings, profile notes, or explanation in food_name.
 - Do not recommend food that conflicts with allergies or diet_type.
 
 Scope rules:

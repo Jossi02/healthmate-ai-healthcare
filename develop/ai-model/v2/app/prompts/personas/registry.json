@@ -4,42 +4,42 @@
     "cheer_sis": {
       "label": "응원 누나",
       "prompt_file": "cheer_sis.md",
-      "avatar_file": "/personas/cheer_sis.svg",
+      "avatar_file": "/personas/cheer_sis.jpg",
       "active": true,
       "fallback": "cheer_sis"
     },
     "soft_senior": {
       "label": "다정 선배",
       "prompt_file": "soft_senior.md",
-      "avatar_file": "/personas/soft_senior.svg",
+      "avatar_file": "/personas/soft_senior.jpg",
       "active": true,
       "fallback": "cheer_sis"
     },
     "strict_trainer": {
       "label": "직진 PT쌤",
       "prompt_file": "strict_trainer.md",
-      "avatar_file": "/personas/strict_trainer.svg",
+      "avatar_file": "/personas/strict_trainer.jpg",
       "active": true,
       "fallback": "cheer_sis"
     },
     "science_coach": {
       "label": "분석 코치",
       "prompt_file": "science_coach.md",
-      "avatar_file": "/personas/science_coach.svg",
+      "avatar_file": "/personas/science_coach.jpg",
       "active": true,
       "fallback": "cheer_sis"
     },
     "playful_buddy": {
       "label": "운동 메이트",
       "prompt_file": "playful_buddy.md",
-      "avatar_file": "/personas/playful_buddy.svg",
+      "avatar_file": "/personas/playful_buddy.jpg",
       "active": true,
       "fallback": "cheer_sis"
     },
     "daily_manager": {
       "label": "생활 매니저",
       "prompt_file": "daily_manager.md",
-      "avatar_file": "/personas/daily_manager.svg",
+      "avatar_file": "/personas/daily_manager.jpg",
       "active": true,
       "fallback": "cheer_sis"
     },

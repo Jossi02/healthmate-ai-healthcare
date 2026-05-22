@@ -402,7 +402,7 @@ function normalizeCalendarResponse(response: CalendarResponse) {
 export const PlanProvider = ({ children }: { children: ReactNode }) => {
   const [plans, setPlans] = useState<DailyPlan[]>([]);
   const [completedTasks, setCompletedTasks] = useState<CompletedTasksType>({});
-  const [highlightedPlanItemIds, setHighlightedPlanItemIds] = useState<string[]>(readStoredPlanUpdates);
+  const [highlightedPlanItemIds, setHighlightedPlanItemIds] = useState<string[]>([]);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const plansRef = useRef<DailyPlan[]>([]);
@@ -419,6 +419,10 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     },
     []
   );
+
+  useEffect(() => {
+    updateHighlightedPlanItemIds(readStoredPlanUpdates());
+  }, [updateHighlightedPlanItemIds]);
 
   const fetchPlans = useCallback(async (options?: FetchPlansOptions) => {
     if (typeof window === "undefined") return;

@@ -137,9 +137,27 @@ async def execute_was_writes(
             write = {"write_type": write_type, "payload": plan_payload}
             try:
                 if write_type == "plan_update":
-                    await deps.was.put_plan_update(user_id, plan_payload)
+                    try:
+                        await deps.was.put_plan_update(user_id, plan_payload)
+                    except ExternalServiceError as exc:
+                        if not exc.is_http_status(404):
+                            raise
+                        logger.info(
+                            "approval WAS update missed existing plan; retrying as create (%s)",
+                            plan_payload.get("plan_type"),
+                        )
+                        await deps.was.post_plan_create(user_id, plan_payload)
                 else:
-                    await deps.was.post_plan_create(user_id, plan_payload)
+                    try:
+                        await deps.was.post_plan_create(user_id, plan_payload)
+                    except ExternalServiceError as exc:
+                        if not exc.is_http_status(409):
+                            raise
+                        logger.info(
+                            "approval WAS create conflicted; retrying as update (%s)",
+                            plan_payload.get("plan_type"),
+                        )
+                        await deps.was.put_plan_update(user_id, plan_payload)
                 logger.info(
                     "approval WAS write succeeded (%s:%s)",
                     write_type,

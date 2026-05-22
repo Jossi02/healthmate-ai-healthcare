@@ -152,7 +152,27 @@ def _build_debug_state(trace_id: str, result: GraphState) -> dict[str, Any]:
         "profile_sync_version": result.get("profile_sync_version"),
         "intimacy_level": result.get("intimacy_level"),
         "user_profile_mbti": (result.get("user_profile") or {}).get("mbti"),
+        "profile_signal_summary": _profile_signal_summary(result.get("user_profile") or {}),
+        "proposed_plan_preview": _preview_proposed_plan(result.get("proposed_plan") or []),
     }
+
+
+def _resolve_plan_write_fields(result: GraphState) -> tuple[list[dict] | None, str | None, str | None]:
+    proposed_plan = result.get("proposed_plan")
+    proposed_plan_type = result.get("proposed_plan_type")
+    proposed_plan_action = result.get("proposed_plan_action")
+
+    active_proposal = result.get("active_proposal") or {}
+    if not proposed_plan and active_proposal.get("items"):
+        proposed_plan = active_proposal.get("items")
+    if proposed_plan_type not in {"workout", "diet"} and active_proposal.get("domain") in {"workout", "diet"}:
+        proposed_plan_type = active_proposal.get("domain")
+    if proposed_plan_action not in {"create", "update"} and active_proposal.get("write_mode") in {"create", "update"}:
+        proposed_plan_action = active_proposal.get("write_mode")
+
+    if not proposed_plan:
+        return None, proposed_plan_type, proposed_plan_action
+    return list(proposed_plan), proposed_plan_type, proposed_plan_action
 
 
 def _build_state_summary(result: GraphState) -> dict[str, Any]:
@@ -192,16 +212,36 @@ def _profile_signal_summary(profile: dict[str, Any]) -> dict[str, Any]:
         "activity_level",
         "exercise_level",
         "fitness_level",
+        "exercise_frequency",
+        "workout_frequency",
+        "frequency_per_week",
+        "weekly_workouts",
+        "target_workouts_per_week",
+        "preferred_workout_days",
         "goal",
+        "primary_goal",
+        "diet_goal",
+        "diet_type",
         "lifestyle",
         "schedule",
         "available_time_minutes",
         "injury_history",
+        "medical_history",
         "medical_conditions",
         "conditions",
         "pain_points",
         "allergies",
+        "allergy",
         "dietary_restrictions",
+        "context_notes",
+        "social_orientation",
+        "personality_axis",
+        "personality_type",
+        "personality",
+        "exercise_style",
+        "introversion_extroversion",
+        "mbti",
+        "emotional_context",
         "selected_ai_persona",
     )
     return {key: profile.get(key) for key in keys if profile.get(key) not in (None, "", [])}
@@ -526,6 +566,12 @@ async def chat(
             settings.CHECKPOINT_DB_PATH,
             session_id,
         )
+        write_proposed_plan, write_proposed_plan_type, write_proposed_plan_action = _resolve_plan_write_fields(result)
+        if intent == INTENT_APPROVAL and write_proposed_plan and not result.get("proposed_plan"):
+            result["proposed_plan"] = write_proposed_plan
+            result["proposed_plan_type"] = write_proposed_plan_type
+            result["proposed_plan_action"] = write_proposed_plan_action
+
         was_write_kwargs = {
             "graph": graph,
             "config": config,
@@ -541,11 +587,11 @@ async def chat(
             "search_results": result.get("search_results"),
             "modify_target": result.get("modify_target"),
             "modify_plan_context": result.get("modify_plan_context"),
-            "proposed_plan": result.get("proposed_plan"),
-            "proposed_plan_type": result.get("proposed_plan_type"),
-            "proposed_plan_action": result.get("proposed_plan_action"),
+            "proposed_plan": write_proposed_plan,
+            "proposed_plan_type": write_proposed_plan_type,
+            "proposed_plan_action": write_proposed_plan_action,
         }
-        if intent == INTENT_APPROVAL and result.get("proposed_plan"):
+        if intent == INTENT_APPROVAL and write_proposed_plan:
             plan_sync_applied = await _run_sync_was_write(**was_write_kwargs)
         else:
             background_tasks.add_task(
