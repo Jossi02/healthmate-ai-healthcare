@@ -54,15 +54,25 @@ def _is_plan_flow_intent(intent: str) -> bool:
     return intent in {"계획", "수정", "계획_승인"}
 
 
-def _normalize_plan_flow_preview(text: str, state: GraphState, draft_components: dict) -> str:
+def _normalize_plan_flow_preview(
+    text: str,
+    state: GraphState,
+    draft_components: dict,
+    persona_id: str,
+) -> str:
     plan_preview = str(draft_components.get("plan_preview") or "").strip()
     if not plan_preview or not _is_plan_flow_intent(str(state.get("intent") or "")):
         return text
 
-    approval_question = str(draft_components.get("approval_question") or "").strip()
+    approval_question = _persona_plan_approval_question(
+        str(draft_components.get("approval_question") or "").strip(),
+        state,
+        persona_id,
+    )
     first_line = _first_nonempty_line(text)
     if not first_line or first_line.startswith("-") or (approval_question and approval_question in first_line):
         first_line = str(draft_components.get("core_message") or "").strip()
+    first_line = _persona_plan_core_line(first_line, state, persona_id)
 
     if _first_nonempty_line(text).startswith("-"):
         lines = [plan_preview]
@@ -72,6 +82,66 @@ def _normalize_plan_flow_preview(text: str, state: GraphState, draft_components:
     if approval_question:
         lines.append(approval_question)
     return "\n".join(lines).strip() or text
+
+
+def _persona_plan_core_line(line: str, state: GraphState, persona_id: str) -> str:
+    domain = _plan_domain_label(state)
+    scope = _plan_scope_label(state)
+    intent = str(state.get("intent") or "")
+    if persona_id == "strict_trainer":
+        return f"{scope}{domain} 플랜으로 고쳤어." if intent == "수정" else f"{scope}{domain} 플랜이야."
+    if persona_id == "playful_buddy":
+        return f"{scope}{domain} 플랜으로 다시 잡았어." if intent == "수정" else f"{scope}{domain} 플랜 잡아봤어."
+    if persona_id == "daily_manager":
+        return f"{scope}{domain} 플랜을 수정했습니다." if intent == "수정" else f"{scope}{domain} 플랜을 정리했습니다."
+    if persona_id == "science_coach":
+        return f"{scope}{domain} 플랜을 수정했습니다." if intent == "수정" else f"{scope}{domain} 플랜입니다."
+    if persona_id == "soft_senior":
+        return f"{scope}{domain} 플랜으로 조정했습니다." if intent == "수정" else f"{scope}{domain} 플랜을 제안드립니다."
+    if persona_id == "cheer_sis":
+        return f"{scope}{domain} 플랜으로 맞춰봤어요." if intent == "수정" else f"{scope}{domain} 플랜을 제안해요."
+    return line
+
+
+def _persona_plan_approval_question(question: str, state: GraphState, persona_id: str) -> str:
+    if not question:
+        return question
+    domain = _plan_domain_label(state)
+    intent = str(state.get("intent") or "")
+    if persona_id == "strict_trainer":
+        return f"이 {domain} 플랜으로 갈까?"
+    if persona_id == "playful_buddy":
+        return f"이 {domain} 플랜으로 가볼까?"
+    if persona_id == "daily_manager":
+        return f"이 {domain} 플랜으로 {'수정할까요' if intent == '수정' else '작성할까요'}?"
+    if persona_id == "science_coach":
+        return f"이 {domain} 플랜으로 {'수정할까요' if intent == '수정' else '작성할까요'}?"
+    if persona_id == "soft_senior":
+        return f"이 {domain} 플랜으로 {'조정할까요' if intent == '수정' else '작성할까요'}?"
+    if persona_id == "cheer_sis":
+        return f"이 {domain} 플랜으로 {'수정할까요' if intent == '수정' else '작성할까요'}?"
+    return question
+
+
+def _plan_domain_label(state: GraphState) -> str:
+    domain = (
+        state.get("proposed_plan_type")
+        or state.get("modify_target")
+        or (state.get("active_proposal") or {}).get("domain")
+        or state.get("domain")
+    )
+    return "식단" if domain == "diet" else "운동"
+
+
+def _plan_scope_label(state: GraphState) -> str:
+    message = str(state.get("user_message") or "").replace(" ", "")
+    if any(marker in message for marker in ("일주일", "한주", "1주", "7일")):
+        return "일주일 "
+    if "한달" in message or "1달" in message or "1개월" in message or "30일" in message:
+        return "한 달 "
+    if "오늘" in message:
+        return "오늘 "
+    return ""
 
 
 def _strip_plan_flow_preamble(text: str, state: GraphState) -> str:
@@ -389,7 +459,7 @@ def make_persona_node(deps: NodeDeps):
         final_response = draft_response
 
         final_response = _strip_plan_flow_preamble(final_response, state)
-        final_response = _normalize_plan_flow_preview(final_response, state, draft_components)
+        final_response = _normalize_plan_flow_preview(final_response, state, draft_components, resolved_persona_id)
 
         if state.get("intent") in {"怨꾪쉷", "?섏젙", "怨꾪쉷_?뱀씤"}:
             final_response = _dedupe_repeated_sentences(final_response)
