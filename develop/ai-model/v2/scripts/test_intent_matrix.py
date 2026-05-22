@@ -196,6 +196,7 @@ CASES: list[Case] = [
     Case("create", "create_diet_allergy", "갑각류 알레르기 있는데 식단 계획 짜줘", "create", "diet"),
     Case("create", "create_workout_care", "요즘 너무 지쳐서 부담 없는 운동 계획 짜줘", "create", "workout", "care"),
     Case("create", "create_light_workout_plan", "운동을 가볍게 잡아줘", "create", "workout"),
+    Case("create", "create_weekly_workout_plan", "일주일 운동 플랜을 내 상태에 맞춰서 짜줘", "create", "workout"),
     Case("create", "create_weekly_diet_plan", "일주일 식단 플랜을 내 상태에 맞춰서 작성해줘", "create", "diet"),
     Case("create", "create_mixed_workout_diet_plan", "운동이나 식단을 가볍게 잡아줘", "create", "general"),
     Case("create", "create_diet_goal_workout_plan", "다이어트 운동 플랜 작성해줘", "create", "workout"),

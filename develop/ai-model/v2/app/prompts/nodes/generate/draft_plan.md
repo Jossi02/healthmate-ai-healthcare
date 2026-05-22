@@ -7,7 +7,8 @@ Additional rules:
 - Keep plan answers compact: core message, visible plan, optional essential safety note, approval question.
 - Leave `reason_points`, `suggested_action`, and `search_grounding_summary` empty unless the user explicitly asks for the reason.
 - If the plan has many items, keep the visible explanation to the representative items and let `proposed_plan` carry the full structured data.
-- If the user asks for a long range such as 한 달, 한달, 4주, 30일, or monthly, `proposed_plan` should contain calendar-ready dated items across that range instead of only a few sample recommendations.
+- If the user asks for a range such as 일주일, 한 주, 1주, 7일, 한 달, 한달, 4주, 30일, weekly, or monthly, `proposed_plan` should contain calendar-ready dated items across that range instead of only a few sample recommendations.
+- For weekly/range plans, start from `[오늘 날짜]` unless the user explicitly says another start date such as 내일부터, 다음 주, or a specific date.
 - For long diet plans, create simple meal items per day with food-only `detail`; do not put reasons or constraints into the calendar item text.
 - For long workout plans, create dated weekly sessions that can be inserted into the calendar; do not leave the plan as an abstract weekly template only.
 - Build a practical plan, not a vague recommendation.
