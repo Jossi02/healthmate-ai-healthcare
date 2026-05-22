@@ -307,6 +307,24 @@ def test_week_plan_without_start_date_aligns_to_today() -> None:
     assert_true(days[-1] == (today + timedelta(days=6)).isoformat(), "weekly plan should preserve the seven-day span")
 
 
+def test_weekly_workout_preview_shows_all_seven_days() -> None:
+    today = date.fromisoformat(kst_today_iso())
+    plan = [
+        {
+            "name": f"{offset + 1}일차 루틴",
+            "detail": "가벼운 운동",
+            "day": (today + timedelta(days=offset)).isoformat(),
+            "ex_list": [{"exercise_name": "가벼운 걷기", "duration_minutes": 20, "calories": 80}],
+        }
+        for offset in range(7)
+    ]
+
+    preview = _render_plan_preview_from_items(plan)
+
+    assert_true(preview.count("\n") == 6, "seven-day workout preview should show all seven rows")
+    assert_true("외 " not in preview, "seven-day workout preview should not hide days behind a remainder line")
+
+
 def test_month_diet_plan_expands_by_calendar_day() -> None:
     today = date.fromisoformat(kst_today_iso())
     base_plan = [
@@ -375,6 +393,7 @@ def main() -> None:
         test_week_workout_plan_expands_from_one_day_request,
         test_seven_day_diet_plan_expands_by_calendar_day,
         test_week_plan_without_start_date_aligns_to_today,
+        test_weekly_workout_preview_shows_all_seven_days,
         test_month_diet_plan_expands_by_calendar_day,
         test_month_workout_plan_expands_weekly_sessions,
     ]
