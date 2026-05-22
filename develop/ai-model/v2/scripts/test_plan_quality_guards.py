@@ -252,16 +252,19 @@ def test_week_workout_plan_expands_from_one_day_request() -> None:
     )
     days = sorted({item["day"] for item in expanded})
 
-    assert_true(len(expanded) == 4, "one-week workout plan should keep the weekly session count")
+    assert_true(len(expanded) == 7, "one-week workout plan should show every calendar day including recovery days")
     assert_true(
         days
         == [
             today.isoformat(),
             (today + timedelta(days=1)).isoformat(),
+            (today + timedelta(days=2)).isoformat(),
             (today + timedelta(days=3)).isoformat(),
+            (today + timedelta(days=4)).isoformat(),
             (today + timedelta(days=5)).isoformat(),
+            (today + timedelta(days=6)).isoformat(),
         ],
-        "one-week workout sessions should be spread across the week",
+        "one-week workout plan should cover the whole week",
     )
 
 
