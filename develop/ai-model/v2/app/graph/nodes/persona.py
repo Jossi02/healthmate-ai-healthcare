@@ -72,6 +72,39 @@ _PERSONA_OPENERS = {
     "daily_manager": "정리하면,",
 }
 
+_PERSONA_STYLE_LOCKS = {
+    "cheer_sis": (
+        "밝은 여성형 응원 누나 말투를 쓴다.",
+        "존댓말을 유지하고 문장 끝은 주로 '-해요', '-할게요', '-좋아요'로 둔다.",
+        "PT쌤식 명령형, 비서식 보고체, 친구식 반말을 섞지 않는다.",
+    ),
+    "soft_senior": (
+        "차분한 선배의 존댓말을 쓴다.",
+        "문장 끝은 '-됩니다', '-해도 됩니다', '-좋습니다'처럼 안정적으로 둔다.",
+        "과한 응원, 장난, 명령형 반말을 피한다.",
+    ),
+    "strict_trainer": (
+        "친한 PT쌤의 짧은 반말을 쓴다.",
+        "문장 끝은 주로 '-해', '-가', '-멈춰', '-보자'처럼 행동 지시 중심으로 둔다.",
+        "존댓말, 누나 말투, 비서식 보고체를 섞지 않는다.",
+    ),
+    "science_coach": (
+        "남성형 분석 코치의 담백한 존댓말을 쓴다.",
+        "문장 끝은 '-입니다', '-습니다'를 중심으로 하고, 근거 라벨을 짧게 붙인다.",
+        "감성 응원, 장난, 명령형 반말을 피한다.",
+    ),
+    "playful_buddy": (
+        "친구 같은 운동 메이트의 반말을 쓴다.",
+        "문장 끝은 '-하자', '-가자', '-괜찮아', '-보자'처럼 가볍게 둔다.",
+        "존댓말, 비서식 보고체, PT쌤식 압박을 섞지 않는다.",
+    ),
+    "daily_manager": (
+        "비서/생활 매니저의 정돈된 존댓말을 쓴다.",
+        "문장 끝은 '-했습니다', '-입니다', '-확인했습니다'처럼 보고체로 둔다.",
+        "친구식 반말, 장난, 과한 감정 표현을 피한다.",
+    ),
+}
+
 
 def _has_persona_marker(text: str, persona_id: str) -> bool:
     markers = _PERSONA_MARKERS.get(persona_id, ())
@@ -190,6 +223,15 @@ def _persona_guardrails(state: GraphState, draft_components: dict) -> str:
     return "\n".join(lines)
 
 
+def _persona_style_guardrails(persona_id: str) -> str:
+    style_locks = _PERSONA_STYLE_LOCKS.get(persona_id)
+    if not style_locks:
+        return ""
+    lines = ["Persona style lock:"]
+    lines.extend(f"- {line}" for line in style_locks)
+    return "\n".join(lines)
+
+
 def make_persona_node(deps: NodeDeps):
     async def persona_node(state: GraphState) -> dict:
         if state.get("response"):
@@ -231,7 +273,15 @@ def make_persona_node(deps: NodeDeps):
                 mbti=mbti,
                 intimacy_level=intimacy_level,
             )
-            system_prompt = persona_prompt + "\n\n" + _persona_guardrails(state, draft_components)
+            system_prompt = "\n\n".join(
+                part
+                for part in (
+                    persona_prompt,
+                    _persona_guardrails(state, draft_components),
+                    _persona_style_guardrails(resolved_persona_id),
+                )
+                if part
+            )
         except Exception as exc:
             logger.error("Failed to load persona prompt: %s", exc)
             deps.trace.record_current_alert(

@@ -204,6 +204,7 @@ CASES: list[Case] = [
     Case("modify", "modify_active_diet", "방금 식단에서 아침만 바꿔줘", "modify", "diet", active_proposal_domain="diet", expected_reference="active_proposal"),
     Case("modify", "modify_active_workout_safety_realistic", "방금 운동 계획을 무릎 통증과 18분 제한에 맞게 더 안전하고 현실적으로 수정해줘", "modify", "workout", active_proposal_domain="workout", expected_reference="active_proposal"),
     Case("modify", "modify_active_workout_10min", "오늘은 시간이 없어서 10분 안에 가능한 버전으로 줄여줘", "modify", "workout", active_proposal_domain="workout", expected_reference="active_proposal"),
+    Case("modify", "modify_active_workout_week_scope", "일주일 운동 플랜이라니까? 왜 5월 22일만 추천해?", "modify", "workout", active_proposal_domain="workout"),
     Case("modify", "modify_workout_explicit", "운동 계획에서 하체는 빼줘", "modify", "workout"),
     Case("modify", "modify_diet_explicit", "식단에서 유제품 제외해줘", "modify", "diet"),
     Case("modify", "modify_diet_care", "요즘 너무 힘들어서 식단 좀 가볍게 조정해줘", "modify", "diet", "care"),

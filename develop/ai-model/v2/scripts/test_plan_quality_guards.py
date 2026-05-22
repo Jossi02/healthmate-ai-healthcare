@@ -213,6 +213,66 @@ def test_diet_payload_stores_food_only() -> None:
     assert_true(len(stored_detail) <= 80, "stored diet detail should stay compact for calendar display")
 
 
+def test_week_workout_plan_expands_from_one_day_request() -> None:
+    base_plan = [
+        {
+            "name": "전신 루틴",
+            "detail": "스쿼트, 푸쉬업",
+            "day": "2026-05-22",
+            "ex_list": [{"exercise_name": "스쿼트", "sets": 2, "calories": 60}],
+        },
+        {
+            "name": "유산소 루틴",
+            "detail": "빠른 걷기",
+            "day": "2026-05-22",
+            "ex_list": [{"exercise_name": "빠른 걷기", "duration_minutes": 18, "calories": 90}],
+        },
+        {
+            "name": "하체 루틴",
+            "detail": "홈트 의자 스쿼트",
+            "day": "2026-05-22",
+            "ex_list": [{"exercise_name": "홈트 의자 스쿼트", "sets": 3, "calories": 70}],
+        },
+        {
+            "name": "상체 루틴",
+            "detail": "푸쉬업, 밴드 로우",
+            "day": "2026-05-22",
+            "ex_list": [{"exercise_name": "푸쉬업", "sets": 3, "calories": 60}],
+        },
+    ]
+
+    expanded = _expand_long_range_plan_if_requested(
+        {"user_message": "일주일 운동 플랜을 내 상태에 맞춰서 짜줘"},
+        base_plan,
+        "workout",
+    )
+    days = sorted({item["day"] for item in expanded})
+
+    assert_true(len(expanded) == 4, "one-week workout plan should keep the weekly session count")
+    assert_true(
+        days == ["2026-05-22", "2026-05-23", "2026-05-25", "2026-05-27"],
+        "one-week workout sessions should be spread across the week",
+    )
+
+
+def test_seven_day_diet_plan_expands_by_calendar_day() -> None:
+    base_plan = [
+        {"name": "Breakfast", "detail": "오트밀, 두유, 바나나", "day": "2026-05-22", "ex_list": []},
+        {"name": "Lunch", "detail": "현미밥, 닭가슴살, 채소", "day": "2026-05-22", "ex_list": []},
+        {"name": "Dinner", "detail": "두부 샐러드, 고구마", "day": "2026-05-22", "ex_list": []},
+    ]
+
+    expanded = _expand_long_range_plan_if_requested(
+        {"user_message": "7일 식단 플랜 짜줘"},
+        base_plan,
+        "diet",
+    )
+    days = {item["day"] for item in expanded}
+
+    assert_true(len(days) == 7, "seven-day diet plan should cover seven calendar days")
+    assert_true(len(expanded) == 21, "seven-day diet plan should repeat meal slots for each day")
+
+
 def test_month_diet_plan_expands_by_calendar_day() -> None:
     base_plan = [
         {"name": "Breakfast", "detail": "오트밀, 두유, 바나나", "day": "2026-05-18", "ex_list": []},
@@ -276,6 +336,8 @@ def main() -> None:
         test_home_recommendation_display_bounds,
         test_plan_output_omits_constraint_exposition,
         test_diet_payload_stores_food_only,
+        test_week_workout_plan_expands_from_one_day_request,
+        test_seven_day_diet_plan_expands_by_calendar_day,
         test_month_diet_plan_expands_by_calendar_day,
         test_month_workout_plan_expands_weekly_sessions,
     ]
