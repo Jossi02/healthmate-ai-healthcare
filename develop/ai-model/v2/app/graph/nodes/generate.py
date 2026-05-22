@@ -1602,8 +1602,9 @@ def _render_plan_preview(draft_result: DraftResponse, state: GraphState) -> str:
     if not plan_items:
         return ""
 
+    visible_limit = _plan_preview_visible_limit(plan_items)
     lines: list[str] = []
-    for item in plan_items[:4]:
+    for item in plan_items[:visible_limit]:
         title = _plan_item_title(item)
         detail = _plan_item_detail(item)
         if detail:
@@ -1611,7 +1612,7 @@ def _render_plan_preview(draft_result: DraftResponse, state: GraphState) -> str:
         else:
             lines.append(f"- {title}")
 
-    remaining = len(plan_items) - 4
+    remaining = len(plan_items) - visible_limit
     if remaining > 0:
         lines.append(f"- 외 {remaining}개 세부 항목")
 
@@ -1622,15 +1623,22 @@ def _render_plan_preview_from_items(plan_items: list[dict]) -> str:
     if not plan_items:
         return ""
 
+    visible_limit = _plan_preview_visible_limit(plan_items)
     lines: list[str] = []
-    for item in plan_items[:4]:
+    for item in plan_items[:visible_limit]:
         title = _plan_item_title(item)
         detail = _plan_item_detail(item)
         lines.append(f"- {title}: {detail}" if detail else f"- {title}")
-    remaining = len(plan_items) - 4
+    remaining = len(plan_items) - visible_limit
     if remaining > 0:
         lines.append(f"- 외 {remaining}개 세부 항목")
     return "\n".join(lines)
+
+
+def _plan_preview_visible_limit(plan_items: list[dict]) -> int:
+    if len(plan_items) <= 7:
+        return len(plan_items)
+    return 4
 
 
 def _plan_item_title(item: dict) -> str:

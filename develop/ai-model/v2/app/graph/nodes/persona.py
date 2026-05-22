@@ -54,6 +54,61 @@ def _is_plan_flow_intent(intent: str) -> bool:
     return intent in {"계획", "수정", "계획_승인"}
 
 
+def _restore_plan_preview_if_missing(text: str, state: GraphState, draft_components: dict) -> str:
+    plan_preview = str(draft_components.get("plan_preview") or "").strip()
+    if not plan_preview or not _is_plan_flow_intent(str(state.get("intent") or "")):
+        return text
+    if _plan_preview_is_visible(text, plan_preview):
+        return text
+
+    approval_question = str(draft_components.get("approval_question") or "").strip()
+    first_line = _first_nonempty_line(text)
+    if not first_line or first_line.startswith("-") or (approval_question and approval_question in first_line):
+        first_line = str(draft_components.get("core_message") or "").strip()
+
+    lines = [line for line in (first_line, plan_preview) if line]
+    lines.extend(str(note).strip() for note in (draft_components.get("safety_notes") or [])[:2] if str(note).strip())
+    if approval_question:
+        lines.append(approval_question)
+    return "\n".join(lines).strip() or text
+
+
+def _plan_preview_is_visible(text: str, plan_preview: str) -> bool:
+    if not text.strip():
+        return False
+
+    preview_dates = list(dict.fromkeys(re.findall(r"\d{4}-\d{2}-\d{2}", plan_preview)))
+    if preview_dates:
+        visible_dates = sum(1 for day in preview_dates if day in text)
+        required_dates = len(preview_dates) if len(preview_dates) <= 7 else min(4, len(preview_dates))
+        if visible_dates < required_dates:
+            return False
+
+    remainder_match = re.search(r"외\s*\d+\s*개", plan_preview)
+    if remainder_match and not re.search(r"외\s*\d+\s*개", text):
+        return False
+
+    if preview_dates:
+        return True
+
+    preview_lines = [line.strip() for line in plan_preview.splitlines() if line.strip().startswith("-")]
+    if not preview_lines:
+        return True
+    return any(_compact_for_visibility(line[:80]) in _compact_for_visibility(text) for line in preview_lines[:2])
+
+
+def _first_nonempty_line(text: str) -> str:
+    for line in str(text or "").splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped
+    return ""
+
+
+def _compact_for_visibility(text: str) -> str:
+    return re.sub(r"\s+", "", str(text or "").lower())
+
+
 _PERSONA_MARKERS = {
     "cheer_sis": ("좋아", "잘하고 있어", "충분해"),
     "soft_senior": ("괜찮아", "천천히", "부담"),
@@ -333,6 +388,8 @@ def make_persona_node(deps: NodeDeps):
                 detail={"resolved_persona_id": resolved_persona_id},
             )
             final_response = draft_response
+
+        final_response = _restore_plan_preview_if_missing(final_response, state, draft_components)
 
         if state.get("intent") in {"怨꾪쉷", "?섏젙", "怨꾪쉷_?뱀씤"}:
             final_response = _dedupe_repeated_sentences(final_response)
