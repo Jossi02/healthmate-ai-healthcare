@@ -14,6 +14,7 @@ from app.graph.nodes.generate import (
     _adjust_diet_plan_for_profile,
     _adjust_workout_plan_for_profile,
     _build_mixed_plan_clarification_draft,
+    _build_modify_plan_fallback,
     _expand_long_range_plan_if_requested,
     _is_mixed_plan_type_request,
     _minimize_plan_exposition,
@@ -325,6 +326,34 @@ def test_weekly_workout_preview_shows_all_seven_days() -> None:
     assert_true("외 " not in preview, "seven-day workout preview should not hide days behind a remainder line")
 
 
+def test_modify_fallback_reuses_active_proposal() -> None:
+    today = date.fromisoformat(kst_today_iso())
+    state = {
+        "user_message": "일주일 운동 플랜이라니까? 왜 5월 22일만 추천해?",
+        "intent": "수정",
+        "modify_target": "workout",
+        "active_proposal": {
+            "domain": "workout",
+            "write_mode": "create",
+            "items": [
+                {
+                    "name": "상체 루틴",
+                    "detail": "푸쉬업",
+                    "day": today.isoformat(),
+                    "ex_list": [{"exercise_name": "푸쉬업", "sets": 3, "calories": 60}],
+                }
+            ],
+        },
+    }
+
+    components, _draft_text, proposed_plan, plan_type, action = _build_modify_plan_fallback(state)
+
+    assert_true(plan_type == "workout", "modify fallback should keep the active proposal domain")
+    assert_true(action == "update", "modify fallback should mark the proposal as an update")
+    assert_true(len(proposed_plan) == 1 and proposed_plan[0]["name"] == "상체 루틴", "modify fallback should reuse active proposal items")
+    assert_true("수정" in components["approval_question"], "modify fallback should ask for update approval")
+
+
 def test_month_diet_plan_expands_by_calendar_day() -> None:
     today = date.fromisoformat(kst_today_iso())
     base_plan = [
@@ -394,6 +423,7 @@ def main() -> None:
         test_seven_day_diet_plan_expands_by_calendar_day,
         test_week_plan_without_start_date_aligns_to_today,
         test_weekly_workout_preview_shows_all_seven_days,
+        test_modify_fallback_reuses_active_proposal,
         test_month_diet_plan_expands_by_calendar_day,
         test_month_workout_plan_expands_weekly_sessions,
     ]
