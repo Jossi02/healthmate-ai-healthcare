@@ -526,6 +526,17 @@ def make_intent_node(deps: NodeDeps):
         if _looks_like_emotional_care_request(message, routing_message):
             return _build_result(INTENT_CARE, state, confidence=0.9)
 
+        awaiting_plan_confirmation = _has_pending_plan_confirmation_v2(state)
+
+        if awaiting_plan_confirmation and _looks_like_pending_plan_revision(message, routing_message, state):
+            return _build_result(
+                INTENT_MODIFY,
+                state,
+                confidence=0.96,
+                search_targets=["vdb_external", "vdb_memory", "vdb_user_important", "web"],
+                modify_target=_pending_plan_domain(state, routing_message),
+            )
+
         if _looks_like_read_only_info_request(message, routing_message):
             return _build_result(
                 INTENT_INFO,
@@ -540,17 +551,6 @@ def make_intent_node(deps: NodeDeps):
                 state,
                 confidence=0.94,
                 search_targets=["vdb_external", "vdb_memory", "vdb_user_important", "web"],
-            )
-
-        awaiting_plan_confirmation = _has_pending_plan_confirmation_v2(state)
-
-        if awaiting_plan_confirmation and _looks_like_pending_plan_revision(message, routing_message, state):
-            return _build_result(
-                INTENT_MODIFY,
-                state,
-                confidence=0.96,
-                search_targets=["vdb_external", "vdb_memory", "vdb_user_important", "web"],
-                modify_target=_pending_plan_domain(state, routing_message),
             )
 
         if (
@@ -1056,6 +1056,8 @@ def _looks_like_pending_plan_revision(message: str, routing_message: str, state:
     )
     if _looks_like_ambiguous_mixed_plan_request(combined_normalized):
         return False
+    if _looks_like_plan_scope_correction(message, routing_message, state):
+        return True
     if _looks_like_read_only_info_request(message, routing_message) or _looks_like_new_plan_request(message, routing_message):
         return False
     if _looks_like_modified_plan_acceptance(combined_normalized):
@@ -1091,6 +1093,64 @@ def _looks_like_pending_plan_revision(message: str, routing_message: str, state:
         )
     )
     return has_reference and has_revision_language
+
+
+def _looks_like_plan_scope_correction(message: str, routing_message: str, state: GraphState) -> bool:
+    if not _has_pending_plan_confirmation_v2(state):
+        return False
+
+    combined = " ".join(candidate.strip().lower() for candidate in (message, routing_message) if candidate.strip())
+    if not combined:
+        return False
+
+    compact = re.sub(r"\s+", "", combined)
+    has_plan_reference = any(keyword in combined for keyword in _PLAN_DOMAIN_KEYWORDS) or any(
+        keyword in combined for keyword in (*_PLAN_REFERENCE_KEYWORDS, *_PLAN_CONFIRMATION_REFERENCE_KEYWORDS)
+    )
+    if not has_plan_reference and _pending_plan_domain(state, combined) not in {"workout", "diet"}:
+        return False
+
+    requested_range = any(
+        marker in compact
+        for marker in (
+            "일주일",
+            "한주",
+            "일주",
+            "1주",
+            "7일",
+            "주간",
+            "한달",
+            "1달",
+            "1개월",
+            "월간",
+            "30일",
+        )
+    ) or bool(re.search(r"\d+\s*(?:주|일|달|개월)", combined))
+    if not requested_range:
+        return False
+
+    scope_complaint = any(
+        marker in compact
+        for marker in (
+            "라니까",
+            "아니",
+            "하루만",
+            "오늘만",
+            "일만",
+            "날짜",
+            "누락",
+            "부족",
+            "빠졌",
+            "안나왔",
+            "한번만",
+        )
+    )
+    date_only_complaint = bool(
+        re.search(r"\d{4}-\d{2}-\d{2}.*만", combined)
+        or re.search(r"\d{1,2}\s*월\s*\d{1,2}\s*일\s*만", combined)
+    )
+    why_only_complaint = "왜" in compact and any(marker in compact for marker in ("만", "하루", "오늘", "날짜"))
+    return scope_complaint or date_only_complaint or why_only_complaint
 
 
 def _looks_like_ambiguous_mixed_plan_request(message: str) -> bool:

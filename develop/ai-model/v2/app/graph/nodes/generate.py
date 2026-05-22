@@ -1989,16 +1989,19 @@ def _requested_plan_days(message: str) -> int | None:
     if re.search(r"30\s*일", spaced):
         return 30
 
+    if any(marker in lowered for marker in ("일주일", "한주", "일주", "weekly", "oneweek", "1week")):
+        return 7
+
     week_match = re.search(r"(\d+)\s*주", spaced)
     if week_match:
         weeks = int(week_match.group(1))
-        if 2 <= weeks <= 6:
+        if 1 <= weeks <= 6:
             return min(weeks * 7, 31)
 
     day_match = re.search(r"(\d+)\s*일", spaced)
     if day_match:
         days = int(day_match.group(1))
-        if 10 <= days <= 31:
+        if 7 <= days <= 31:
             return days
 
     month_match = re.search(r"(\d+)\s*(?:달|개월|month)", spaced)
