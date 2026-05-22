@@ -310,6 +310,21 @@ def make_generate_node(deps: NodeDeps):
                 detail={"domain": proposed_plan_type},
             )
 
+        if not proposed_plan and intent == INTENT_MODIFY:
+            (
+                draft_components,
+                draft_text,
+                proposed_plan,
+                proposed_plan_type,
+                proposed_plan_action,
+            ) = _build_modify_plan_fallback(state)
+            if proposed_plan:
+                deps.trace.record_current_alert(
+                    severity="warning",
+                    message="Modify draft returned no structured plan; active proposal fallback applied",
+                    detail={"domain": proposed_plan_type},
+                )
+
         if intent in {INTENT_PLAN, INTENT_MODIFY}:
             draft_components, proposed_plan = _apply_profile_quality_guardrails(
                 draft_components,
@@ -1964,6 +1979,48 @@ def _build_starter_plan_fallback(
     components = _minimize_plan_exposition(components, plan_type)
     draft_text = render_draft_preview(components)
     return components, draft_text, proposed_plan, plan_type, "create"
+
+
+def _build_modify_plan_fallback(
+    state: GraphState,
+) -> tuple[DraftComponents, str, list[dict], str | None, str | None]:
+    active_proposal = state.get("active_proposal") or {}
+    plan_type = (
+        state.get("modify_target")
+        if state.get("modify_target") in {"workout", "diet"}
+        else active_proposal.get("domain")
+        if active_proposal.get("domain") in {"workout", "diet"}
+        else state.get("proposed_plan_type")
+        if state.get("proposed_plan_type") in {"workout", "diet"}
+        else _infer_plan_type_from_message(str(state.get("user_message") or ""))
+    )
+
+    base_plan = state.get("proposed_plan") or active_proposal.get("items") or []
+    proposed_plan = [dict(item) for item in base_plan if isinstance(item, dict)]
+    if not proposed_plan or plan_type not in {"workout", "diet"}:
+        components = normalize_draft_components(
+            {
+                "core_message": "수정할 플랜 항목을 확인하지 못했어요.",
+                "reason_points": [],
+                "suggested_action": "방금 제안한 플랜을 다시 보내주시면 그 범위에 맞춰 수정할게요.",
+                "approval_question": None,
+                "search_grounding_summary": "",
+                "proposed_plan": [],
+            }
+        )
+        return components, render_draft_preview(components), [], None, None
+
+    components = normalize_draft_components(
+        {
+            "core_message": "요청한 범위에 맞춰 플랜을 수정했어요.",
+            "reason_points": [],
+            "suggested_action": "",
+            "approval_question": f"이 {'운동' if plan_type == 'workout' else '식단'} 플랜으로 수정할까요?",
+            "search_grounding_summary": "",
+        }
+    )
+    draft_text = render_draft_preview(components)
+    return components, draft_text, proposed_plan, str(plan_type), "update"
 
 
 def _expand_long_range_plan_if_requested(
