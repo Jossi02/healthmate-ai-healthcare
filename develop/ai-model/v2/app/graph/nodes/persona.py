@@ -73,6 +73,27 @@ def _restore_plan_preview_if_missing(text: str, state: GraphState, draft_compone
     return "\n".join(lines).strip() or text
 
 
+def _strip_plan_flow_preamble(text: str, state: GraphState) -> str:
+    if not _is_plan_flow_intent(str(state.get("intent") or "")):
+        return text
+
+    lines = [line.rstrip() for line in str(text or "").splitlines()]
+    removed = 0
+    while removed < len(lines):
+        compact = _compact_for_visibility(lines[removed])
+        if not compact:
+            removed += 1
+            continue
+        if any(marker in compact for marker in ("죄송", "잘못이해", "설명드릴", "설명해드릴", "먼저말씀")):
+            removed += 1
+            continue
+        break
+
+    if removed <= 0 or removed >= len(lines):
+        return text
+    return "\n".join(lines[removed:]).strip()
+
+
 def _plan_preview_is_visible(text: str, plan_preview: str) -> bool:
     if not text.strip():
         return False
@@ -221,6 +242,7 @@ def _persona_guardrails(state: GraphState, draft_components: dict) -> str:
         "- Keep the response concise in the persona's style; do not expand into broader general advice.",
         "- Do not weaken or generalize specific reasoning that is already present in reason_points.",
         "- If approval_question exists, keep that approval flow in the final response.",
+        "- For plan corrections, do not start with apology or explanation. Start with the corrected result.",
     ]
     if state.get("support_mode") == "care":
         lines.append("- Keep the tone warm and validating, but do not change the task outcome or factual content.")
@@ -389,6 +411,7 @@ def make_persona_node(deps: NodeDeps):
             )
             final_response = draft_response
 
+        final_response = _strip_plan_flow_preamble(final_response, state)
         final_response = _restore_plan_preview_if_missing(final_response, state, draft_components)
 
         if state.get("intent") in {"怨꾪쉷", "?섏젙", "怨꾪쉷_?뱀씤"}:
