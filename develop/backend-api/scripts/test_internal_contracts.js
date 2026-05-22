@@ -13,6 +13,11 @@ const {
 const {
   loadExercisePlansWithItems,
 } = require('../src/services/exercisePlanReadService');
+const {
+  listChatThreads,
+  loadChatMessages,
+  persistChatTurn,
+} = require('../src/services/chatThreadService');
 
 const planMutationService = require('../src/services/planMutationService');
 
@@ -515,6 +520,34 @@ async function testPasswordVerificationHandlesValidHashes() {
   assert.equal(await verifyPassword('wrong', hash), false);
 }
 
+async function testPersistedChatThreadRoundTrip() {
+  const supabase = new FakeSupabase({
+    chat_threads: [],
+    chat_messages: [],
+  });
+
+  await persistChatTurn(supabase, {
+    userId: 'user-1',
+    sessionId: 'thread-1',
+    userMessage: '일주일 운동 플랜 짜줘',
+    assistantMessage: '일주일 운동 플랜입니다.',
+    intent: '계획',
+    clientMessageId: 'assistant-msg-1',
+    clientUserMessageId: 'user-msg-1',
+  });
+
+  const threads = await listChatThreads(supabase, 'user-1');
+  const messages = await loadChatMessages(supabase, 'user-1', 'thread-1');
+
+  assert.equal(threads.length, 1);
+  assert.equal(threads[0].session_id, 'thread-1');
+  assert.equal(threads[0].message_count, 2);
+  assert.equal(messages.length, 2);
+  assert.equal(messages[0].role, 'user');
+  assert.equal(messages[1].role, 'assistant');
+  assert.equal(messages[1].client_message_id, 'assistant-msg-1');
+}
+
 async function main() {
   await testExistingProfileNormalization();
   await testMissingProfileBootstrap();
@@ -527,7 +560,8 @@ async function main() {
   await testReplaceWorkoutPlansSwapsPlansOnSuccess();
   await testPasswordHashValidationRejectsBadHashes();
   await testPasswordVerificationHandlesValidHashes();
-  console.log('[internal-contracts] 11/11 passed');
+  await testPersistedChatThreadRoundTrip();
+  console.log('[internal-contracts] 12/12 passed');
 }
 
 main().catch((error) => {
