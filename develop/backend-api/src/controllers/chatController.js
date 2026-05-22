@@ -2,6 +2,11 @@ const axiosModule = require('axios');
 const supabase = require('../config/db');
 const logger = require('../utils/logger');
 const { buildDailySessionId } = require('../utils/kst');
+const {
+  listChatThreads,
+  loadChatMessages,
+  persistChatTurn,
+} = require('../services/chatThreadService');
 const axios = axiosModule.default || axiosModule;
 
 const FASTAPI_URL = (process.env.FASTAPI_URL || 'http://localhost:8000').replace(/\/$/, '');
@@ -47,6 +52,8 @@ exports.sendMessage = async (req, res) => {
     const requestedSessionId = typeof req.body.session_id === 'string'
       ? req.body.session_id.trim()
       : '';
+    const clientMessageId = normalizeText(req.body.client_message_id);
+    const clientUserMessageId = normalizeText(req.body.client_user_message_id);
 
     if (!userMessage) {
       return res.status(400).json({ error: 'message is required.' });
@@ -65,9 +72,29 @@ exports.sendMessage = async (req, res) => {
       headers: buildFastApiHeaders(),
     });
 
+    const responseSessionId = response.data?.session_id || sessionId;
+    const assistantMessage = normalizeText(
+      response.data?.response || response.data?.answer || response.data?.message
+    );
+
+    try {
+      await persistChatTurn(supabase, {
+        userId,
+        sessionId: responseSessionId,
+        userMessage,
+        assistantMessage,
+        intent: response.data?.intent || null,
+        clientMessageId,
+        clientUserMessageId,
+      });
+    } catch (persistError) {
+      logger.error(`Chat log persistence error: ${persistError.message}`);
+    }
+
     return res.json({
       ...response.data,
-      session_id: response.data?.session_id || sessionId,
+      client_message_id: clientMessageId || null,
+      session_id: responseSessionId,
     });
   } catch (error) {
     const upstreamStatus = error.response?.status;
@@ -86,6 +113,39 @@ exports.sendMessage = async (req, res) => {
     return res.status(500).json({
       error: 'Failed to process chat request.',
     });
+  }
+};
+
+// @route   GET /api/v1/chat/threads
+// @desc    List persisted chat threads for the current user
+// @access  Private
+exports.listThreads = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const threads = await listChatThreads(supabase, userId);
+    return res.json({ threads });
+  } catch (error) {
+    logger.error(`Chat thread list error: ${error.message}`);
+    return res.status(500).json({ error: 'Failed to load chat threads.' });
+  }
+};
+
+// @route   GET /api/v1/chat/threads/:session_id
+// @desc    Load persisted messages for one chat thread
+// @access  Private
+exports.getThread = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const sessionId = normalizeText(req.params.session_id);
+    if (!sessionId) {
+      return res.status(400).json({ error: 'session_id is required.' });
+    }
+
+    const messages = await loadChatMessages(supabase, userId, sessionId);
+    return res.json({ session_id: sessionId, messages });
+  } catch (error) {
+    logger.error(`Chat thread load error: ${error.message}`);
+    return res.status(500).json({ error: 'Failed to load chat thread.' });
   }
 };
 

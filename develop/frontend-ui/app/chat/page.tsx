@@ -7,6 +7,8 @@ import {
   ArrowLeft,
   Check,
   Loader2,
+  MessageSquare,
+  Plus,
   Send,
   Settings,
   ThumbsDown,
@@ -49,6 +51,25 @@ type Message = {
   feedbackRating?: FeedbackRating | null;
   feedbackReasonCodes?: FeedbackReasonCode[];
   feedbackComment?: string | null;
+};
+
+type ChatThread = {
+  session_id: string;
+  title: string;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+  last_message_at: string;
+};
+
+type PersistedChatMessage = {
+  id: string;
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+  client_message_id?: string | null;
+  intent?: string | null;
+  created_at: string;
 };
 
 const FEEDBACK_REASON_OPTIONS: { code: FeedbackReasonCode; label: string }[] = [
@@ -183,24 +204,30 @@ function createClientMessageId() {
   return `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export default function ChatPage() {
-  const router = useRouter();
-  const { fetchPlans, isUserLoading, userData } = usePlan();
-  const initialMessages: Message[] = [
-    {
-      id: "welcome",
-      role: "assistant",
-      content: "?덈뀞?섏꽭?? 嫄닿컯, ?앸떒, ?대룞 怨꾪쉷??????명븯寃?臾쇱뼱蹂댁꽭??",
-    },
-  ];
-  void initialMessages;
-  const [messages, setMessages] = useState<Message[]>([
+function createThreadSessionId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `thread-${crypto.randomUUID()}`;
+  }
+
+  return `thread-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createWelcomeMessages(): Message[] {
+  return [
     {
       id: "welcome",
       role: "assistant",
       content: "안녕하세요. 건강, 식단, 운동 계획에 대해 편하게 물어보세요.",
     },
-  ]);
+  ];
+}
+
+export default function ChatPage() {
+  const router = useRouter();
+  const { fetchPlans, isUserLoading, userData } = usePlan();
+  const [messages, setMessages] = useState<Message[]>(createWelcomeMessages);
+  const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [isThreadListLoading, setIsThreadListLoading] = useState(false);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -219,6 +246,126 @@ export default function ChatPage() {
   const hasUserStartedConversation = messages.some(
     (message) => message.role === "user"
   );
+
+  const mapPersistedMessages = (
+    persistedMessages: PersistedChatMessage[]
+  ): Message[] => {
+    let latestUserMessage = "";
+
+    const mapped = persistedMessages.map((message) => {
+      if (message.role === "user") {
+        latestUserMessage = message.content;
+      }
+
+      return {
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        isStreaming: false,
+        clientMessageId:
+          message.role === "assistant"
+            ? message.client_message_id || message.id
+            : message.client_message_id || undefined,
+        sessionId: message.session_id,
+        userMessage:
+          message.role === "assistant" ? latestUserMessage : undefined,
+        intent: message.role === "assistant" ? message.intent || null : null,
+        feedbackStatus: message.role === "assistant" ? "idle" : undefined,
+        feedbackRating: null,
+        feedbackReasonCodes: [],
+        feedbackComment: null,
+      } satisfies Message;
+    });
+
+    return mapped.length > 0 ? mapped : createWelcomeMessages();
+  };
+
+  const loadThreadList = async (token: string) => {
+    setIsThreadListLoading(true);
+    try {
+      const response = await fetch(buildApiUrl("/api/v1/chat/threads"), {
+        headers: {
+          "ngrok-skip-browser-warning": "true",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        redirectToLoginForExpiredSession();
+        return [];
+      }
+
+      if (!response.ok) {
+        throw new Error("Thread list API request failed.");
+      }
+
+      const data = await response.json();
+      const nextThreads = Array.isArray(data.threads)
+        ? (data.threads as ChatThread[])
+        : [];
+      setThreads(nextThreads);
+      return nextThreads;
+    } catch (error) {
+      console.error("Failed to load chat threads:", error);
+      return [];
+    } finally {
+      setIsThreadListLoading(false);
+    }
+  };
+
+  const loadThreadMessages = async (
+    targetSessionId: string,
+    token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
+  ) => {
+    if (!targetSessionId || !token) return;
+
+    try {
+      const response = await fetch(
+        buildApiUrl(`/api/v1/chat/threads/${encodeURIComponent(targetSessionId)}`),
+        {
+          headers: {
+            "ngrok-skip-browser-warning": "true",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.status === 401) {
+        redirectToLoginForExpiredSession();
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Thread messages API request failed.");
+      }
+
+      const data = await response.json();
+      const nextMessages = Array.isArray(data.messages)
+        ? mapPersistedMessages(data.messages as PersistedChatMessage[])
+        : createWelcomeMessages();
+
+      setSessionId(targetSessionId);
+      setMessages(nextMessages);
+      window.sessionStorage.setItem(CHAT_SESSION_STORAGE_KEY, targetSessionId);
+      window.sessionStorage.setItem(
+        CHAT_MESSAGES_STORAGE_KEY,
+        JSON.stringify(nextMessages)
+      );
+    } catch (error) {
+      console.error("Failed to load chat thread:", error);
+    }
+  };
+
+  const startNewThread = () => {
+    const nextSessionId = createThreadSessionId();
+    setSessionId(nextSessionId);
+    setMessages(createWelcomeMessages());
+    window.sessionStorage.setItem(CHAT_SESSION_STORAGE_KEY, nextSessionId);
+    window.sessionStorage.setItem(
+      CHAT_MESSAGES_STORAGE_KEY,
+      JSON.stringify(createWelcomeMessages())
+    );
+  };
 
   useEffect(() => {
     const storedToken = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
@@ -251,6 +398,18 @@ export default function ChatPage() {
         console.error("Failed to restore chat messages:", error);
       }
     }
+
+    void (async () => {
+      const threadList = await loadThreadList(storedToken);
+      if (storedSessionId && !storedMessages) {
+        await loadThreadMessages(storedSessionId, storedToken);
+        return;
+      }
+
+      if (!storedSessionId && !storedMessages && threadList[0]?.session_id) {
+        await loadThreadMessages(threadList[0].session_id, storedToken);
+      }
+    })();
   }, [router]);
 
   useEffect(() => {
@@ -260,14 +419,7 @@ export default function ChatPage() {
             ...message,
             isStreaming: false,
           }))
-        : [
-            {
-              id: "welcome",
-              role: "assistant",
-              content:
-                "?덈뀞?섏꽭?? 嫄닿컯, ?앸떒, ?대룞 怨꾪쉷??????명븯寃?臾쇱뼱蹂댁꽭??",
-            },
-          ];
+        : createWelcomeMessages();
 
     window.sessionStorage.setItem(
       CHAT_MESSAGES_STORAGE_KEY,
@@ -513,15 +665,23 @@ export default function ChatPage() {
     if (!input.trim() || isLoading) return;
 
     const userMessage = input.trim();
+    const requestSessionId = sessionId || createThreadSessionId();
+    const userMessageId = createClientMessageId();
+    const assistantMessageId = createClientMessageId();
     setInput("");
     setMessages((prev) => [
       ...prev,
       {
-        id: `user-${Date.now()}`,
+        id: userMessageId,
         role: "user",
         content: userMessage,
+        sessionId: requestSessionId,
       },
     ]);
+    if (!sessionId) {
+      setSessionId(requestSessionId);
+      window.sessionStorage.setItem(CHAT_SESSION_STORAGE_KEY, requestSessionId);
+    }
     setIsLoading(true);
 
     try {
@@ -542,7 +702,9 @@ export default function ChatPage() {
         },
         body: JSON.stringify({
           message: userMessage,
-          ...(sessionId ? { session_id: sessionId } : {}),
+          session_id: requestSessionId,
+          client_user_message_id: userMessageId,
+          client_message_id: assistantMessageId,
         }),
       });
 
@@ -558,7 +720,7 @@ export default function ChatPage() {
       const data = await response.json();
       const nextSessionId =
         typeof data.session_id === "string" ? data.session_id : null;
-      const effectiveSessionId = nextSessionId || sessionId || null;
+      const effectiveSessionId = nextSessionId || requestSessionId;
       if (nextSessionId) {
         setSessionId(nextSessionId);
         window.sessionStorage.setItem(
@@ -578,19 +740,23 @@ export default function ChatPage() {
 
       setIsLoading(false);
       await simulateStreamingResponse(botText, {
-        clientMessageId: createClientMessageId(),
+        clientMessageId:
+          typeof data.client_message_id === "string"
+            ? data.client_message_id
+            : assistantMessageId,
         sessionId: effectiveSessionId || undefined,
         userMessage,
         intent,
       });
+      void loadThreadList(token);
     } catch (error) {
       console.error("Chat API Error:", error);
       setIsLoading(false);
       await simulateStreamingResponse(
         "메시지를 보내는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
         {
-          clientMessageId: createClientMessageId(),
-          sessionId: sessionId || undefined,
+          clientMessageId: assistantMessageId,
+          sessionId: requestSessionId,
           userMessage,
         }
       );
@@ -598,7 +764,59 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-[#f8fafc] font-sans">
+    <div className="flex h-[100dvh] bg-[#f8fafc] font-sans">
+      <aside className="hidden w-72 shrink-0 flex-col border-r border-gray-200/70 bg-white lg:flex">
+        <div className="border-b border-gray-100 px-4 py-5">
+          <button
+            type="button"
+            onClick={startNewThread}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563eb] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4" />
+            새 대화
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-3 py-3">
+          {isThreadListLoading ? (
+            <div className="flex items-center gap-2 px-3 py-3 text-xs font-bold text-gray-400">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              불러오는 중
+            </div>
+          ) : threads.length === 0 ? (
+            <div className="px-3 py-3 text-xs font-bold text-gray-400">
+              저장된 대화 없음
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {threads.map((thread) => {
+                const isActive = thread.session_id === sessionId;
+                return (
+                  <button
+                    key={thread.session_id}
+                    type="button"
+                    onClick={() => loadThreadMessages(thread.session_id)}
+                    className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left transition-colors ${
+                      isActive
+                        ? "bg-blue-50 text-blue-700"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    <MessageSquare className="h-4 w-4 shrink-0" />
+                    <span className="min-w-0 flex-1 truncate text-sm font-bold">
+                      {thread.title || "새 대화"}
+                    </span>
+                    <span className="shrink-0 text-[10px] font-black text-gray-400">
+                      {thread.message_count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
       <header className="sticky top-0 z-10 border-b border-gray-200/60 bg-white/90 px-5 pb-4 pt-12 shadow-sm backdrop-blur-md">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
           <button
@@ -642,7 +860,30 @@ export default function ChatPage() {
             코치 설정
           </button>
         </div>
-
+        <div className="mx-auto mt-4 flex max-w-2xl gap-2 overflow-x-auto lg:hidden">
+          <button
+            type="button"
+            onClick={startNewThread}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#2563eb] px-3 py-2 text-xs font-black text-white"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            새 대화
+          </button>
+          {threads.map((thread) => (
+            <button
+              key={thread.session_id}
+              type="button"
+              onClick={() => loadThreadMessages(thread.session_id)}
+              className={`max-w-40 shrink-0 truncate rounded-full border px-3 py-2 text-xs font-black ${
+                thread.session_id === sessionId
+                  ? "border-blue-200 bg-blue-50 text-blue-700"
+                  : "border-gray-200 bg-white text-gray-500"
+              }`}
+            >
+              {thread.title || "새 대화"}
+            </button>
+          ))}
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto px-6 py-6 pb-32 md:px-8">
@@ -965,6 +1206,7 @@ export default function ChatPage() {
             프론트는 backend-api를 통해 AI 서버와 통신합니다.
           </p>
         </div>
+      </div>
       </div>
     </div>
   );
