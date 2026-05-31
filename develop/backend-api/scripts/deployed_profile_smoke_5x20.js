@@ -182,7 +182,7 @@ const profiles = [
       medical_history: [],
       injury_history: [],
     },
-    forbidden: [/새우|게|갑각류|shrimp|crab/i],
+    forbidden: [/새우|꽃게|대게|게살|갑각류|shrimp|crab/i],
   },
   {
     label: 'vegan_beginner',
