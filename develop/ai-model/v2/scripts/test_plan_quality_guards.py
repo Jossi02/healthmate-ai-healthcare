@@ -587,6 +587,14 @@ def test_diet_constraint_conflict_triggers_safe_fallback() -> None:
         not _diet_plan_requires_safe_fallback(safe_plan, profile),
         "safe plant-based dairy-free replacements should be accepted",
     )
+    assert_true(
+        _diet_plan_requires_safe_fallback(
+            [{"name": "Snack", "detail": "그릭 요거트", "day": kst_today_iso(), "ex_list": []}],
+            {},
+            "식단에서 유제품 빼고 다시 작성해줘",
+        ),
+        "request-level dairy exclusion should also trigger safe fallback",
+    )
 
 
 def test_explicit_new_domain_ignores_active_proposal_context() -> None:
