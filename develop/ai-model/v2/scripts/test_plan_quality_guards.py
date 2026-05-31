@@ -22,6 +22,7 @@ from app.graph.nodes.generate import (
     _render_plan_preview_from_items,
     _workout_item_category,
 )
+from app.graph.nodes.answer_validator import _requires_external_fail_closed
 from app.services.home_recommendations import kst_today_iso
 from app.schemas.was import to_plan_create_batches
 from app.services.home_recommendations import normalize_home_recommendations
@@ -412,6 +413,31 @@ def test_month_workout_plan_expands_weekly_sessions() -> None:
     assert_true(days[-1] >= (today + timedelta(days=23)).isoformat(), "workout expansion should span the requested period")
 
 
+def test_demo_plan_rag_degraded_does_not_fail_closed() -> None:
+    constraints = {
+        "should_use_rag": True,
+        "hard_profile_constraints": ["dairy_allergy", "knee_pain"],
+        "retrieval_critical_constraints": ["dairy_allergy"],
+    }
+    plan_state = {
+        "action_intent": "create",
+        "retrieval_decision": {"requires_external": True},
+    }
+    info_state = {
+        "action_intent": "info",
+        "retrieval_decision": {"requires_external": True},
+    }
+
+    assert_true(
+        not _requires_external_fail_closed(plan_state, constraints),
+        "demo plan creation should warn, not block, when external RAG is temporarily degraded",
+    )
+    assert_true(
+        _requires_external_fail_closed(info_state, constraints),
+        "specialized info answers should still fail closed when required external evidence is unavailable",
+    )
+
+
 def main() -> None:
     tests = [
         test_stretching_beats_cardio_label,
@@ -429,6 +455,7 @@ def main() -> None:
         test_modify_fallback_reuses_active_proposal,
         test_month_diet_plan_expands_by_calendar_day,
         test_month_workout_plan_expands_weekly_sessions,
+        test_demo_plan_rag_degraded_does_not_fail_closed,
     ]
     for test in tests:
         test()
