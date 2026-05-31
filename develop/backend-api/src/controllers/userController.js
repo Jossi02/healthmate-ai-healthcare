@@ -71,6 +71,14 @@ function parseCalories(value) {
   return matched ? Number(matched[0]) : 0;
 }
 
+function normalizeRecommendationName(value) {
+  return String(value || '')
+    .normalize('NFKC')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
 async function rebuildParentExerciseStatus(exerciseId) {
   const { data: siblings, error: siblingError } = await supabase
     .from('exercise_items')
@@ -578,14 +586,16 @@ exports.addRecommendedExercise = async (req, res) => {
       if (error) throw error;
       plan = createdPlan;
     } else {
-      const { data: existingItem, error: existingItemError } = await supabase
+      const normalizedExerciseName = normalizeRecommendationName(exerciseName);
+      const { data: existingItems, error: existingItemError } = await supabase
         .from('exercise_items')
         .select('*')
-        .eq('exercise_id', plan.exercise_id)
-        .eq('exercise_name', exerciseName)
-        .maybeSingle();
+        .eq('exercise_id', plan.exercise_id);
 
       if (existingItemError) throw existingItemError;
+      const existingItem = (existingItems || []).find(
+        (item) => normalizeRecommendationName(item.exercise_name) === normalizedExerciseName
+      );
       if (existingItem) {
         return res.json({
           message: 'Recommended exercise already exists.',
@@ -651,7 +661,7 @@ exports.replaceRecommendedMeal = async (req, res) => {
 
     const { data: existingMeal, error: existingError } = await supabase
       .from('user_meal_plans')
-      .select('meal_id')
+      .select('*')
       .eq('user_id', userId)
       .eq('target_date', targetDate)
       .eq('meal_type', mealType)
@@ -661,6 +671,20 @@ exports.replaceRecommendedMeal = async (req, res) => {
 
     let meal;
     if (existingMeal) {
+      const sameMeal =
+        normalizeRecommendationName(existingMeal.food_name) === normalizeRecommendationName(foodName) &&
+        Number(existingMeal.calories || 0) === calories;
+      if (sameMeal) {
+        return res.json({
+          message: 'Recommended meal already exists.',
+          already_exists: true,
+          meal: {
+            ...existingMeal,
+            meal_type: toMealDisplayType(existingMeal.meal_type),
+          },
+        });
+      }
+
       const { data: updatedMeal, error } = await supabase
         .from('user_meal_plans')
         .update({
@@ -708,6 +732,7 @@ exports.__private__ = {
   buildProfilePayload,
   computeBmi,
   mapCalendarToGroupedResponse,
+  normalizeRecommendationName,
   parsePlanCheckId,
   parseStoredArray,
   serializeArrayField,

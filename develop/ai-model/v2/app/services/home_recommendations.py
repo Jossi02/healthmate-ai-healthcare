@@ -5,6 +5,14 @@ import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from app.core.diet_safety_rules import (
+    COMMON_EATING_DISORDER_RISK_TERMS,
+    COMMON_GOUT_PURINE_TERMS,
+    COMMON_KIDNEY_HIGH_PROTEIN_TERMS,
+    COMMON_PREGNANCY_FOOD_SAFETY_TERMS,
+    COMMON_SODIUM_HEAVY_TERMS,
+    COMMON_SUGAR_HEAVY_TERMS,
+)
 from app.schemas.home import (
     DietRecommendationItem,
     DietRecommendationSlots,
@@ -675,12 +683,12 @@ _HOME_DIET_ALLERGEN_TERMS = {
 }
 _HOME_MEAT_TERMS = ("닭", "닭가슴살", "소고기", "돼지고기", "고기", "연어", "참치", "생선", "새우", "chicken", "beef", "pork", "fish")
 _HOME_VEGAN_EXTRA_TERMS = ("계란", "달걀", "우유", "치즈", "요거트", "유제품", "egg", "milk", "cheese", "yogurt")
-_HOME_SODIUM_TERMS = ("라면", "햄", "소시지", "베이컨", "젓갈", "국물", "짠", "나트륨", "ramen", "instant noodle", "sausage", "bacon", "processed meat", "pickle", "brine", "soup broth", "salty")
-_HOME_SUGAR_TERMS = ("설탕", "시럽", "탄산", "주스", "케이크", "과자", "디저트", "soda", "juice", "smoothie", "cookie", "candy", "sweetened")
-_HOME_KIDNEY_TERMS = ("고단백", "프로틴", "단백질 쉐이크", "크레아틴", "식사대용 쉐이크", "단백질바", "high protein", "protein shake", "protein bar", "protein powder", "whey", "casein")
-_HOME_GOUT_TERMS = ("내장", "곱창", "멸치", "정어리", "맥주", "조개", "새우", "purine", "beer", "anchovy", "sardine", "mackerel", "organ meat", "liver", "shellfish", "clam")
-_HOME_PREGNANCY_TERMS = ("생선회", "회", "날달걀", "알코올", "술", "와인", "맥주", "raw fish", "raw egg", "alcohol", "unpasteurized", "deli meat", "high mercury", "tuna steak")
-_HOME_EATING_RISK_TERMS = ("900kcal", "800kcal", "단식", "굶", "하루 한 끼", "원푸드", "절식", "fasting", "detox", "cleanse", "one meal a day", "omad", "very low calorie")
+_HOME_SODIUM_TERMS = ("라면", "햄", "소시지", "베이컨", "젓갈", "국물", "짠", "나트륨", *COMMON_SODIUM_HEAVY_TERMS)
+_HOME_SUGAR_TERMS = ("설탕", "시럽", "탄산", "주스", "케이크", "과자", "디저트", *COMMON_SUGAR_HEAVY_TERMS)
+_HOME_KIDNEY_TERMS = ("고단백", "프로틴", "단백질 쉐이크", "크레아틴", "식사대용 쉐이크", "단백질바", *COMMON_KIDNEY_HIGH_PROTEIN_TERMS)
+_HOME_GOUT_TERMS = ("내장", "곱창", "멸치", "정어리", "맥주", "조개", "새우", *COMMON_GOUT_PURINE_TERMS)
+_HOME_PREGNANCY_TERMS = ("생선회", "회", "날달걀", "알코올", "술", "와인", "맥주", *COMMON_PREGNANCY_FOOD_SAFETY_TERMS)
+_HOME_EATING_RISK_TERMS = ("900kcal", "800kcal", "단식", "굶", "하루 한 끼", "원푸드", "절식", *COMMON_EATING_DISORDER_RISK_TERMS)
 
 
 def _diet_item_conflicts_profile(item: DietRecommendationItem, user_profile: dict | None) -> bool:

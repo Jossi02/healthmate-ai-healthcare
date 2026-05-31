@@ -93,6 +93,13 @@ const getDietRecommendationHighlightId = (
   mealType: DietSlot
 ): HomeRecommendationHighlightId => `diet:${mealType}`;
 
+const normalizeRecommendationName = (value: string | null | undefined) =>
+  String(value || '')
+    .normalize('NFKC')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+
 const isRecommendationHighlightInScope = (
   id: HomeRecommendationHighlightId,
   scope: RecommendationScope
@@ -879,7 +886,7 @@ export default function Home() {
     const todayStr = formatKstDate();
     const todayPlan = getPlanByDate(todayStr);
     const isDuplicate = todayPlan?.exercises.some(
-      (ex) => ex.title === target.name
+      (ex) => normalizeRecommendationName(ex.title) === normalizeRecommendationName(target.name)
     );
 
     if (isDuplicate) {
@@ -890,7 +897,7 @@ export default function Home() {
 
     setRecommendationApplyPending((previous) => ({ ...previous, [recommendationId]: true }));
     try {
-      const didAdd = await addWorkout(todayStr, {
+      const addResult = await addWorkout(todayStr, {
         title: target.name,
         time: target.duration || '추천',
         level: getWorkoutSlotLabel(slot),
@@ -903,7 +910,7 @@ export default function Home() {
           : null,
       });
 
-      if (didAdd) {
+      if (addResult) {
         let nextAdded = recommendationAdded;
         setRecommendationAdded((prev) => {
           nextAdded = {
@@ -920,8 +927,12 @@ export default function Home() {
           nextAdded,
           recommendationHistoryRef.current
         );
-        markRecommendationHighlighted(recommendationId);
-        showPlanSyncToast('workout', target.name);
+        if (addResult === 'changed') {
+          markRecommendationHighlighted(recommendationId);
+          showPlanSyncToast('workout', target.name);
+        } else {
+          setTimeout(() => setAlertPopup({ isOpen: true, message: '이미 캘린더에 추가된 운동입니다!' }), 100);
+        }
       }
     } finally {
       setRecommendationApplyPending((previous) => ({ ...previous, [recommendationId]: false }));
@@ -947,7 +958,10 @@ export default function Home() {
       matchesMealSlot(d.type, mealType)
     );
 
-    if (existingDiet && existingDiet.name === dietPopup.target.name) {
+    if (
+      existingDiet &&
+      normalizeRecommendationName(existingDiet.name) === normalizeRecommendationName(dietPopup.target.name)
+    ) {
       setDietPopup({ isOpen: false, target: null, mealType: null });
       setTimeout(() => setAlertPopup({ isOpen: true, message: '이미 캘린더에 추가된 음식입니다!' }), 100);
       return;
@@ -955,13 +969,13 @@ export default function Home() {
 
     setRecommendationApplyPending((previous) => ({ ...previous, [recommendationId]: true }));
     try {
-      const didReplace = await replaceDiet(todayStr, mealType, {
+      const replaceResult = await replaceDiet(todayStr, mealType, {
         name: dietPopup.target.name,
         desc: dietPopup.target.desc,
         kcal: `${dietPopup.target.calories || 0} kcal`,
       });
 
-      if (didReplace) {
+      if (replaceResult) {
         let nextAdded = recommendationAdded;
         setRecommendationAdded((prev) => {
           nextAdded = {
@@ -978,8 +992,12 @@ export default function Home() {
           nextAdded,
           recommendationHistoryRef.current
         );
-        markRecommendationHighlighted(recommendationId);
-        showPlanSyncToast('diet', dietPopup.target.name);
+        if (replaceResult === 'changed') {
+          markRecommendationHighlighted(recommendationId);
+          showPlanSyncToast('diet', dietPopup.target.name);
+        } else {
+          setTimeout(() => setAlertPopup({ isOpen: true, message: '이미 캘린더에 추가된 음식입니다!' }), 100);
+        }
       }
     } finally {
       setRecommendationApplyPending((previous) => ({ ...previous, [recommendationId]: false }));
@@ -1244,8 +1262,8 @@ export default function Home() {
 
     return Boolean(
       todayRecommendationPlan?.exercises.some((exercise) => {
-        const savedTitle = exercise.title.trim().toLowerCase();
-        const recommendationTitle = workout.name.trim().toLowerCase();
+        const savedTitle = normalizeRecommendationName(exercise.title);
+        const recommendationTitle = normalizeRecommendationName(workout.name);
         return savedTitle === recommendationTitle;
       })
     );
@@ -1260,8 +1278,8 @@ export default function Home() {
 
     return Boolean(
       todayRecommendationPlan?.diets.some((savedDiet) => {
-        const savedName = savedDiet.name.trim().toLowerCase();
-        const recommendationName = diet.name.trim().toLowerCase();
+        const savedName = normalizeRecommendationName(savedDiet.name);
+        const recommendationName = normalizeRecommendationName(diet.name);
         return (
           matchesMealSlot(savedDiet.type, mealType) &&
           savedName === recommendationName

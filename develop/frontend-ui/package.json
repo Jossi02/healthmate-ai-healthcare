@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "smoke:home-recommendation-ux": "node scripts/smoke-home-recommendation-ux.cjs"
   },
   "dependencies": {
     "@swc/helpers": "^0.5.20",
