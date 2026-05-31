@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import time
 
-from app.core.conversation_state import empty_context_resolution
+from app.core.conversation_state import empty_context_resolution, infer_domain
 from app.graph.deps import NodeDeps
 from app.schemas.state import ContextResolution, GraphState
 
@@ -78,6 +78,17 @@ def _resolve_context(state: GraphState) -> ContextResolution:
     active_proposal = state.get("active_proposal")
     if active_proposal and _looks_like_active_proposal_followup(normalized):
         domain = active_proposal["domain"]
+        explicit_domain = infer_domain(message)
+        if explicit_domain in {"workout", "diet"} and explicit_domain != domain:
+            resolution.update(
+                {
+                    "resolved_reference": "none",
+                    "resolved_domain": explicit_domain,
+                    "resolved_text": message,
+                    "confidence": 0.82,
+                }
+            )
+            return resolution
         resolution.update(
             {
                 "resolved_reference": "active_proposal",

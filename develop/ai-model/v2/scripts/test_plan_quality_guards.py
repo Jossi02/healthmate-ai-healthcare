@@ -23,6 +23,7 @@ from app.graph.nodes.generate import (
     _render_plan_preview_from_items,
     _workout_item_category,
 )
+from app.graph.nodes.context_resolver import _resolve_context
 from app.graph.nodes.answer_validator import (
     _requires_external_fail_closed,
     _should_run_semantic_validation,
@@ -554,6 +555,25 @@ def test_dairy_free_replacement_is_not_allergen_conflict() -> None:
     )
 
 
+def test_explicit_new_domain_ignores_active_proposal_context() -> None:
+    resolution = _resolve_context(
+        {
+            "user_message": "\uc2dd\ub2e8\uc5d0\uc11c \uc720\uc81c\ud488 \ube7c\uace0 \ub2e4\uc2dc \uc791\uc131\ud574\uc918",
+            "active_proposal": {
+                "domain": "workout",
+                "write_mode": "create",
+                "items": [{"name": "Workout", "day": kst_today_iso(), "ex_list": []}],
+            },
+        }
+    )
+
+    assert_true(
+        resolution["resolved_reference"] == "none",
+        "explicit diet request should not be rewritten as a workout active-proposal follow-up",
+    )
+    assert_true(resolution["resolved_domain"] == "diet", "explicit diet request should keep diet domain")
+
+
 def main() -> None:
     tests = [
         test_stretching_beats_cardio_label,
@@ -576,6 +596,7 @@ def main() -> None:
         test_modify_without_active_plan_creates_new_proposal,
         test_demo_plan_semantic_judge_does_not_block_structured_plans,
         test_dairy_free_replacement_is_not_allergen_conflict,
+        test_explicit_new_domain_ignores_active_proposal_context,
     ]
     for test in tests:
         test()
