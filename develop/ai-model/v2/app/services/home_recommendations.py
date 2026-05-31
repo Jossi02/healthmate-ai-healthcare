@@ -304,6 +304,21 @@ def normalize_home_recommendations(
             recent_recommendations=recent_recommendations,
         )
 
+    if scope in {"all", "workout"}:
+        workout = _guard_workout_slots_for_profile(
+            workout,
+            user_profile=user_profile,
+            today_plan=today_plan,
+            recent_recommendations=recent_recommendations,
+        )
+    if scope in {"all", "diet"}:
+        diet = _guard_diet_slots_for_profile(
+            diet,
+            user_profile=user_profile,
+            today_plan=today_plan,
+            recent_recommendations=recent_recommendations,
+        )
+
     return HomeRecommendationResponse(
         date=date,
         scope=scope,
@@ -405,6 +420,65 @@ def _fill_missing_diet_slots(
             today_plan=today_plan,
             recent_names=recent_diet.get("dinner") or [],
         ),
+    )
+
+
+def _guard_workout_slots_for_profile(
+    slots: WorkoutRecommendationSlots,
+    *,
+    user_profile: dict | None,
+    today_plan: list[dict] | None,
+    recent_recommendations: dict | None,
+) -> WorkoutRecommendationSlots:
+    recent_workout = (recent_recommendations or {}).get("workout") or {}
+    injury_tokens = _profile_tokens(user_profile, "injury_history") | _profile_tokens(user_profile, "pain_points")
+
+    def keep_or_replace(slot: str, item: WorkoutRecommendationItem | None) -> WorkoutRecommendationItem | None:
+        if item is None:
+            return None
+        text = f"{item.exercise_name} {item.summary}"
+        if _is_workout_candidate_safe(slot, text, injury_tokens):
+            return item
+        return _build_workout_fallback(
+            slot,
+            user_profile=user_profile,
+            today_plan=today_plan,
+            recent_names=recent_workout.get(slot) or [],
+        )
+
+    return WorkoutRecommendationSlots(
+        upper_body=keep_or_replace("upper_body", slots.upper_body),
+        lower_body=keep_or_replace("lower_body", slots.lower_body),
+        cardio=keep_or_replace("cardio", slots.cardio),
+        stretching=keep_or_replace("stretching", slots.stretching),
+    )
+
+
+def _guard_diet_slots_for_profile(
+    slots: DietRecommendationSlots,
+    *,
+    user_profile: dict | None,
+    today_plan: list[dict] | None,
+    recent_recommendations: dict | None,
+) -> DietRecommendationSlots:
+    recent_diet = (recent_recommendations or {}).get("diet") or {}
+
+    def keep_or_replace(slot: str, item: DietRecommendationItem | None) -> DietRecommendationItem | None:
+        if item is None:
+            return None
+        if not _diet_item_conflicts_profile(item, user_profile):
+            return item
+        return _build_diet_fallback(
+            slot,
+            user_profile=user_profile,
+            today_plan=today_plan,
+            recent_names=recent_diet.get(slot) or [],
+        )
+
+    return DietRecommendationSlots(
+        breakfast=keep_or_replace("breakfast", slots.breakfast),
+        lunch=keep_or_replace("lunch", slots.lunch),
+        dinner=keep_or_replace("dinner", slots.dinner),
     )
 
 
@@ -527,19 +601,18 @@ def _build_diet_fallback(
             continue
         if allergies & set(candidate["allergens"]):
             continue
-        return _normalize_diet_item(
-            DietRecommendationItem(
-                food_name=food_name,
-                summary=candidate["summary"],
-                calories=candidate["calories"],
-            )
-        ) or DietRecommendationItem(
+        item = DietRecommendationItem(
             food_name=food_name,
             summary=candidate["summary"],
             calories=candidate["calories"],
         )
+        if _diet_item_conflicts_profile(item, user_profile):
+            continue
+        return _normalize_diet_item(
+            item
+        ) or item
 
-    first_candidate = _DIET_FALLBACKS[slot][0]
+    first_candidate = _safe_diet_fallback_candidate(slot, user_profile)
     return _normalize_diet_item(
         DietRecommendationItem(
             food_name=first_candidate["food_name"],
@@ -551,6 +624,120 @@ def _build_diet_fallback(
         summary=first_candidate["summary"],
         calories=first_candidate["calories"],
     )
+
+
+_HOME_DIET_ALLERGEN_TERMS = {
+    "dairy": ("우유", "치즈", "요거트", "요구르트", "버터", "크림", "milk", "cheese", "yogurt", "butter", "cream"),
+    "egg": ("계란", "달걀", "egg"),
+    "nut": ("견과", "땅콩", "아몬드", "호두", "peanut", "almond", "walnut", "nut"),
+    "gluten": ("밀", "빵", "파스타", "wheat", "gluten"),
+    "soy": ("두부", "두유", "대두", "콩요거트", "템페", "soy", "soybean"),
+    "fish": ("생선", "연어", "참치", "새우", "갑각류", "fish", "salmon", "tuna", "shrimp", "shellfish"),
+}
+_HOME_MEAT_TERMS = ("닭", "닭가슴살", "소고기", "돼지고기", "고기", "연어", "참치", "생선", "새우", "chicken", "beef", "pork", "fish")
+_HOME_VEGAN_EXTRA_TERMS = ("계란", "달걀", "우유", "치즈", "요거트", "유제품", "egg", "milk", "cheese", "yogurt")
+_HOME_SODIUM_TERMS = ("라면", "햄", "소시지", "베이컨", "젓갈", "국물", "짠", "나트륨")
+_HOME_SUGAR_TERMS = ("설탕", "시럽", "탄산", "주스", "케이크", "과자", "디저트")
+_HOME_KIDNEY_TERMS = ("고단백", "프로틴", "단백질 쉐이크", "크레아틴", "high protein", "protein shake")
+_HOME_GOUT_TERMS = ("내장", "곱창", "멸치", "정어리", "맥주", "조개", "새우", "purine", "beer")
+_HOME_PREGNANCY_TERMS = ("생선회", "회", "날달걀", "알코올", "술", "와인", "맥주", "raw fish", "raw egg", "alcohol")
+_HOME_EATING_RISK_TERMS = ("900kcal", "800kcal", "단식", "굶", "하루 한 끼", "원푸드", "절식", "fasting")
+
+
+def _diet_item_conflicts_profile(item: DietRecommendationItem, user_profile: dict | None) -> bool:
+    profile_text = _home_profile_constraint_text(user_profile)
+    item_text = _normalize_name(f"{item.food_name} {item.summary}")
+    allergies = _normalize_allergy_tokens(user_profile)
+
+    for allergy in allergies:
+        terms = _HOME_DIET_ALLERGEN_TERMS.get(allergy)
+        if terms and any(term.lower() in item_text for term in terms):
+            return True
+
+    if "vegetarian" in profile_text and any(term.lower() in item_text for term in _HOME_MEAT_TERMS):
+        return True
+    if "vegan" in profile_text and any(term.lower() in item_text for term in (*_HOME_MEAT_TERMS, *_HOME_VEGAN_EXTRA_TERMS)):
+        return True
+    if any(marker in profile_text for marker in ("고혈압", "혈압", "hypertension")) and any(term in item_text for term in _HOME_SODIUM_TERMS):
+        return True
+    if any(marker in profile_text for marker in ("당뇨", "혈당", "diabetes", "glucose")) and any(term in item_text for term in _HOME_SUGAR_TERMS):
+        return True
+    if any(marker in profile_text for marker in ("신장", "콩팥", "ckd", "kidney", "renal")) and any(term in item_text for term in _HOME_KIDNEY_TERMS):
+        return True
+    if any(marker in profile_text for marker in ("통풍", "요산", "gout", "uric acid")) and any(term in item_text for term in _HOME_GOUT_TERMS):
+        return True
+    if any(marker in profile_text for marker in ("임신", "임산부", "pregnancy", "pregnant")) and any(term in item_text for term in _HOME_PREGNANCY_TERMS):
+        return True
+    if any(marker in profile_text for marker in ("섭식", "폭식", "절식", "eating disorder")) and any(term in item_text for term in _HOME_EATING_RISK_TERMS):
+        return True
+    return False
+
+
+def _safe_diet_fallback_candidate(slot: str, user_profile: dict | None) -> dict:
+    profile_text = _home_profile_constraint_text(user_profile)
+    plant_based = any(marker in profile_text for marker in ("vegetarian", "vegan", "채식", "비건"))
+    high_risk = any(
+        marker in profile_text
+        for marker in ("신장", "콩팥", "ckd", "kidney", "renal", "통풍", "요산", "gout", "임신", "임산부", "pregnancy", "섭식", "폭식", "절식")
+    )
+    defaults = {
+        "breakfast": {
+            "food_name": "현미죽과 블루베리",
+            "summary": "부담을 낮춘 간단한 아침 식사입니다.",
+            "calories": 300,
+        },
+        "lunch": {
+            "food_name": "현미밥과 구운 채소",
+            "summary": "자극적인 재료를 줄인 점심 식사입니다.",
+            "calories": 430,
+        },
+        "dinner": {
+            "food_name": "고구마 채소 수프",
+            "summary": "가볍게 마무리하기 좋은 저녁 식사입니다.",
+            "calories": 360,
+        },
+    }
+    if plant_based and not high_risk:
+        defaults["lunch"] = {
+            "food_name": "병아리콩 현미볼",
+            "summary": "채식 기준으로 단백질을 보탠 점심 식사입니다.",
+            "calories": 470,
+        }
+    return defaults.get(slot, defaults["lunch"])
+
+
+def _home_profile_constraint_text(user_profile: dict | None) -> str:
+    profile = user_profile or {}
+    chunks: list[str] = []
+    for key in (
+        "diet_type",
+        "dietary_restrictions",
+        "dietary_preferences",
+        "foods_to_avoid",
+        "allergies",
+        "allergy",
+        "medical_history",
+        "medical_conditions",
+        "conditions",
+        "goal",
+        "diet_goal",
+        "primary_goal",
+        "context_notes",
+    ):
+        chunks.extend(str(value) for value in _as_list(profile.get(key)))
+    return " ".join(chunks).lower()
+
+
+def _as_list(value: object) -> list[object]:
+    if not value:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, dict):
+        return list(value.values())
+    return [value]
 
 
 def _profile_social_orientation(user_profile: dict | None) -> str | None:

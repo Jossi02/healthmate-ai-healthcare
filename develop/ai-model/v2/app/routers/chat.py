@@ -797,6 +797,11 @@ async def chat(
             result.update(sync_write_result.get("checkpoint_updates") or {})
             plan_sync_applied = bool(sync_write_result["write_succeeded"] and not sync_write_result["pending"])
             was_write_status = _was_write_status(sync_write_result, mode="sync")
+            response_text = _approval_response_for_write_status(
+                response_text,
+                sync_write_result,
+                write_proposed_plan_type,
+            )
         elif intent == INTENT_RECORD:
             sync_write_result = await _run_sync_was_write(**was_write_kwargs)
             result.update(sync_write_result.get("checkpoint_updates") or {})
@@ -1214,3 +1219,28 @@ def _was_write_status(
         "succeeded_write_ids": list(write_result.get("succeeded_write_ids") or []) if write_result else [],
         "applied_profile": bool(write_result.get("applied_profile_changes")) if write_result else False,
     }
+
+
+def _approval_response_for_write_status(
+    response_text: str,
+    write_result: dict[str, Any],
+    proposed_plan_type: str | None,
+) -> str:
+    pending = list(write_result.get("pending") or [])
+    succeeded = bool(write_result.get("write_succeeded"))
+    if not pending and succeeded:
+        return response_text
+
+    plan_label = "식단" if proposed_plan_type == "diet" else "운동" if proposed_plan_type == "workout" else "플랜"
+    if pending:
+        return (
+            f"{plan_label} 저장 요청은 접수했어요.\n\n"
+            "지금은 서버 저장이 지연돼 대기열에 넣어둘게요. 잠시 후 자동으로 다시 반영됩니다."
+        )
+
+    failed_types = _pending_write_types(write_result.get("pending") or []) or list(write_result.get("failed_write_types") or [])
+    suffix = f" ({', '.join(failed_types)})" if failed_types else ""
+    return (
+        f"{plan_label} 저장을 완료하지 못했어요{suffix}.\n\n"
+        "플랜 내용은 유지해둘게요. 잠시 후 다시 저장을 눌러주세요."
+    )
