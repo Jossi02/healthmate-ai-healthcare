@@ -3352,10 +3352,39 @@ def _resolve_proposed_plan_type(
     if modify_target in {"workout", "diet"}:
         return modify_target
 
+    message_plan_type = _infer_plan_type_from_message(state["user_message"])
+    if message_plan_type in {"workout", "diet"}:
+        return message_plan_type
+
+    item_plan_type = _infer_plan_type_from_items(proposed_plan)
+    if item_plan_type in {"workout", "diet"}:
+        return item_plan_type
+
     if draft_result.proposed_plan_type in {"workout", "diet"}:
         return draft_result.proposed_plan_type
 
-    return _infer_plan_type_from_message(state["user_message"])
+    return None
+
+
+def _infer_plan_type_from_items(proposed_plan: list[dict]) -> str | None:
+    workout_count = 0
+    diet_count = 0
+    for item in proposed_plan or []:
+        if not isinstance(item, dict):
+            continue
+        if item.get("ex_list"):
+            workout_count += 1
+        elif _is_diet_plan_item(item):
+            diet_count += 1
+    if workout_count and not diet_count:
+        return "workout"
+    if diet_count and not workout_count:
+        return "diet"
+    if workout_count > diet_count:
+        return "workout"
+    if diet_count > workout_count:
+        return "diet"
+    return None
 
 
 def _resolve_proposed_plan_action(state: GraphState, proposed_plan: list[dict]) -> str | None:

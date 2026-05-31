@@ -193,16 +193,31 @@ async function run() {
     const login = await createUser(profile);
     const sessionId = `smoke-${profile.label}-${Date.now()}`;
     for (const [index, turn] of selectedTurns.entries()) {
-      const payload = await request('/v1/chat', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${login.token}` },
-        body: JSON.stringify({
-          user_message: turn,
-          session_id: sessionId,
-          client_user_message_id: `${sessionId}-u-${index}`,
-          client_message_id: `${sessionId}-a-${index}`,
-        }),
-      });
+      let payload;
+      try {
+        payload = await request('/v1/chat', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${login.token}` },
+          body: JSON.stringify({
+            user_message: turn,
+            session_id: sessionId,
+            client_user_message_id: `${sessionId}-u-${index}`,
+            client_message_id: `${sessionId}-a-${index}`,
+          }),
+        });
+      } catch (error) {
+        results.push({
+          profile: profile.label,
+          turn: index + 1,
+          prompt: turn,
+          intent: null,
+          pending_writes_count: null,
+          issues: [`request_error:${error.message}`],
+          preview: '',
+        });
+        console.log(`[${profile.label}] ${index + 1}/${selectedTurns.length} ERROR ${turn}`);
+        continue;
+      }
       const checked = assertResponse(profile, turn, payload);
       results.push({
         profile: profile.label,
