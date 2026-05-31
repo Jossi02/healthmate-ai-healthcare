@@ -14,15 +14,12 @@ from app.core.diet_safety_rules import (
     COMMON_SODIUM_HEAVY_TERMS,
     COMMON_SUGAR_HEAVY_TERMS,
 )
+from app.core.intents import INTENT_APPROVAL, INTENT_MODIFY, INTENT_PLAN
 from app.core.profile_constraints import as_text_list, profile_bmi_value, profile_weight_value
 from app.graph.deps import NodeDeps
 from app.schemas.llm_responses import AnswerValidationJudgeResponse
 from app.schemas.state import GraphState
 from app.services.home_recommendations import kst_today_iso
-
-INTENT_PLAN = "계획"
-INTENT_MODIFY = "수정"
-INTENT_APPROVAL = "계획_승인"
 
 _MAX_VALIDATION_RETRIES = 1
 _PLAN_RATIONALE_PHRASES = (
@@ -987,6 +984,18 @@ def _validate_generation_quality_flags(
             "페르소나 말투가 proposed_plan 데이터에 섞였습니다.",
             retry=True,
             detail={"hits": persona_hits[:6]},
+        )
+    style_violations = flags.get("persona_style_violations") or []
+    for violation in style_violations[:4]:
+        if not isinstance(violation, dict):
+            continue
+        _issue(
+            issues,
+            str(violation.get("severity") or "warning"),
+            str(violation.get("code") or "persona_style_violation"),
+            "Persona style guard reported a response-shape violation.",
+            retry=False,
+            detail=violation,
         )
 
 

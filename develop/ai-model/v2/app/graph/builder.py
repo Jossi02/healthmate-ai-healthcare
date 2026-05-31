@@ -4,6 +4,19 @@ from __future__ import annotations
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 
+from app.core.intents import (
+    INTENT_APPROVAL,
+    INTENT_CARE,
+    INTENT_CASUAL,
+    INTENT_FALLBACK,
+    INTENT_HOME_RECOMMENDATION,
+    INTENT_INFO,
+    INTENT_MODIFY,
+    INTENT_PLAN,
+    INTENT_RECORD,
+    INTENT_SAFETY,
+    normalize_intent,
+)
 from app.graph.deps import NodeDeps
 from app.graph.nodes.care import make_care_node
 from app.graph.nodes.context_resolver import make_context_resolver_node
@@ -23,18 +36,18 @@ from app.schemas.state import GraphState
 
 
 def route_intent(state: GraphState) -> str:
-    intent = state.get("intent", "fallback")
+    intent = normalize_intent(state.get("intent", INTENT_FALLBACK))
     mapping = {
-        "casual": "generate",
-        "안전경고": "safety",
-        "fallback": "fallback",
-        "공감_케어": "care",
-        "기록": "record",
-        "계획": "retrieval_decision",
-        "수정": "modify_load",
-        "정보": "retrieval_decision",
-        "계획_승인": "generate",
-        "home_recommendation": "generate",
+        INTENT_CASUAL: "generate",
+        INTENT_SAFETY: "safety",
+        INTENT_FALLBACK: "fallback",
+        INTENT_CARE: "care",
+        INTENT_RECORD: "record",
+        INTENT_PLAN: "retrieval_decision",
+        INTENT_MODIFY: "modify_load",
+        INTENT_INFO: "retrieval_decision",
+        INTENT_APPROVAL: "generate",
+        INTENT_HOME_RECOMMENDATION: "generate",
     }
     return mapping.get(intent, "fallback")
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 import tempfile
 from datetime import date, timedelta
@@ -12,6 +13,7 @@ if str(ROOT) not in sys.path:
 
 from app.core.conversation_state import infer_domain
 from app.core.draft_contract import normalize_draft_components, render_draft_preview
+from app.core.intents import INTENT_MODIFY, INTENT_PLAN, normalize_intent
 from app.core.was_outbox import (
     enqueue_was_outbox,
     mark_was_outbox_succeeded,
@@ -29,11 +31,13 @@ from app.graph.nodes.generate import (
     _normalize_plan_core_message,
     _normalize_plan_approval_question,
     _plan_contract_needs_fallback,
+    _persona_style_report,
     _render_plan_preview_from_items,
     _resolve_proposed_plan_type,
     _response_render_state,
     _workout_item_category,
 )
+from app.graph.builder import route_intent
 from app.graph.nodes.context_resolver import _resolve_context
 from app.graph.nodes.answer_validator import (
     _requires_external_fail_closed,
@@ -43,14 +47,14 @@ from app.graph.nodes.answer_validator import (
     _validate_state,
     _validation_quality_dimensions,
 )
-from app.services.home_recommendations import kst_today_iso
+from app.services.home_recommendations import build_home_recommendation_prompt_input, kst_today_iso
 from app.graph.nodes.finalize import _looks_like_mojibake, _safe_response_from_state
 from app.graph.nodes.preprocess import (
     _mark_pending_write_failed,
     _normalize_pending_writes,
     _pending_write_exhausted,
 )
-from app.graph.nodes.search import _build_retrieval_spec
+from app.graph.nodes.search import _build_retrieval_spec, _weak_external_should_fail_closed
 from app.schemas.was import to_plan_create_batches
 from app.services.home_recommendations import normalize_home_recommendations, validate_home_recommendation_profile_fit
 from app.schemas.home import (
@@ -1004,6 +1008,78 @@ def test_explicit_new_domain_ignores_active_proposal_context() -> None:
     assert_true(resolution["resolved_domain"] == "diet", "explicit diet request should keep diet domain")
 
 
+def test_home_recommendation_prompt_covers_profile_edges() -> None:
+    prompt = build_home_recommendation_prompt_input(
+        date="2026-06-01",
+        scope="diet",
+        user_profile={
+            "age": 42,
+            "activityLevel": "low",
+            "fitness_level": "beginner",
+            "frequency_per_week": 2,
+            "foods_to_avoid": ["grapefruit"],
+            "otherAllergy": "sesame",
+            "conditions": ["hypertension"],
+            "pain_points": ["knee"],
+            "personality": "quiet solo",
+            "selected_ai_persona": "daily_manager",
+        },
+        today_plan=[],
+    )
+    profile_json = prompt.split("[USER_PROFILE]\n", 1)[1].split("\n\n", 1)[0]
+    profile = json.loads(profile_json)
+    assert_true(profile["activityLevel"] == "low", "home prompt should retain activityLevel")
+    assert_true(profile["activity_level"] == "low", "home prompt should expose normalized activity_level")
+    assert_true(profile["exercise_level"] == "beginner", "home prompt should normalize fitness_level")
+    assert_true(profile["exercise_frequency"] == 2, "home prompt should normalize frequency_per_week")
+    assert_true(profile["foods_to_avoid"] == ["grapefruit"], "home prompt should include foods_to_avoid")
+    assert_true(profile["otherAllergy"] == "sesame", "home prompt should include otherAllergy")
+    assert_true(profile["conditions"] == ["hypertension"], "home prompt should include conditions")
+    assert_true(profile["selected_ai_persona"] == "daily_manager", "home prompt should include selected persona")
+
+
+def test_intent_routing_uses_canonical_aliases() -> None:
+    assert_true(normalize_intent("create") == INTENT_PLAN, "create alias should normalize to plan intent")
+    assert_true(normalize_intent("update-plan") == INTENT_MODIFY, "hyphenated modify alias should normalize")
+    assert_true(route_intent({"intent": "create"}) == "retrieval_decision", "route should accept normalized aliases")
+
+
+def test_strict_weak_rag_fails_closed() -> None:
+    state = {
+        "user_id": "strict-rag",
+        "user_message": "diet plan for kidney disease",
+        "intent": INTENT_PLAN,
+        "action_intent": "create",
+        "domain": "diet",
+        "user_profile": {"medical_conditions": ["kidney disease"]},
+        "profile_constraints": {
+            "retrieval_constraints": ["kidney_disease"],
+            "retrieval_critical_constraints": ["kidney_disease"],
+        },
+        "search_targets": ["vdb_external"],
+    }
+    spec = _build_retrieval_spec(state, state["user_message"], ["vdb_external"])
+    assert_true(_weak_external_should_fail_closed(state, spec, "weak"), "strict weak RAG should fail closed")
+
+    low_risk_state = {
+        **state,
+        "user_profile": {"goal": "fitness"},
+        "profile_constraints": {"retrieval_constraints": ["low_time"], "retrieval_critical_constraints": []},
+    }
+    low_risk_spec = _build_retrieval_spec(low_risk_state, "quick workout", ["vdb_external"])
+    assert_true(
+        not _weak_external_should_fail_closed(low_risk_state, low_risk_spec, "weak"),
+        "low-risk weak RAG should not fail closed",
+    )
+
+
+def test_persona_style_report_flags_plan_shape() -> None:
+    long_plan = "\n".join(f"- item {index}" for index in range(22))
+    report = _persona_style_report(long_plan, {"intent": INTENT_PLAN}, "cheer_sis")
+    codes = {violation["code"] for violation in report["violations"]}
+    assert_true("persona_plan_response_too_many_lines" in codes, "persona style report should flag long plan shape")
+
+
 def main() -> None:
     tests = [
         test_stretching_beats_cardio_label,
@@ -1039,6 +1115,10 @@ def main() -> None:
         test_diet_constraint_conflict_triggers_safe_fallback,
         test_validator_blocks_medical_diet_synonyms,
         test_explicit_new_domain_ignores_active_proposal_context,
+        test_home_recommendation_prompt_covers_profile_edges,
+        test_intent_routing_uses_canonical_aliases,
+        test_strict_weak_rag_fails_closed,
+        test_persona_style_report_flags_plan_shape,
     ]
     for test in tests:
         test()

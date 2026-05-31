@@ -8,10 +8,21 @@ import time
 from datetime import date, timedelta
 
 from app.core.draft_contract import normalize_draft_components, render_draft_preview
+from app.core.intents import (
+    INTENT_APPROVAL,
+    INTENT_CARE,
+    INTENT_CASUAL,
+    INTENT_INFO,
+    INTENT_MODIFY,
+    INTENT_PLAN,
+    INTENT_RECORD,
+    INTENT_SAFETY,
+)
 from app.core.persona_registry import resolve_persona
 from app.core.persona_style import (
     apply_persona_signature,
     dedupe_repeated_sentences,
+    looks_mostly_english,
     normalize_plan_flow_preview,
     selected_persona_id,
     strip_plan_flow_preamble,
@@ -31,15 +42,6 @@ from app.services.home_recommendations import (
 )
 
 logger = logging.getLogger(__name__)
-
-INTENT_CARE = "공감_케어"
-INTENT_PLAN = "계획"
-INTENT_MODIFY = "수정"
-INTENT_APPROVAL = "계획_승인"
-INTENT_RECORD = "기록"
-INTENT_INFO = "정보"
-INTENT_SAFETY = "안전경고"
-INTENT_CASUAL = "casual"
 
 _MENTAL_HEALTH_SAFETY_PATTERNS = re.compile(
     r"자해|자살|죽고\s*싶|극단적\s*선택|충동|해치고\s*싶|살고\s*싶지",
@@ -607,8 +609,13 @@ def _finalize_persona_aware_response(deps: NodeDeps, state: GraphState, result: 
         draft_response,
         final_response,
     )
+    style_report = _persona_style_report(final_response, render_state, resolved_persona_id)
     mutation_report["plan_persona_marker_hit_count"] = len(persona_marker_hits)
     mutation_report["plan_persona_marker_hits"] = persona_marker_hits[:6]
+    if style_report["violations"]:
+        quality_flags["persona_style_violations"] = style_report["violations"]
+    else:
+        quality_flags.pop("persona_style_violations", None)
 
     payload["draft_components"] = draft_components
     payload["draft_response"] = draft_response
@@ -627,6 +634,7 @@ def _finalize_persona_aware_response(deps: NodeDeps, state: GraphState, result: 
             "response_length": len(final_response),
             "draft_response_length": len(draft_response),
             "plan_data_unchanged": mutation_report["plan_data_unchanged"],
+            "persona_style_violation_count": len(style_report["violations"]),
         },
     )
     deps.trace.record_current_event(
@@ -643,7 +651,7 @@ def _finalize_persona_aware_response(deps: NodeDeps, state: GraphState, result: 
         stage="generate.persona_mutation_check",
         status="ok" if mutation_report["plan_data_unchanged"] else "warn",
         title="Persona mutation guard checked",
-        detail=mutation_report,
+        detail={**mutation_report, "style_report": style_report},
     )
     return payload
 
@@ -708,6 +716,55 @@ def _persona_mutation_report(
         "draft_response_length": len(draft_response or ""),
         "final_response_length": len(final_response or ""),
         "length_delta": len(final_response or "") - len(draft_response or ""),
+    }
+
+
+def _persona_style_report(final_response: str, state: GraphState, persona_id: str) -> dict[str, object]:
+    text = str(final_response or "").strip()
+    intent = str(state.get("intent") or "")
+    lines = [line for line in text.splitlines() if line.strip()]
+    violations: list[dict[str, object]] = []
+
+    if intent in {INTENT_PLAN, INTENT_MODIFY} and len(text) > 900:
+        violations.append(
+            {
+                "code": "persona_plan_response_too_long",
+                "severity": "warning",
+                "length": len(text),
+                "limit": 900,
+            }
+        )
+    if intent == INTENT_APPROVAL and len(text) > 280:
+        violations.append(
+            {
+                "code": "persona_approval_response_too_long",
+                "severity": "warning",
+                "length": len(text),
+                "limit": 280,
+            }
+        )
+    if intent in {INTENT_PLAN, INTENT_MODIFY, INTENT_APPROVAL} and len(lines) > 18:
+        violations.append(
+            {
+                "code": "persona_plan_response_too_many_lines",
+                "severity": "warning",
+                "line_count": len(lines),
+                "limit": 18,
+            }
+        )
+    if looks_mostly_english(text):
+        violations.append(
+            {
+                "code": "persona_response_not_korean_dominant",
+                "severity": "warning",
+            }
+        )
+
+    return {
+        "persona_id": persona_id,
+        "response_length": len(text),
+        "line_count": len(lines),
+        "violations": violations,
     }
 
 
@@ -857,6 +914,21 @@ async def _generate_home_recommendations(
         normalized,
         user_profile=effective_profile,
     )
+    deps.trace.record_current_event(
+        stage="home_recommendation.profile_guard",
+        status="warn" if profile_fit_issues else "ok",
+        title="Home recommendation profile fit checked",
+        detail={
+            "scope": scope,
+            "profile_keys": sorted(
+                key
+                for key, value in effective_profile.items()
+                if value not in (None, "", [], {}, "[]")
+            ),
+            "issue_count": len(profile_fit_issues),
+            "issues": profile_fit_issues[:8],
+        },
+    )
     if profile_fit_issues:
         deps.trace.record_current_alert(
             severity="warning",
@@ -873,6 +945,16 @@ async def _generate_home_recommendations(
         profile_fit_issues = validate_home_recommendation_profile_fit(
             normalized,
             user_profile=effective_profile,
+        )
+        deps.trace.record_current_event(
+            stage="home_recommendation.profile_guard.recheck",
+            status="warn" if profile_fit_issues else "ok",
+            title="Home recommendation deterministic fallback rechecked",
+            detail={
+                "scope": scope,
+                "issue_count": len(profile_fit_issues),
+                "issues": profile_fit_issues[:8],
+            },
         )
 
     deps.trace.record_current_event(

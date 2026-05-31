@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 
 from app.core.conversation_state import infer_domain
+from app.core.intents import INTENT_CARE, INTENT_INFO, INTENT_MODIFY, INTENT_PLAN
 from app.core.profile_constraints import (
     query_mentions_specialized_topic,
     query_needs_evidence,
@@ -11,11 +12,6 @@ from app.core.profile_constraints import (
 )
 from app.graph.deps import NodeDeps
 from app.schemas.state import GraphState
-
-INTENT_CARE = "공감_케어"
-INTENT_PLAN = "계획"
-INTENT_MODIFY = "수정"
-INTENT_INFO = "정보"
 
 _INFO_WEB_KEYWORDS = ("최신", "최근", "요즘", "뉴스", "업데이트")
 _VALID_TARGETS = {"vdb_memory", "vdb_user_important", "vdb_external", "web"}

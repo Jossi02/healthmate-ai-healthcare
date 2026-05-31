@@ -7,8 +7,8 @@ import hashlib
 from typing import Any, TypedDict
 
 from app.core.exceptions import ExternalServiceError
+from app.core.intents import INTENT_APPROVAL, INTENT_RECORD
 from app.graph.deps import NodeDeps
-from app.graph.nodes.intent import INTENT_APPROVAL, INTENT_RECORD
 from app.schemas.llm_responses import PlanExtractResponse, PlanModifyResponse
 from app.schemas.state import PendingWrite
 from app.schemas.was import to_plan_create_batches, to_plan_update_batches

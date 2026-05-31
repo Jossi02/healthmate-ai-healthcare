@@ -106,6 +106,7 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
     validation_dimensions = validation_report.get("quality_dimensions") or {}
     evidence_status = validation_dimensions.get("evidence_status")
     semantic_judge = validation_dimensions.get("semantic_judge") or validation_report.get("semantic_judge") or {}
+    generation_quality_flags = state_summary.get("generation_quality_flags") or {}
 
     issues: list[dict[str, Any]] = []
 
@@ -212,6 +213,36 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
             message="Plan semantic observer reported non-blocking fit concerns.",
             penalty=0.08,
         )
+    if generation_quality_flags.get("persona_style_violations"):
+        _issue(
+            issues,
+            severity="warning",
+            code="persona_style_guard_warning",
+            message="Persona style guard reported response-shape warnings.",
+            penalty=0.06,
+        )
+    if trace.get("kind") == "home_recommendation":
+        home_guard_events = [
+            event
+            for event in trace.get("events") or []
+            if str(event.get("stage") or "").startswith("home_recommendation.profile_guard")
+        ]
+        if not home_guard_events:
+            _issue(
+                issues,
+                severity="warning",
+                code="home_profile_guard_missing",
+                message="Home recommendation trace did not include a profile guard event.",
+                penalty=0.15,
+            )
+        elif any(event.get("status") == "warn" for event in home_guard_events):
+            _issue(
+                issues,
+                severity="warning",
+                code="home_profile_guard_repaired",
+                message="Home recommendation profile guard repaired at least one slot.",
+                penalty=0.06,
+            )
 
     issue_penalty = sum(float(item["penalty"]) for item in issues)
     response_completeness = _clamp_score(
@@ -234,7 +265,7 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
     safety = _clamp_score(0.72 if any(item["code"] == "safety_notes_missing" for item in issues) else 0.95)
     actionability = _clamp_score(
         0.95
-        if proposed_plan_count or action_intent in {"record", "approval", "safety"}
+        if proposed_plan_count or action_intent in {"record", "approval", "safety", "home_recommendation"} or trace.get("kind") == "home_recommendation"
         else 0.86
         if draft_components.get("suggested_action")
         else 0.72

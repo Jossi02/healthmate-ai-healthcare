@@ -9,6 +9,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from app.core.conversation_state import infer_domain
+from app.core.intents import INTENT_CARE, INTENT_INFO, INTENT_MODIFY, INTENT_PLAN
 from app.core.profile_constraints import (
     build_profile_constraint_set,
     query_mentions_specialized_topic as _shared_query_mentions_specialized_topic,
@@ -21,11 +22,6 @@ from app.schemas.llm_responses import QueryRegenResponse, SearchEvalResponse
 from app.schemas.state import GraphState
 
 logger = logging.getLogger(__name__)
-
-INTENT_CARE = "공감_케어"
-INTENT_PLAN = "계획"
-INTENT_MODIFY = "수정"
-INTENT_INFO = "정보"
 
 TOP_K = 8
 EXTERNAL_FETCH_TOP_K = 30
@@ -44,6 +40,13 @@ _MAX_RETRY_BY_INTENT = {
     INTENT_INFO: 0,
     INTENT_PLAN: 0,
     INTENT_MODIFY: 0,
+}
+_STRICT_FAIL_CLOSED_CONSTRAINTS = {
+    "kidney_disease",
+    "gout",
+    "pregnancy",
+    "eating_disorder_risk",
+    "extreme_diet_risk",
 }
 _INFO_WEB_KEYWORDS = (
     "최신",
@@ -158,6 +161,22 @@ def make_search_node(deps: NodeDeps):
         merged_results = _rerank_external_results(merged_results, spec)
         merged_results = merged_results[:TOP_K]
         search_quality = _search_quality_from_results(spec, merged_results, post_filter_quality)
+        if _weak_external_should_fail_closed(state, spec, search_quality):
+            deps.trace.record_current_alert(
+                severity="warning",
+                message="Weak external retrieval rejected for strict constrained request",
+                detail={
+                    "domain": spec.domain,
+                    "critical_constraints": spec.critical_constraints,
+                    "post_filter_quality": post_filter_quality,
+                    "top_results": _preview_results(merged_results),
+                },
+            )
+            return {
+                "search_results": [],
+                "search_quality": "degraded",
+                "search_retry_count": retry_count,
+            }
 
         if _should_skip_eval(state, merged_results):
             deps.trace.record_current_event(
@@ -798,6 +817,18 @@ def _search_quality_from_results(spec: RetrievalSpec, results: list[dict], post_
     if critical and not any(critical.issubset(set(_metadata_values(result.get("constraints")))) for result in external):
         return "weak"
     return "ok"
+
+
+def _weak_external_should_fail_closed(state: GraphState, spec: RetrievalSpec, search_quality: str) -> bool:
+    if search_quality != "weak":
+        return False
+    if "vdb_external" not in spec.targets:
+        return False
+    action_intent = str(state.get("action_intent") or "")
+    if action_intent not in {"create", "modify"}:
+        return False
+    strict_constraints = set(spec.critical_constraints) & _STRICT_FAIL_CLOSED_CONSTRAINTS
+    return bool(strict_constraints)
 
 
 def _evidence_quality_bonus(result: dict) -> int:
