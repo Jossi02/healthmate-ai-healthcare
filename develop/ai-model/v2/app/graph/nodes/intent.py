@@ -8,23 +8,25 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.core.conversation_state import infer_domain
+from app.core.intents import (
+    INTENT_APPROVAL,
+    INTENT_CARE,
+    INTENT_CASUAL,
+    INTENT_FALLBACK,
+    INTENT_HOME_RECOMMENDATION,
+    INTENT_INFO,
+    INTENT_MODIFY,
+    INTENT_PLAN,
+    INTENT_RECORD,
+    INTENT_SAFETY,
+    normalize_intent,
+)
 from app.core.prompt_loader import load_prompt
 from app.graph.deps import NodeDeps
 from app.schemas.intent import IntentOutput
 from app.schemas.state import GraphState
 
 logger = logging.getLogger(__name__)
-
-INTENT_CARE = "공감_케어"
-INTENT_PLAN = "계획"
-INTENT_MODIFY = "수정"
-INTENT_APPROVAL = "계획_승인"
-INTENT_RECORD = "기록"
-INTENT_INFO = "정보"
-INTENT_FALLBACK = "fallback"
-INTENT_CASUAL = "casual"
-INTENT_SAFETY = "안전경고"
-INTENT_HOME_RECOMMENDATION = "home_recommendation"
 
 _SAFETY_PATTERNS = re.compile(
     r"자해|자살|죽고\s*싶|살고\s*싶지|살기\s*싫|극단적\s*선택|위험|실행|마약|과다\s*복용|과복용|"
@@ -1048,6 +1050,7 @@ def _support_mode(
 
 
 def _coerce_llm_intent(intent: str, state: GraphState, routing_message: str) -> str:
+    intent = normalize_intent(intent)
     if intent == INTENT_APPROVAL and not _has_pending_plan_confirmation_v2(state):
         if _looks_like_modify_request(routing_message):
             return INTENT_MODIFY

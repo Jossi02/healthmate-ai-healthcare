@@ -26,6 +26,54 @@ KST = ZoneInfo("Asia/Seoul")
 WORKOUT_SLOTS = ("upper_body", "lower_body", "cardio", "stretching")
 DIET_SLOTS = ("breakfast", "lunch", "dinner")
 PROMPT_PATH = "home/recommendations.md"
+PROFILE_PROMPT_KEYS = (
+    "age",
+    "gender",
+    "sex",
+    "height",
+    "height_cm",
+    "weight",
+    "body_weight",
+    "activity_level",
+    "activityLevel",
+    "exercise_level",
+    "fitness_level",
+    "exercise_frequency",
+    "workout_frequency",
+    "frequency_per_week",
+    "weekly_workouts",
+    "target_workouts_per_week",
+    "preferred_workout_days",
+    "goal",
+    "primary_goal",
+    "diet_goal",
+    "diet_type",
+    "lifestyle",
+    "schedule",
+    "available_time_minutes",
+    "injury_history",
+    "medical_history",
+    "medical_conditions",
+    "conditions",
+    "pain_points",
+    "allergies",
+    "allergy",
+    "otherAllergy",
+    "other_allergy",
+    "dietary_restrictions",
+    "dietary_preferences",
+    "foods_to_avoid",
+    "context_notes",
+    "social_orientation",
+    "personality_axis",
+    "personality_type",
+    "personality",
+    "exercise_style",
+    "introversion_extroversion",
+    "mbti",
+    "emotional_context",
+    "selected_ai_persona",
+)
 
 _WORKOUT_FALLBACKS = {
     "upper_body": (
@@ -218,26 +266,7 @@ def build_home_recommendation_prompt_input(
             if slot_name in diet_by_slot:
                 diet_by_slot[slot_name].append(detail)
 
-    profile = {
-        "goal": user_profile.get("goal"),
-        "activity_level": user_profile.get("activity_level"),
-        "diet_type": user_profile.get("diet_type"),
-        "allergies": user_profile.get("allergies") or [],
-        "injury_history": user_profile.get("injury_history") or [],
-        "age": user_profile.get("age"),
-        "gender": user_profile.get("gender"),
-        "weight": user_profile.get("weight"),
-        "height": user_profile.get("height"),
-        "exercise_level": user_profile.get("exercise_level") or user_profile.get("fitness_level"),
-        "exercise_frequency": user_profile.get("exercise_frequency") or user_profile.get("workout_frequency"),
-        "available_time_minutes": user_profile.get("available_time_minutes"),
-        "social_orientation": user_profile.get("social_orientation")
-        or user_profile.get("personality_axis")
-        or user_profile.get("personality_type")
-        or user_profile.get("exercise_style"),
-        "primary_goal": user_profile.get("primary_goal"),
-        "diet_goal": user_profile.get("diet_goal"),
-    }
+    profile = _home_profile_prompt_payload(user_profile)
 
     recent = recent_recommendations or {}
     recent_workout = recent.get("workout") or {}
@@ -256,6 +285,43 @@ def build_home_recommendation_prompt_input(
             f"[RECENT_DIET_RECOMMENDATIONS]\n{json.dumps(recent_diet, ensure_ascii=False)}",
         ]
     )
+
+
+def _home_profile_prompt_payload(user_profile: dict | None) -> dict[str, object]:
+    profile = user_profile or {}
+    payload: dict[str, object] = {}
+    for key in PROFILE_PROMPT_KEYS:
+        value = profile.get(key)
+        if value in (None, "", [], {}, "[]"):
+            continue
+        payload[key] = value
+
+    if "activity_level" not in payload and profile.get("activityLevel"):
+        payload["activity_level"] = profile["activityLevel"]
+    if "exercise_level" not in payload and profile.get("fitness_level"):
+        payload["exercise_level"] = profile["fitness_level"]
+    if "exercise_frequency" not in payload:
+        frequency = (
+            profile.get("workout_frequency")
+            or profile.get("frequency_per_week")
+            or profile.get("weekly_workouts")
+            or profile.get("target_workouts_per_week")
+        )
+        if frequency not in (None, "", [], {}, "[]"):
+            payload["exercise_frequency"] = frequency
+
+    social_orientation = (
+        profile.get("social_orientation")
+        or profile.get("personality_axis")
+        or profile.get("personality_type")
+        or profile.get("personality")
+        or profile.get("exercise_style")
+        or profile.get("introversion_extroversion")
+    )
+    if social_orientation and "social_orientation" not in payload:
+        payload["social_orientation"] = social_orientation
+
+    return payload
 
 
 def normalize_home_recommendations(

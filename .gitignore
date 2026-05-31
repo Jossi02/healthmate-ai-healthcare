@@ -18,6 +18,7 @@ test-results/
 playwright-report/
 **/playwright-report/
 scratch_pw/reports/
+scratch_pw/
 
 # Python/runtime caches
 __pycache__/
@@ -28,6 +29,22 @@ __pycache__/
 # Local deploy bundles and scratch packages
 *.tar.gz
 *.tgz
+develop/backend-api/supabase/.temp/
+
+# Local generated audit/report artifacts
+develop/ai-model/v2/docs/quality/*_report.json
+develop/ai-model/v2/docs/quality/*_report.md
+docs/ai_memory_rag_flow.*
+docs/ai_model_*_flow.*
+docs/ai_model_*_architecture.*
+docs/ai_model_intent_search_routing.*
+docs/ai_model_node_workflow.*
+docs/ai_model_request_response_sequence.*
+docs/langgraph_full_feature_diagram.*
+docs/system_architecture_3nodes.*
+docs/code_change_summary.md
+docs/session_handoff_*.md
+docs/testing_strategy.md
 
 # Local tool caches
 .firecrawl/

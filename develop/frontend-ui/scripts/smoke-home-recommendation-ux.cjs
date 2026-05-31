@@ -2,6 +2,8 @@
 const { createRequire } = require('module');
 
 const requireFromHere = createRequire(__filename);
+const PLAN_UPDATE_STORAGE_KEY = 'capstone.planUpdates.v1';
+const HOME_HIGHLIGHT_STORAGE_KEY = 'capstone.homeRecommendationHighlights.v1';
 
 function loadPlaywright() {
   try {
@@ -32,11 +34,8 @@ function parseArg(name, fallback) {
   return fallback;
 }
 
-async function main() {
-  const { chromium } = loadPlaywright();
-  const baseUrl = parseArg('--url', process.env.SMOKE_BASE_URL || 'http://localhost:3100');
-  const today = kstDate();
-  const user = {
+function seededUser() {
+  return {
     user_id: 'home-ux-smoke-user',
     login_id: 'home-ux-smoke',
     nickname: 'Demo',
@@ -51,25 +50,38 @@ async function main() {
     conditions: [],
     selected_ai_persona: 'cheer_sis',
   };
-  const calendar = { [today]: { exercises: [], meals: [] } };
-  let nextItemId = 101;
-  let addPostCount = 0;
+}
 
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+function emptyCalendar(today) {
+  return { [today]: { exercises: [], meals: [] } };
+}
 
-  await page.addInitScript(
-    ({ seededUser }) => {
+async function createSeededPage(browser, viewport) {
+  const user = seededUser();
+  const context = await browser.newContext({ viewport });
+  await context.addInitScript(
+    ({ seededUser: browserUser, planKey, homeKey }) => {
       localStorage.setItem('healthAppToken', 'home-ux-smoke-token');
-      localStorage.setItem('healthAppUser', JSON.stringify(seededUser));
+      localStorage.setItem('healthAppUser', JSON.stringify(browserUser));
       if (!localStorage.getItem('__homeUxSmokeSeeded')) {
-        localStorage.removeItem('capstone.planUpdates.v1');
-        localStorage.removeItem('capstone.homeRecommendationHighlights.v1');
+        localStorage.removeItem(planKey);
+        localStorage.removeItem(homeKey);
         localStorage.setItem('__homeUxSmokeSeeded', '1');
       }
     },
-    { seededUser: user }
+    { seededUser: user, planKey: PLAN_UPDATE_STORAGE_KEY, homeKey: HOME_HIGHLIGHT_STORAGE_KEY }
   );
+  const page = await context.newPage();
+  return { context, page, user };
+}
+
+async function installRoutes(page, { today, user, calendar, mode = 'success' }) {
+  let nextItemId = 101;
+  let nextMealId = 201;
+  const counters = {
+    addPostCount: 0,
+    replacePostCount: 0,
+  };
 
   await page.route('**/api/v1/users/profile', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(user) })
@@ -139,7 +151,16 @@ async function main() {
   );
 
   await page.route('**/api/v1/users/exercises/recommend-add', async (route) => {
-    addPostCount += 1;
+    counters.addPostCount += 1;
+    if (mode === 'workout-fail') {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'forced smoke failure' }),
+      });
+      return;
+    }
+
     const payload = route.request().postDataJSON();
     const plan = {
       exercise_id: 10,
@@ -162,6 +183,7 @@ async function main() {
     calendar[payload.target_date] = {
       ...(calendar[payload.target_date] || { exercises: [], meals: [] }),
       exercises: [plan],
+      meals: calendar[payload.target_date]?.meals || [],
     };
     await route.fulfill({
       status: 200,
@@ -170,69 +192,231 @@ async function main() {
     });
   });
 
-  await page.route('**/api/v1/users/meals/recommend-replace', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ message: 'ok' }) })
-  );
+  await page.route('**/api/v1/users/meals/recommend-replace', async (route) => {
+    counters.replacePostCount += 1;
+    if (mode === 'meal-already-exists') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'already exists', already_exists: true }),
+      });
+      return;
+    }
 
-  await page.goto(baseUrl);
-  await page.waitForLoadState('networkidle');
+    const payload = route.request().postDataJSON();
+    const meal = {
+      meal_id: nextMealId,
+      meal_type: payload.meal_type,
+      food_name: payload.food_name,
+      calories: payload.calories,
+      is_completed: false,
+      target_date: payload.target_date,
+    };
+    nextMealId += 1;
+    calendar[payload.target_date] = {
+      ...(calendar[payload.target_date] || { exercises: [], meals: [] }),
+      exercises: calendar[payload.target_date]?.exercises || [],
+      meals: [meal],
+    };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ message: 'ok', meal }),
+    });
+  });
 
-  const recommendationButtons = page.locator('button[aria-label]');
-  const recommendationButtonCount = await recommendationButtons.count();
-  if (recommendationButtonCount < 7) {
-    throw new Error(`Expected recommendation buttons to render, got ${recommendationButtonCount}`);
-  }
+  return counters;
+}
 
-  const firstWorkoutButton = recommendationButtons.nth(0);
-  await firstWorkoutButton.click();
+async function clickRecommendationAndConfirm(page, button) {
+  await button.click();
   const modalButtons = page.locator('div.fixed.inset-0 button');
   await modalButtons.last().waitFor({ state: 'visible', timeout: 5000 });
-  await Promise.all([
-    page.waitForResponse((response) =>
-      response.url().includes('/api/v1/users/exercises/recommend-add') && response.status() === 200
-    ),
-    modalButtons.last().click(),
-  ]);
-  await page.waitForLoadState('networkidle');
+  await modalButtons.last().click();
+}
 
-  if (addPostCount !== 1) {
-    throw new Error(`Expected exactly one recommendation add POST, got ${addPostCount}`);
-  }
-  if (!(await firstWorkoutButton.isDisabled())) {
-    throw new Error('Expected applied recommendation button to be disabled');
-  }
+async function storedPlanHighlights(page) {
+  return page.evaluate((key) => localStorage.getItem(key), PLAN_UPDATE_STORAGE_KEY);
+}
 
-  const storedHighlights = await page.evaluate(() => localStorage.getItem('capstone.planUpdates.v1'));
-  if (!storedHighlights || !storedHighlights.includes('workout')) {
-    throw new Error(`Expected workout plan highlight to be stored, got ${storedHighlights}`);
+async function waitForStoredHighlights(page, expectedTokens, description) {
+  try {
+    await page.waitForFunction(
+      ({ key, tokens }) => {
+        const value = localStorage.getItem(key) || '';
+        return tokens.every((token) => value.includes(token));
+      },
+      { key: PLAN_UPDATE_STORAGE_KEY, tokens: expectedTokens },
+      { timeout: 5000 }
+    );
+  } catch {
+    const current = await storedPlanHighlights(page);
+    throw new Error(`Timed out waiting for ${description}, got ${current}`);
   }
+  return storedPlanHighlights(page);
+}
 
-  await page.goto(`${baseUrl.replace(/\/$/, '')}/recommend`);
-  await page.waitForLoadState('networkidle');
-  const highlighted = page.locator('[data-plan-update-highlight="true"]');
-  const beforeHover = await highlighted.count();
-  if (beforeHover < 1) {
-    throw new Error('Expected at least one highlighted plan item on recommendation page');
-  }
-  await highlighted.nth(0).hover();
-  await page.waitForTimeout(300);
-  const afterHover = await highlighted.count();
-  if (afterHover !== 0) {
-    throw new Error(`Expected plan highlight to clear after hover, got ${afterHover}`);
-  }
+async function runSuccessScenario(browser, baseUrl, today) {
+  const { context, page, user } = await createSeededPage(browser, { width: 390, height: 844 });
+  const calendar = emptyCalendar(today);
+  const counters = await installRoutes(page, { today, user, calendar });
 
-  console.log(
-    JSON.stringify({
-      ok: true,
-      today,
+  try {
+    await page.goto(baseUrl);
+    await page.waitForLoadState('networkidle');
+
+    const recommendationButtons = page.locator('button[aria-label]');
+    const recommendationButtonCount = await recommendationButtons.count();
+    if (recommendationButtonCount < 7) {
+      throw new Error(`Expected recommendation buttons to render, got ${recommendationButtonCount}`);
+    }
+
+    const firstWorkoutButton = recommendationButtons.nth(0);
+    await Promise.all([
+      page.waitForResponse((response) =>
+        response.url().includes('/api/v1/users/exercises/recommend-add') && response.status() === 200
+      ),
+      clickRecommendationAndConfirm(page, firstWorkoutButton),
+    ]);
+    await page.waitForLoadState('networkidle');
+    if (counters.addPostCount !== 1) {
+      throw new Error(`Expected exactly one recommendation add POST, got ${counters.addPostCount}`);
+    }
+    if (!(await firstWorkoutButton.isDisabled())) {
+      throw new Error('Expected applied workout recommendation button to be disabled');
+    }
+
+    const firstDietButton = recommendationButtons.nth(4);
+    await Promise.all([
+      page.waitForResponse((response) =>
+        response.url().includes('/api/v1/users/meals/recommend-replace') && response.status() === 200
+      ),
+      clickRecommendationAndConfirm(page, firstDietButton),
+    ]);
+    await page.waitForLoadState('networkidle');
+    if (counters.replacePostCount !== 1) {
+      throw new Error(`Expected exactly one meal replace PUT, got ${counters.replacePostCount}`);
+    }
+
+    await waitForStoredHighlights(
+      page,
+      ['workout', 'diet'],
+      'workout and diet plan highlights'
+    );
+
+    await page.goto(`${baseUrl.replace(/\/$/, '')}/recommend`);
+    await page.waitForLoadState('networkidle');
+    const highlighted = page.locator('[data-plan-update-highlight="true"]');
+    const beforeHover = await highlighted.count();
+    if (beforeHover < 1) {
+      throw new Error('Expected highlighted plan items on recommendation page');
+    }
+
+    await highlighted.nth(0).hover();
+    await page.waitForTimeout(300);
+    const afterHover = await highlighted.count();
+    if (afterHover > 0) {
+      await highlighted.nth(0).click();
+      await page.waitForTimeout(300);
+    }
+    const afterTap = await highlighted.count();
+    if (afterTap !== 0) {
+      throw new Error(`Expected plan highlights to clear after hover/tap, got ${afterTap}`);
+    }
+
+    return {
       recommendationButtonCount,
-      addPostCount,
+      addPostCount: counters.addPostCount,
+      replacePostCount: counters.replacePostCount,
       beforeHover,
       afterHover,
-    })
-  );
+      afterTap,
+    };
+  } finally {
+    await context.close();
+  }
+}
 
-  await browser.close();
+async function runAlreadyExistsScenario(browser, baseUrl, today) {
+  const { context, page, user } = await createSeededPage(browser, { width: 390, height: 844 });
+  const calendar = emptyCalendar(today);
+  const counters = await installRoutes(page, { today, user, calendar, mode: 'meal-already-exists' });
+
+  try {
+    await page.goto(baseUrl);
+    await page.waitForLoadState('networkidle');
+    const firstDietButton = page.locator('button[aria-label]').nth(4);
+    await Promise.all([
+      page.waitForResponse((response) =>
+        response.url().includes('/api/v1/users/meals/recommend-replace') && response.status() === 200
+      ),
+      clickRecommendationAndConfirm(page, firstDietButton),
+    ]);
+    await page.waitForLoadState('networkidle');
+
+    const storedHighlights = await storedPlanHighlights(page);
+    if (storedHighlights && storedHighlights.includes('diet')) {
+      throw new Error(`already_exists response must not create diet highlight, got ${storedHighlights}`);
+    }
+    return { replacePostCount: counters.replacePostCount, storedHighlights };
+  } finally {
+    await context.close();
+  }
+}
+
+async function runFailureScenario(browser, baseUrl, today) {
+  const { context, page, user } = await createSeededPage(browser, { width: 430, height: 932 });
+  const calendar = emptyCalendar(today);
+  const counters = await installRoutes(page, { today, user, calendar, mode: 'workout-fail' });
+
+  try {
+    await page.goto(baseUrl);
+    await page.waitForLoadState('networkidle');
+    const firstWorkoutButton = page.locator('button[aria-label]').nth(0);
+    await Promise.all([
+      page.waitForResponse((response) =>
+        response.url().includes('/api/v1/users/exercises/recommend-add') && response.status() === 500
+      ),
+      clickRecommendationAndConfirm(page, firstWorkoutButton),
+    ]);
+    await page.waitForLoadState('networkidle');
+
+    if (await firstWorkoutButton.isDisabled()) {
+      throw new Error('Failed recommendation add must not disable the workout button');
+    }
+    const storedHighlights = await storedPlanHighlights(page);
+    if (storedHighlights && storedHighlights.includes('workout')) {
+      throw new Error(`failed add must not create workout highlight, got ${storedHighlights}`);
+    }
+    return { addPostCount: counters.addPostCount, storedHighlights };
+  } finally {
+    await context.close();
+  }
+}
+
+async function main() {
+  const { chromium } = loadPlaywright();
+  const baseUrl = parseArg('--url', process.env.SMOKE_BASE_URL || 'http://localhost:3100');
+  const today = kstDate();
+  const browser = await chromium.launch({ headless: true });
+
+  try {
+    const success = await runSuccessScenario(browser, baseUrl, today);
+    const alreadyExists = await runAlreadyExistsScenario(browser, baseUrl, today);
+    const failure = await runFailureScenario(browser, baseUrl, today);
+
+    console.log(
+      JSON.stringify({
+        ok: true,
+        today,
+        success,
+        alreadyExists,
+        failure,
+      })
+    );
+  } finally {
+    await browser.close();
+  }
 }
 
 main().catch((error) => {
