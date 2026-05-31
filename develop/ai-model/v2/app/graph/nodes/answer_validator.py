@@ -41,6 +41,35 @@ _SODIUM_HEAVY_TERMS = ("라면", "햄", "소시지", "베이컨", "짠", "나트
 _SUGAR_HEAVY_TERMS = ("설탕", "시럽", "탄산", "주스", "디저트", "케이크", "과자", "달콤")
 _MEAT_TERMS = ("닭가슴살", "닭고기", "소고기", "돼지고기", "고기", "햄", "베이컨", "연어", "참치", "생선")
 _VEGAN_CONFLICT_TERMS = (*_MEAT_TERMS, "계란", "달걀", "우유", "치즈", "요거트", "유제품")
+_KIDNEY_DISEASE_HIGH_PROTEIN_TERMS = (
+    "고단백",
+    "프로틴",
+    "단백질 쉐이크",
+    "크레아틴",
+    "닭가슴살 200",
+    "닭가슴살 2",
+    "protein shake",
+    "high protein",
+)
+_GOUT_PURINE_TERMS = ("내장", "곱창", "멸치", "정어리", "맥주", "조개", "새우", "purine", "beer")
+_PREGNANCY_RISK_TERMS = ("생선회", "회", "날달걀", "알코올", "술", "와인", "맥주", "raw fish", "raw egg", "alcohol")
+_EATING_DISORDER_RISK_TERMS = (
+    "900kcal",
+    "800kcal",
+    "단식",
+    "굶",
+    "하루 한 끼",
+    "원푸드",
+    "절식",
+    "fasting",
+)
+_STRICT_PLAN_RAG_CONSTRAINTS = {
+    "kidney_disease",
+    "gout",
+    "pregnancy",
+    "eating_disorder_risk",
+    "extreme_diet_risk",
+}
 
 _DAIRY_ALLOWED_REPLACEMENTS = (
     "콩요거트",
@@ -166,6 +195,10 @@ def _safe_diet_fallback_for_validation_failure(
         "vegan_conflict",
         "hypertension_sodium_conflict",
         "diabetes_sugar_conflict",
+        "kidney_high_protein_conflict",
+        "gout_purine_conflict",
+        "pregnancy_food_safety_conflict",
+        "eating_disorder_extreme_plan_conflict",
         "diet_plan_contains_ex_list",
         "diet_plan_missing_food_detail",
     }
@@ -227,6 +260,10 @@ def _build_safe_diet_fallback_items(state: GraphState) -> list[dict[str, Any]]:
     fish_free = _contains_any(profile_text, ("fish", "seafood", "생선", "해산물"))
     diabetes = _contains_any(profile_text, ("diabetes", "blood sugar", "glucose", "당뇨", "혈당"))
     hypertension = _contains_any(profile_text, ("hypertension", "blood pressure", "고혈압", "혈압"))
+    kidney = _contains_any(profile_text, ("kidney", "renal", "ckd", "신장", "콩팥", "만성신부전"))
+    gout = _contains_any(profile_text, ("gout", "uric acid", "통풍", "요산"))
+    pregnancy = _contains_any(profile_text, ("pregnancy", "pregnant", "임신", "임산부"))
+    eating_risk = _contains_any(profile_text, ("eating disorder", "섭식", "폭식", "절식"))
     muscle = _contains_any(profile_text, ("muscle", "strength", "근육", "근력", "증량"))
 
     breakfast_protein = "병아리콩" if plant_based or egg_free else "삶은 달걀"
@@ -248,7 +285,11 @@ def _build_safe_diet_fallback_items(state: GraphState) -> list[dict[str, Any]]:
     if hypertension:
         lunch = lunch.replace("구운 채소", "저염 구운 채소")
         dinner = dinner.replace("데친 채소", "저염 데친 채소")
-    if muscle:
+    if kidney or gout or pregnancy or eating_risk:
+        breakfast = "현미죽, 블루베리, 데친 채소"
+        lunch = "현미밥 반 공기, 구운 채소, 올리브오일 샐러드"
+        dinner = "고구마, 채소 수프, 무가당 과일 소량"
+    elif muscle:
         lunch = f"{lunch}, 삶은 병아리콩"
 
     return [
@@ -486,6 +527,8 @@ def _semantic_validation_mode(state: GraphState) -> str:
     )
     if not should_run:
         return "skip"
+    if action_intent in {"create", "modify"} and _plan_requires_strict_semantic_validation(profile_constraints):
+        return "blocking"
     if action_intent in {"create", "modify"}:
         return "observe"
     return "blocking"
@@ -501,6 +544,19 @@ def _semantic_validation_strict_required(state: GraphState) -> bool:
             or profile_constraints.get("critical_constraints")
         )
     )
+
+
+def _plan_requires_strict_semantic_validation(profile_constraints: dict[str, Any]) -> bool:
+    constraints = set(
+        [
+            *(profile_constraints.get("critical_constraints") or []),
+            *(profile_constraints.get("retrieval_critical_constraints") or []),
+            *(profile_constraints.get("hard_profile_constraints") or []),
+            *(profile_constraints.get("request_hard_constraints") or []),
+            *(profile_constraints.get("safety_risks") or []),
+        ]
+    )
+    return bool(constraints & _STRICT_PLAN_RAG_CONSTRAINTS)
 
 
 def _semantic_validation_payload(state: GraphState) -> str:
@@ -1047,6 +1103,38 @@ def _validate_profile_fit_details(
                 "비건 프로필과 충돌하는 식품이 포함되었습니다.",
                 retry=True,
             )
+        if "kidney_disease" in constraints and any(term in plan_text for term in _KIDNEY_DISEASE_HIGH_PROTEIN_TERMS):
+            _issue(
+                issues,
+                "critical",
+                "kidney_high_protein_conflict",
+                "신장 질환 제약에 비해 고단백 식단 신호가 강합니다.",
+                retry=True,
+            )
+        if "gout" in constraints and any(term in plan_text for term in _GOUT_PURINE_TERMS):
+            _issue(
+                issues,
+                "critical",
+                "gout_purine_conflict",
+                "통풍 제약과 충돌할 수 있는 고퓨린 식품이 포함되었습니다.",
+                retry=True,
+            )
+        if "pregnancy" in constraints and any(term in plan_text for term in _PREGNANCY_RISK_TERMS):
+            _issue(
+                issues,
+                "critical",
+                "pregnancy_food_safety_conflict",
+                "임신 프로필과 충돌할 수 있는 식품 안전 위험이 포함되었습니다.",
+                retry=True,
+            )
+        if "eating_disorder_risk" in constraints and any(term in plan_text for term in _EATING_DISORDER_RISK_TERMS):
+            _issue(
+                issues,
+                "critical",
+                "eating_disorder_extreme_plan_conflict",
+                "섭식 위험 프로필에 비해 제한적인 식단 표현이 포함되었습니다.",
+                retry=True,
+            )
 
     goals = set(profile_constraints.get("goals") or [])
     if proposed_plan_type == "workout" and "muscle_gain" in goals and not _contains_strength_signal(proposed_plan):
@@ -1197,6 +1285,8 @@ def _requires_external_fail_closed(state: GraphState, profile_constraints: dict[
         return False
     action_intent = state.get("action_intent")
     if action_intent in {"create", "modify"}:
+        if _plan_requires_strict_semantic_validation(profile_constraints):
+            return True
         # Demo behavior: RAG enriches constrained plans, but a temporary Pinecone
         # miss must not prevent plan proposals when deterministic profile guards
         # can still enforce allergies, injuries, diseases, time, and frequency.
@@ -1226,6 +1316,10 @@ _PROFILE_FIT_CODES = {
     "high_weight_high_impact_conflict",
     "hypertension_sodium_conflict",
     "diabetes_sugar_conflict",
+    "kidney_high_protein_conflict",
+    "gout_purine_conflict",
+    "pregnancy_food_safety_conflict",
+    "eating_disorder_extreme_plan_conflict",
     "vegetarian_conflict",
     "vegan_conflict",
 }
@@ -1262,7 +1356,11 @@ def _validation_quality_dimensions(state: GraphState, report: dict[str, Any]) ->
     if not requires_external:
         evidence_status = "not_required"
     elif search_quality == "degraded":
-        evidence_status = "degraded_fail_open" if state.get("action_intent") in {"create", "modify"} else "degraded"
+        evidence_status = (
+            "degraded"
+            if _requires_external_fail_closed(state, profile_constraints)
+            else "degraded_fail_open"
+        )
     elif not search_results:
         evidence_status = "missing"
     elif grounding_summary or search_results:

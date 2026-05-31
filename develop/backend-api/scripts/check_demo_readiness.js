@@ -97,20 +97,45 @@ async function main() {
   ];
 
   const idempotencyTable = await checkIdempotencyTable();
+  const requireDatabaseIdempotency = String(process.env.REQUIRE_IDEMPOTENCY_TABLE || '').toLowerCase() === 'true';
   const idempotencyFallbackReady = idempotencyTable.code === 'PGRST205' || idempotencyTable.code === '42P01';
+  const idempotencyMode = idempotencyTable.ok ? 'database' : 'memory_fallback';
+  const blockingIssues = [];
+  const warnings = [];
+  if (!fs.existsSync(migrationPath)) {
+    blockingIssues.push('missing_idempotency_migration_file');
+  }
+  if (!workflowText.includes('test/all')) {
+    blockingIssues.push('deploy_workflow_not_bound_to_test_all');
+  }
+  for (const check of checks) {
+    if (!check.ok) {
+      blockingIssues.push(`missing_${check.label}_keys`);
+    }
+  }
+  if (!idempotencyTable.ok && (!idempotencyFallbackReady || requireDatabaseIdempotency)) {
+    blockingIssues.push('idempotency_table_unavailable');
+  }
+  if (!idempotencyTable.ok && idempotencyFallbackReady) {
+    warnings.push(
+      'ai_was_idempotency_keys table is missing; demo can run with memory fallback, but duplicate protection resets on backend restart.'
+    );
+  }
   const result = {
-    ok:
-      checks.every((check) => check.ok)
-      && (idempotencyTable.ok || idempotencyFallbackReady)
-      && fs.existsSync(migrationPath)
-      && workflowText.includes('test/all'),
+    ok: blockingIssues.length === 0,
     current_branch: readCurrentBranch(),
     deploy_branch_configured: workflowText.includes('test/all'),
     migration_file_present: fs.existsSync(migrationPath),
     env_checks: checks,
     idempotency_table: idempotencyTable,
-    idempotency_mode: idempotencyTable.ok ? 'database' : 'memory_fallback',
+    idempotency_mode: idempotencyMode,
+    idempotency_database_required: requireDatabaseIdempotency,
     idempotency_memory_fallback: internalController.__private?.getMemoryIdempotencyStatus?.() || null,
+    blocking_issues: blockingIssues,
+    warnings,
+    idempotency_migration_hint: idempotencyTable.ok
+      ? null
+      : 'Apply develop/backend-api/supabase/migrations/20260531090000_add_ai_was_idempotency_keys.sql to Supabase, then rerun with REQUIRE_IDEMPOTENCY_TABLE=true.',
   };
 
   console.log(JSON.stringify(result, null, 2));

@@ -1830,6 +1830,7 @@ def _adjust_diet_plan_for_profile(plan: list[dict], profile: dict) -> list[dict]
         next_item = dict(item)
         detail = _sanitize_diet_detail_for_profile(str(next_item.get("detail") or "").strip(), allergies)
         detail = _adapt_diet_detail_for_profile(detail, profile)
+        detail = _sanitize_diet_detail_for_profile(detail, allergies)
         next_item["detail"] = _strip_plan_detail_explanations(detail)
         adjusted.append(next_item)
     return adjusted
@@ -1938,7 +1939,7 @@ def _sanitize_diet_detail_for_profile(detail: str, allergies: list[str]) -> str:
         )
     if any(marker in allergy_text for marker in ("계란", "egg")):
         next_detail = re.sub(r"계란|달걀|egg", "두부", next_detail, flags=re.IGNORECASE)
-    if any(marker in allergy_text for marker in ("대두", "콩 알레르기", "콩알레르기", "soy")):
+    if any(marker in allergy_text for marker in ("대두", "콩 알레르기", "콩알레르기", "콩 못", "콩못", "soy")):
         next_detail = re.sub(r"두부\s*스테이크|두부|대두|콩요거트|두유|soy", "렌틸콩볼", next_detail, flags=re.IGNORECASE)
     if any(marker in allergy_text for marker in ("밀", "글루텐", "wheat", "gluten")):
         next_detail = re.sub(r"통곡물빵|빵|파스타|밀|wheat|gluten", "고구마", next_detail, flags=re.IGNORECASE)
@@ -1988,7 +1989,7 @@ def _adapt_diet_detail_for_profile(detail: str, profile: dict) -> str:
         lower = next_detail.lower()
         if not any(marker in lower for marker in ("chicken", "두부", "콩", "렌틸", "salmon", "egg", "단백")):
             allergy_text = " ".join(_as_text_list(profile.get("allergies") or profile.get("dietary_restrictions"))).lower()
-            protein_boost = "렌틸콩볼" if any(marker in allergy_text for marker in ("대두", "콩 알레르기", "콩알레르기", "soy")) else "두부"
+            protein_boost = "렌틸콩볼" if any(marker in allergy_text for marker in ("대두", "콩 알레르기", "콩알레르기", "콩 못", "콩못", "soy")) else "두부"
             next_detail = f"{next_detail} + {protein_boost}"
 
     return next_detail
@@ -2130,6 +2131,16 @@ def _diet_plan_requires_safe_fallback(
 
     vegetarian = any(token in profile_text for token in ("vegetarian", "vegan", "채식", "비건"))
     dairy_free = any(token in profile_text for token in ("dairy", "milk", "유제품", "우유"))
+    soy_free = any(token in profile_text for token in ("soy", "대두", "콩 알레르기", "콩알레르기", "콩 못", "콩못"))
+    egg_free = any(token in profile_text for token in ("egg", "계란", "달걀"))
+    nut_free = any(token in profile_text for token in ("nut", "peanut", "견과", "땅콩"))
+    fish_free = any(token in profile_text for token in ("fish", "seafood", "생선", "해산물", "갑각류", "새우"))
+    hypertension = any(token in profile_text for token in ("hypertension", "고혈압", "혈압"))
+    diabetes = any(token in profile_text for token in ("diabetes", "glucose", "당뇨", "혈당"))
+    kidney = any(token in profile_text for token in ("kidney", "renal", "ckd", "신장", "콩팥", "만성신부전"))
+    gout = any(token in profile_text for token in ("gout", "uric acid", "통풍", "요산"))
+    pregnancy = any(token in profile_text for token in ("pregnancy", "pregnant", "임신", "임산부"))
+    eating_risk = any(token in profile_text for token in ("eating disorder", "섭식", "폭식", "절식"))
 
     if vegetarian and any(term in plan_text for term in _DIET_MEAT_CONFLICT_TERMS):
         return True
@@ -2140,6 +2151,26 @@ def _diet_plan_requires_safe_fallback(
             scrubbed = scrubbed.replace(replacement, "")
         if any(term in scrubbed for term in _DIET_DAIRY_CONFLICT_TERMS):
             return True
+    if soy_free and any(term in plan_text for term in _DIET_SOY_CONFLICT_TERMS):
+        return True
+    if egg_free and any(term in plan_text for term in _DIET_EGG_CONFLICT_TERMS):
+        return True
+    if nut_free and any(term in plan_text for term in _DIET_NUT_CONFLICT_TERMS):
+        return True
+    if fish_free and any(term in plan_text for term in _DIET_FISH_CONFLICT_TERMS):
+        return True
+    if hypertension and any(term in plan_text for term in _DIET_SODIUM_CONFLICT_TERMS):
+        return True
+    if diabetes and any(term in plan_text for term in _DIET_SUGAR_CONFLICT_TERMS):
+        return True
+    if kidney and any(term in plan_text for term in _DIET_KIDNEY_CONFLICT_TERMS):
+        return True
+    if gout and any(term in plan_text for term in _DIET_GOUT_CONFLICT_TERMS):
+        return True
+    if pregnancy and any(term in plan_text for term in _DIET_PREGNANCY_CONFLICT_TERMS):
+        return True
+    if eating_risk and any(term in plan_text for term in _DIET_EATING_RISK_CONFLICT_TERMS):
+        return True
 
     return False
 
@@ -2187,6 +2218,16 @@ _DIET_DAIRY_CONFLICT_TERMS = (
     "butter",
     "cream",
 )
+_DIET_SOY_CONFLICT_TERMS = ("두부", "두유", "대두", "콩요거트", "템페", "soy", "soybean")
+_DIET_EGG_CONFLICT_TERMS = ("계란", "달걀", "egg")
+_DIET_NUT_CONFLICT_TERMS = ("견과", "땅콩", "아몬드", "호두", "peanut", "almond", "walnut", "nut")
+_DIET_FISH_CONFLICT_TERMS = ("생선", "연어", "참치", "새우", "갑각류", "fish", "salmon", "tuna", "shrimp", "shellfish")
+_DIET_SODIUM_CONFLICT_TERMS = ("라면", "햄", "소시지", "베이컨", "젓갈", "국물", "짠", "나트륨")
+_DIET_SUGAR_CONFLICT_TERMS = ("설탕", "시럽", "탄산", "주스", "케이크", "과자", "디저트")
+_DIET_KIDNEY_CONFLICT_TERMS = ("고단백", "프로틴", "단백질 쉐이크", "크레아틴", "high protein", "protein shake")
+_DIET_GOUT_CONFLICT_TERMS = ("내장", "곱창", "멸치", "정어리", "맥주", "조개", "새우", "purine", "beer")
+_DIET_PREGNANCY_CONFLICT_TERMS = ("생선회", "회", "날달걀", "알코올", "술", "와인", "맥주", "raw fish", "raw egg", "alcohol")
+_DIET_EATING_RISK_CONFLICT_TERMS = ("900kcal", "800kcal", "단식", "굶", "하루 한 끼", "원푸드", "절식", "fasting")
 _DIET_DAIRY_ALLOWED_REPLACEMENTS = (
     "콩요거트",
     "코코넛요거트",

@@ -46,6 +46,8 @@ from app.graph.nodes.preprocess import (
 from app.schemas.was import to_plan_create_batches
 from app.services.home_recommendations import normalize_home_recommendations
 from app.schemas.home import (
+    DietRecommendationItem,
+    DietRecommendationSlots,
     HomeRecommendationResponse,
     WorkoutRecommendationItem,
     WorkoutRecommendationSlots,
@@ -184,6 +186,53 @@ def test_home_recommendation_display_bounds() -> None:
     assert_true(stretching.duration_minutes is None, "stretching should not carry cardio duration")
     assert_true(stretching.sets is not None, "stretching should use sets")
     assert_true(len(stretching.summary) <= 46, "summary should be display-bounded")
+
+
+def test_home_recommendation_replaces_profile_conflicts() -> None:
+    raw = HomeRecommendationResponse(
+        date="2026-05-18",
+        scope="diet",
+        diet=DietRecommendationSlots(
+            breakfast=DietRecommendationItem(
+                food_name="그릭요거트와 견과류",
+                summary="유제품과 견과가 들어간 아침",
+                calories=360,
+            ),
+            lunch=DietRecommendationItem(
+                food_name="두부 스테이크",
+                summary="대두 중심 점심",
+                calories=480,
+            ),
+            dinner=DietRecommendationItem(
+                food_name="닭가슴살 샐러드",
+                summary="고기 중심 저녁",
+                calories=420,
+            ),
+        ),
+    )
+    normalized = normalize_home_recommendations(
+        raw,
+        scope="diet",
+        date="2026-05-18",
+        user_profile={
+            "diet_type": "vegetarian",
+            "allergies": ["dairy", "nut", "soy"],
+        },
+    )
+    text = " ".join(
+        item.food_name
+        for item in (
+            normalized.diet.breakfast,
+            normalized.diet.lunch,
+            normalized.diet.dinner,
+        )
+        if item is not None
+    )
+
+    assert_true(
+        not any(token in text for token in ("그릭요거트", "견과", "두부", "두유", "닭가슴살")),
+        "home diet recommendations should replace LLM items that conflict with profile constraints",
+    )
 
 
 def test_plan_output_omits_constraint_exposition() -> None:
@@ -482,6 +531,70 @@ def test_demo_plan_rag_degraded_does_not_fail_closed() -> None:
     assert_true(dimensions["evidence_status"] == "degraded_fail_open", "plan RAG degradation should be tracked explicitly")
 
 
+def test_high_risk_plan_rag_degraded_fails_closed() -> None:
+    constraints = {
+        "should_use_rag": True,
+        "hard_profile_constraints": ["kidney_disease"],
+        "retrieval_critical_constraints": ["kidney_disease"],
+        "critical_constraints": ["kidney_disease"],
+    }
+    state = {
+        "action_intent": "create",
+        "retrieval_decision": {"requires_external": True},
+        "profile_constraints": constraints,
+        "search_quality": "degraded",
+    }
+
+    assert_true(
+        _requires_external_fail_closed(state, constraints),
+        "high-risk medical diet plans should not fail open when required RAG is degraded",
+    )
+    assert_true(
+        _semantic_validation_mode(
+            {
+                **state,
+                "response": "식단 플랜을 제안해요.",
+                "proposed_plan": [
+                    {"name": "점심", "detail": "현미밥과 채소", "day": kst_today_iso(), "ex_list": []}
+                ],
+            }
+        )
+        == "blocking",
+        "high-risk plan flows should use blocking semantic validation",
+    )
+
+
+def test_validator_blocks_high_risk_diet_conflicts() -> None:
+    state = {
+        "response": "식단 플랜을 제안해요.",
+        "intent": "계획",
+        "action_intent": "create",
+        "domain": "diet",
+        "needs_clarification": False,
+        "proposed_plan_type": "diet",
+        "proposed_plan": [
+            {
+                "name": "Lunch",
+                "detail": "고단백 프로틴 쉐이크와 닭가슴살 200g",
+                "day": kst_today_iso(),
+                "ex_list": [],
+            }
+        ],
+        "profile_constraints": {
+            "hard_profile_constraints": ["kidney_disease"],
+            "profile_field_coverage": {"present_count": 6},
+        },
+        "retrieval_decision": {"requires_external": False},
+        "search_quality": "ok",
+    }
+    report = _validate_state(state)
+
+    assert_true(
+        any(issue.get("code") == "kidney_high_protein_conflict" for issue in report.get("issues") or []),
+        "kidney disease profile should block obvious high-protein diet conflicts",
+    )
+
+
 def test_invalid_llm_plan_contract_triggers_fallback() -> None:
     invalid_workout = [
         {
@@ -755,6 +868,7 @@ def main() -> None:
         test_diet_profile_concrete_adaptation,
         test_plan_request_separation_and_question_copy,
         test_home_recommendation_display_bounds,
+        test_home_recommendation_replaces_profile_conflicts,
         test_plan_output_omits_constraint_exposition,
         test_diet_payload_stores_food_only,
         test_week_workout_plan_expands_from_one_day_request,
@@ -765,6 +879,8 @@ def main() -> None:
         test_month_diet_plan_expands_by_calendar_day,
         test_month_workout_plan_expands_weekly_sessions,
         test_demo_plan_rag_degraded_does_not_fail_closed,
+        test_high_risk_plan_rag_degraded_fails_closed,
+        test_validator_blocks_high_risk_diet_conflicts,
         test_invalid_llm_plan_contract_triggers_fallback,
         test_modify_without_active_plan_creates_new_proposal,
         test_demo_plan_semantic_judge_does_not_block_structured_plans,
