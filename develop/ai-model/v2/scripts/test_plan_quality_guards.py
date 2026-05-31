@@ -26,6 +26,7 @@ from app.graph.nodes.generate import (
 from app.graph.nodes.answer_validator import (
     _requires_external_fail_closed,
     _should_run_semantic_validation,
+    _validate_state,
 )
 from app.services.home_recommendations import kst_today_iso
 from app.schemas.was import to_plan_create_batches
@@ -504,6 +505,37 @@ def test_demo_plan_semantic_judge_does_not_block_structured_plans() -> None:
     )
 
 
+def test_dairy_free_replacement_is_not_allergen_conflict() -> None:
+    state = {
+        "response": "식단 플랜을 제안해요.",
+        "intent": "계획",
+        "action_intent": "create",
+        "domain": "diet",
+        "needs_clarification": False,
+        "proposed_plan_type": "diet",
+        "proposed_plan": [
+            {
+                "name": "Breakfast",
+                "detail": "무가당 콩요거트, 바나나, 견과류",
+                "day": kst_today_iso(),
+                "ex_list": [],
+            }
+        ],
+        "profile_constraints": {
+            "hard_profile_constraints": ["dairy_allergy"],
+            "profile_field_coverage": {"present_count": 6},
+        },
+        "retrieval_decision": {"requires_external": False, "should_search": False},
+        "search_quality": "ok",
+    }
+    report = _validate_state(state)
+
+    assert_true(
+        not any(issue.get("code") == "allergen_conflict" for issue in report.get("issues") or []),
+        "dairy-free substitutes such as soy yogurt should not be treated as dairy allergens",
+    )
+
+
 def main() -> None:
     tests = [
         test_stretching_beats_cardio_label,
@@ -524,6 +556,7 @@ def main() -> None:
         test_demo_plan_rag_degraded_does_not_fail_closed,
         test_invalid_llm_plan_contract_triggers_fallback,
         test_demo_plan_semantic_judge_does_not_block_structured_plans,
+        test_dairy_free_replacement_is_not_allergen_conflict,
     ]
     for test in tests:
         test()
