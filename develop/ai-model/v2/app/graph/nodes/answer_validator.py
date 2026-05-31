@@ -291,6 +291,12 @@ def _should_run_semantic_validation(state: GraphState) -> bool:
         return False
     proposed_plan = state.get("proposed_plan") or []
     action_intent = state.get("action_intent")
+    if action_intent in {"create", "modify"}:
+        # Demo behavior: deterministic validators own blocking decisions for
+        # structured plan proposals. The LLM semantic judge is useful for
+        # observability, but in production-like deploys it can over-block valid
+        # profile-safe fallback plans when RAG is weak or profile metadata is rich.
+        return False
     retrieval_decision = state.get("retrieval_decision") or {}
     profile_constraints = state.get("profile_constraints") or {}
     field_coverage = profile_constraints.get("profile_field_coverage") or {}

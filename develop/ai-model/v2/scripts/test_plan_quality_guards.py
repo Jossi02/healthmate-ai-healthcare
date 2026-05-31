@@ -23,7 +23,10 @@ from app.graph.nodes.generate import (
     _render_plan_preview_from_items,
     _workout_item_category,
 )
-from app.graph.nodes.answer_validator import _requires_external_fail_closed
+from app.graph.nodes.answer_validator import (
+    _requires_external_fail_closed,
+    _should_run_semantic_validation,
+)
 from app.services.home_recommendations import kst_today_iso
 from app.schemas.was import to_plan_create_batches
 from app.services.home_recommendations import normalize_home_recommendations
@@ -467,6 +470,40 @@ def test_invalid_llm_plan_contract_triggers_fallback() -> None:
     )
 
 
+def test_demo_plan_semantic_judge_does_not_block_structured_plans() -> None:
+    plan_state = {
+        "action_intent": "create",
+        "response": "운동 플랜을 제안해요.",
+        "proposed_plan": [
+            {
+                "name": "Light routine",
+                "detail": "Low impact",
+                "day": kst_today_iso(),
+                "ex_list": [{"exercise_name": "Walk", "duration_minutes": 20}],
+            }
+        ],
+        "profile_constraints": {
+            "hard_profile_constraints": ["knee_pain", "dairy_allergy"],
+            "profile_field_coverage": {"present_count": 8},
+        },
+        "retrieval_decision": {"requires_external": True},
+    }
+    info_state = {
+        **plan_state,
+        "action_intent": "info",
+        "proposed_plan": [],
+    }
+
+    assert_true(
+        not _should_run_semantic_validation(plan_state),
+        "structured plan flows should rely on deterministic validators instead of a blocking semantic judge",
+    )
+    assert_true(
+        _should_run_semantic_validation(info_state),
+        "non-plan specialized answers should still use the semantic judge",
+    )
+
+
 def main() -> None:
     tests = [
         test_stretching_beats_cardio_label,
@@ -486,6 +523,7 @@ def main() -> None:
         test_month_workout_plan_expands_weekly_sessions,
         test_demo_plan_rag_degraded_does_not_fail_closed,
         test_invalid_llm_plan_contract_triggers_fallback,
+        test_demo_plan_semantic_judge_does_not_block_structured_plans,
     ]
     for test in tests:
         test()

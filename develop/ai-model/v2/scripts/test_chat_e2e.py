@@ -928,12 +928,12 @@ async def run_semantic_validator_smoke() -> None:
             create = await run_request(client, semantic_user, MSG_CREATE_WORKOUT, profile_override=rich_profile)
             debug = create["debug_state"]
             report = debug["validation_report"]
-            require(report["passed"] is False, "semantic judge critical issue should block final answer")
+            require(report["passed"] is True, "plan semantic judge should not block deterministic-valid plan flows")
             require(
-                any(issue.get("code") == "semantic_profile_conflict" for issue in report.get("issues") or []),
-                "semantic judge issue should be surfaced in validation report",
+                not any(issue.get("code") == "semantic_profile_conflict" for issue in report.get("issues") or []),
+                "plan flows should skip blocking semantic judge issues",
             )
-            require(debug["proposed_plan_count"] == 0, "blocked semantic answer should not leave a proposal")
+            require(debug["proposed_plan_count"] >= 1, "semantic skip should preserve a valid proposal")
             print("[e2e-semantic-validator] 1/1 passed")
     finally:
         await checkpointer.conn.close()
