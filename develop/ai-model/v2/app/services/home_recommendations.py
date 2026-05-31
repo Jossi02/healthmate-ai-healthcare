@@ -350,6 +350,45 @@ def empty_home_recommendations(
     )
 
 
+def validate_home_recommendation_profile_fit(
+    response: HomeRecommendationResponse,
+    *,
+    user_profile: dict | None,
+) -> list[dict]:
+    issues: list[dict] = []
+    injury_tokens = _profile_tokens(user_profile, "injury_history") | _profile_tokens(user_profile, "pain_points")
+
+    for slot, item in response.workout.model_dump().items():
+        if not item:
+            continue
+        text = f"{item.get('exercise_name') or ''} {item.get('summary') or ''}"
+        if not _is_workout_candidate_safe(slot, text, injury_tokens):
+            issues.append(
+                {
+                    "severity": "critical",
+                    "code": "home_workout_profile_conflict",
+                    "slot": slot,
+                    "item": item.get("exercise_name"),
+                }
+            )
+
+    for slot, item in response.diet.model_dump().items():
+        if not item:
+            continue
+        diet_item = DietRecommendationItem(**item)
+        if _diet_item_conflicts_profile(diet_item, user_profile):
+            issues.append(
+                {
+                    "severity": "critical",
+                    "code": "home_diet_profile_conflict",
+                    "slot": slot,
+                    "item": diet_item.food_name,
+                }
+            )
+
+    return issues
+
+
 def _fill_missing_workout_slots(
     slots: WorkoutRecommendationSlots,
     *,
@@ -636,12 +675,12 @@ _HOME_DIET_ALLERGEN_TERMS = {
 }
 _HOME_MEAT_TERMS = ("닭", "닭가슴살", "소고기", "돼지고기", "고기", "연어", "참치", "생선", "새우", "chicken", "beef", "pork", "fish")
 _HOME_VEGAN_EXTRA_TERMS = ("계란", "달걀", "우유", "치즈", "요거트", "유제품", "egg", "milk", "cheese", "yogurt")
-_HOME_SODIUM_TERMS = ("라면", "햄", "소시지", "베이컨", "젓갈", "국물", "짠", "나트륨")
-_HOME_SUGAR_TERMS = ("설탕", "시럽", "탄산", "주스", "케이크", "과자", "디저트")
-_HOME_KIDNEY_TERMS = ("고단백", "프로틴", "단백질 쉐이크", "크레아틴", "high protein", "protein shake")
-_HOME_GOUT_TERMS = ("내장", "곱창", "멸치", "정어리", "맥주", "조개", "새우", "purine", "beer")
-_HOME_PREGNANCY_TERMS = ("생선회", "회", "날달걀", "알코올", "술", "와인", "맥주", "raw fish", "raw egg", "alcohol")
-_HOME_EATING_RISK_TERMS = ("900kcal", "800kcal", "단식", "굶", "하루 한 끼", "원푸드", "절식", "fasting")
+_HOME_SODIUM_TERMS = ("라면", "햄", "소시지", "베이컨", "젓갈", "국물", "짠", "나트륨", "ramen", "instant noodle", "sausage", "bacon", "processed meat", "pickle", "brine", "soup broth", "salty")
+_HOME_SUGAR_TERMS = ("설탕", "시럽", "탄산", "주스", "케이크", "과자", "디저트", "soda", "juice", "smoothie", "cookie", "candy", "sweetened")
+_HOME_KIDNEY_TERMS = ("고단백", "프로틴", "단백질 쉐이크", "크레아틴", "식사대용 쉐이크", "단백질바", "high protein", "protein shake", "protein bar", "protein powder", "whey", "casein")
+_HOME_GOUT_TERMS = ("내장", "곱창", "멸치", "정어리", "맥주", "조개", "새우", "purine", "beer", "anchovy", "sardine", "mackerel", "organ meat", "liver", "shellfish", "clam")
+_HOME_PREGNANCY_TERMS = ("생선회", "회", "날달걀", "알코올", "술", "와인", "맥주", "raw fish", "raw egg", "alcohol", "unpasteurized", "deli meat", "high mercury", "tuna steak")
+_HOME_EATING_RISK_TERMS = ("900kcal", "800kcal", "단식", "굶", "하루 한 끼", "원푸드", "절식", "fasting", "detox", "cleanse", "one meal a day", "omad", "very low calorie")
 
 
 def _diet_item_conflicts_profile(item: DietRecommendationItem, user_profile: dict | None) -> bool:

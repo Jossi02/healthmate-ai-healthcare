@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import sys
+import tempfile
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -10,6 +12,11 @@ if str(ROOT) not in sys.path:
 
 from app.core.conversation_state import infer_domain
 from app.core.draft_contract import normalize_draft_components, render_draft_preview
+from app.core.was_outbox import (
+    enqueue_was_outbox,
+    mark_was_outbox_succeeded,
+    reconcile_pending_writes_with_outbox,
+)
 from app.graph.nodes.generate import (
     _adjust_diet_plan_for_profile,
     _adjust_workout_plan_for_profile,
@@ -43,8 +50,9 @@ from app.graph.nodes.preprocess import (
     _normalize_pending_writes,
     _pending_write_exhausted,
 )
+from app.graph.nodes.search import _build_retrieval_spec
 from app.schemas.was import to_plan_create_batches
-from app.services.home_recommendations import normalize_home_recommendations
+from app.services.home_recommendations import normalize_home_recommendations, validate_home_recommendation_profile_fit
 from app.schemas.home import (
     DietRecommendationItem,
     DietRecommendationSlots,
@@ -167,6 +175,24 @@ def test_plan_request_separation_and_question_copy() -> None:
     assert_true(components["approval_question"] == "이 식단 플랜으로 작성할까요?", "plan confirmation copy should use 작성할까요")
 
 
+def test_retrieval_goal_aliases_feed_external_filter() -> None:
+    spec = _build_retrieval_spec(
+        {
+            "user_id": "goal-alias-test",
+            "user_message": "diet plan for weight loss",
+            "intent": "plan",
+            "action_intent": "create",
+            "domain": "diet",
+            "user_profile": {"age": 17, "goal": "weight_loss"},
+            "search_targets": [],
+        },
+        "diet plan for weight loss",
+        [],
+    )
+    assert_true("fat_loss" in spec.goals, "weight_loss should normalize to the external KB fat_loss goal")
+    assert_true("fat_loss" in str(spec.strict_filter), "strict Pinecone filter should include normalized fat_loss goal")
+
+
 def test_home_recommendation_display_bounds() -> None:
     raw = HomeRecommendationResponse(
         date="2026-05-18",
@@ -233,6 +259,57 @@ def test_home_recommendation_replaces_profile_conflicts() -> None:
         not any(token in text for token in ("그릭요거트", "견과", "두부", "두유", "닭가슴살")),
         "home diet recommendations should replace LLM items that conflict with profile constraints",
     )
+
+
+def test_home_recommendation_guard_flags_medical_synonyms() -> None:
+    raw = HomeRecommendationResponse(
+        date="2026-05-18",
+        scope="diet",
+        diet=DietRecommendationSlots(
+            breakfast=DietRecommendationItem(
+                food_name="Whey protein shake",
+                summary="high protein casein smoothie",
+                calories=380,
+            ),
+            lunch=DietRecommendationItem(
+                food_name="Anchovy shellfish ramen",
+                summary="salty broth with mackerel",
+                calories=620,
+            ),
+            dinner=DietRecommendationItem(
+                food_name="Unpasteurized cheese plate",
+                summary="OMAD detox dinner",
+                calories=420,
+            ),
+        ),
+    )
+    issues = validate_home_recommendation_profile_fit(
+        raw,
+        user_profile={
+            "medical_conditions": ["renal disease", "gout", "pregnancy", "eating disorder risk"],
+            "dietary_restrictions": ["very low calorie request should be rejected"],
+        },
+    )
+    codes = {issue["code"] for issue in issues}
+    assert_true("home_diet_profile_conflict" in codes, "home guard should flag medical diet synonym conflicts")
+
+    normalized = normalize_home_recommendations(
+        raw,
+        scope="diet",
+        date="2026-05-18",
+        user_profile={
+            "medical_conditions": ["renal disease", "gout", "pregnancy", "eating disorder risk"],
+            "dietary_restrictions": ["very low calorie request should be rejected"],
+        },
+    )
+    repaired_issues = validate_home_recommendation_profile_fit(
+        normalized,
+        user_profile={
+            "medical_conditions": ["renal disease", "gout", "pregnancy", "eating disorder risk"],
+            "dietary_restrictions": ["very low calorie request should be rejected"],
+        },
+    )
+    assert_true(not repaired_issues, "home normalization should replace medically unsafe slots")
 
 
 def test_plan_output_omits_constraint_exposition() -> None:
@@ -756,6 +833,33 @@ def test_pending_writes_are_bounded_and_dead_lettered() -> None:
     assert_true(_pending_write_exhausted(failed), "repeated session replay failures should move to outbox-only handling")
 
 
+def test_outbox_reconcile_clears_succeeded_checkpoint_writes() -> None:
+    with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as tmp:
+        db_path = tmp.name
+
+    async def scenario() -> None:
+        writes = [
+            {"write_type": "profile", "payload": {"nickname": "done"}, "write_id": "write-done"},
+            {"write_type": "profile", "payload": {"nickname": "pending"}, "write_id": "write-pending"},
+        ]
+        await enqueue_was_outbox(
+            db_path,
+            user_id="user-1",
+            session_id="session-1",
+            trace_id="trace-1",
+            writes=writes,
+        )
+        await mark_was_outbox_succeeded(db_path, "write-done")
+        kept, resolved = await reconcile_pending_writes_with_outbox(db_path, writes)
+        assert_true(resolved == ["write-done"], "succeeded outbox write id should be reported as resolved")
+        assert_true([write["write_id"] for write in kept] == ["write-pending"], "only unresolved writes should remain")
+
+    try:
+        asyncio.run(scenario())
+    finally:
+        Path(db_path).unlink(missing_ok=True)
+
+
 def test_finalize_mojibake_guard_can_repair_plan_response() -> None:
     state = {
         "proposed_plan_type": "diet",
@@ -841,6 +945,46 @@ def test_diet_constraint_conflict_triggers_safe_fallback() -> None:
     )
 
 
+def test_validator_blocks_medical_diet_synonyms() -> None:
+    report = _validate_state(
+        {
+            "response": "Diet plan proposal.",
+            "intent": "plan",
+            "action_intent": "create",
+            "domain": "diet",
+            "needs_clarification": False,
+            "proposed_plan_type": "diet",
+            "proposed_plan": [
+                {
+                    "name": "Breakfast",
+                    "detail": "Whey protein shake, anchovy shellfish ramen, unpasteurized cheese, OMAD detox",
+                    "day": kst_today_iso(),
+                    "ex_list": [],
+                }
+            ],
+            "profile_constraints": {
+                "hard_profile_constraints": [
+                    "kidney_disease",
+                    "gout",
+                    "pregnancy",
+                    "eating_disorder_risk",
+                ],
+                "profile_field_coverage": {"present_count": 8},
+            },
+            "retrieval_decision": {"requires_external": False, "should_search": False},
+            "search_quality": "ok",
+        }
+    )
+    codes = {issue.get("code") for issue in report.get("issues") or []}
+    assert_true("kidney_high_protein_conflict" in codes, "validator should catch kidney high-protein synonyms")
+    assert_true("gout_purine_conflict" in codes, "validator should catch gout purine synonyms")
+    assert_true("pregnancy_food_safety_conflict" in codes, "validator should catch pregnancy food-safety synonyms")
+    assert_true(
+        "eating_disorder_extreme_plan_conflict" in codes,
+        "validator should catch eating-disorder/extreme-diet synonyms",
+    )
+
+
 def test_explicit_new_domain_ignores_active_proposal_context() -> None:
     resolution = _resolve_context(
         {
@@ -867,8 +1011,10 @@ def main() -> None:
         test_diet_allergy_concrete_replacement,
         test_diet_profile_concrete_adaptation,
         test_plan_request_separation_and_question_copy,
+        test_retrieval_goal_aliases_feed_external_filter,
         test_home_recommendation_display_bounds,
         test_home_recommendation_replaces_profile_conflicts,
+        test_home_recommendation_guard_flags_medical_synonyms,
         test_plan_output_omits_constraint_exposition,
         test_diet_payload_stores_food_only,
         test_week_workout_plan_expands_from_one_day_request,
@@ -887,9 +1033,11 @@ def main() -> None:
         test_explicit_workout_overrides_wrong_draft_plan_type,
         test_safe_diet_fallback_respects_compound_allergies,
         test_pending_writes_are_bounded_and_dead_lettered,
+        test_outbox_reconcile_clears_succeeded_checkpoint_writes,
         test_finalize_mojibake_guard_can_repair_plan_response,
         test_dairy_free_replacement_is_not_allergen_conflict,
         test_diet_constraint_conflict_triggers_safe_fallback,
+        test_validator_blocks_medical_diet_synonyms,
         test_explicit_new_domain_ignores_active_proposal_context,
     ]
     for test in tests:

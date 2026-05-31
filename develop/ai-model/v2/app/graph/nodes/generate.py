@@ -27,6 +27,7 @@ from app.services.home_recommendations import (
     empty_home_recommendations,
     kst_today_iso,
     normalize_home_recommendations,
+    validate_home_recommendation_profile_fit,
 )
 
 logger = logging.getLogger(__name__)
@@ -814,6 +815,7 @@ async def _generate_home_recommendations(
 ) -> dict:
     scope = state.get("home_recommendation_scope") or "all"
     date = kst_today_iso()
+    effective_profile = _effective_user_profile(state)
 
     try:
         raw = await deps.router.generate(
@@ -821,7 +823,7 @@ async def _generate_home_recommendations(
             user_content=build_home_recommendation_prompt_input(
                 date=date,
                 scope=scope,
-                user_profile=_effective_user_profile(state),
+                user_profile=effective_profile,
                 today_plan=state.get("today_plan") or [],
                 recent_recommendations=state.get("home_recommendation_recent") or {},
             ),
@@ -832,7 +834,7 @@ async def _generate_home_recommendations(
             result,
             scope=scope,
             date=date,
-            user_profile=_effective_user_profile(state),
+            user_profile=effective_profile,
             today_plan=state.get("today_plan") or [],
             recent_recommendations=state.get("home_recommendation_recent") or {},
         )
@@ -846,9 +848,31 @@ async def _generate_home_recommendations(
         normalized = empty_home_recommendations(
             date=date,
             scope=scope,
-            user_profile=_effective_user_profile(state),
+            user_profile=effective_profile,
             today_plan=state.get("today_plan") or [],
             recent_recommendations=state.get("home_recommendation_recent") or {},
+        )
+
+    profile_fit_issues = validate_home_recommendation_profile_fit(
+        normalized,
+        user_profile=effective_profile,
+    )
+    if profile_fit_issues:
+        deps.trace.record_current_alert(
+            severity="warning",
+            message="Home recommendation profile guard repaired unsafe slots",
+            detail={"scope": scope, "issues": profile_fit_issues[:8]},
+        )
+        normalized = empty_home_recommendations(
+            date=date,
+            scope=scope,
+            user_profile=effective_profile,
+            today_plan=state.get("today_plan") or [],
+            recent_recommendations=state.get("home_recommendation_recent") or {},
+        )
+        profile_fit_issues = validate_home_recommendation_profile_fit(
+            normalized,
+            user_profile=effective_profile,
         )
 
     deps.trace.record_current_event(
@@ -867,11 +891,16 @@ async def _generate_home_recommendations(
                 for item in normalized.diet.model_dump().values()
                 if item is not None
             ),
+            "profile_fit_issue_count": len(profile_fit_issues),
         },
         duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
     )
     return {
         "home_recommendations": normalized.model_dump(),
+        "generation_quality_flags": {
+            "home_profile_fit_issue_count": len(profile_fit_issues),
+            "home_profile_fit_issues": profile_fit_issues[:8],
+        },
         "self_eval_count": 0,
         "self_eval_failure_reason": None,
     }

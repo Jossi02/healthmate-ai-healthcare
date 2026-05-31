@@ -61,12 +61,16 @@ ALLOWED_CONSTRAINTS = {
     "extreme_diet_risk",
     "food_allergy",
     "hypertension",
+    "kidney_disease",
     "kidney_caution",
     "knee_pain",
     "low_time",
     "mobility_limitation",
     "nut_allergy",
     "obesity",
+    "gout",
+    "pregnancy",
+    "eating_disorder_risk",
     "shellfish_allergy",
     "shoulder_pain",
     "soy_allergy",
@@ -143,6 +147,16 @@ def main() -> None:
     for kb_id in sorted({kb_id for kb_id in ids if ids.count(kb_id) > 1}):
         issues.append(f"duplicate kb_id: {kb_id}")
 
+    catalog_constraints = {
+        str(constraint)
+        for item in items
+        if isinstance(item, dict)
+        for constraint in (item.get("constraints") or [])
+    }
+    for required_constraint in sorted({"kidney_disease", "gout", "pregnancy", "eating_disorder_risk"}):
+        if required_constraint not in catalog_constraints:
+            issues.append(f"missing specialized constraint coverage: {required_constraint}")
+
     for index, item in enumerate(items, start=1):
         if not isinstance(item, dict):
             issues.append(f"row {index}: item must be an object")
@@ -182,7 +196,9 @@ def main() -> None:
         if item.get("domain") == "diet" and any(goal in item.get("goals", []) for goal in ("mobility",)):
             issues.append(f"{kb_id}: diet row has workout-only goal")
         if item.get("domain") == "workout" and any(goal in item.get("goals", []) for goal in ("glucose_control",)):
-            warnings.append(f"{kb_id}: workout row uses diet-adjacent goal glucose_control")
+            glucose_workout_constraints = {"diabetes", "hypertension", "cardiovascular_disease"}
+            if not glucose_workout_constraints & set(constraints):
+                warnings.append(f"{kb_id}: workout row uses diet-adjacent goal glucose_control")
 
         text = str(item.get("text") or "")
         if len(text) < 60:

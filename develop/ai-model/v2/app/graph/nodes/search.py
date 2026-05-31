@@ -580,7 +580,12 @@ def _build_retrieval_spec(state: GraphState, query: str, initial_targets: list[s
         constraints = list(compiled_constraints.get("retrieval_constraints") or [])
     else:
         constraints = list(compiled_constraints.get("constraints") or [])
-    goals = list(compiled_constraints.get("goals") or [])
+    goals = _external_goal_values(
+        [
+            *(compiled_constraints.get("goals") or []),
+            *_external_goals_for_profile_and_query(profile, query_span),
+        ]
+    )
     if "retrieval_critical_constraints" in compiled_constraints:
         critical_constraints = list(compiled_constraints.get("retrieval_critical_constraints") or [])
     else:
@@ -1056,10 +1061,10 @@ def _external_constraints_for_profile_and_query(profile: dict, query: str) -> li
         "diabetes": ("당뇨", "혈당", "diabetes", "glucose"),
         "cardiovascular_disease": ("심혈관", "심장", "협심증", "cardiovascular", "heart disease"),
         "asthma": ("천식", "asthma"),
-        "kidney_disease": ("신장질환", "신장 질환", "콩팥", "만성신부전", "ckd", "kidney disease", "renal"),
-        "gout": ("통풍", "요산", "gout", "uric acid"),
-        "pregnancy": ("임신", "임산부", "pregnant", "pregnancy"),
-        "eating_disorder_risk": ("폭식", "절식", "섭식장애", "섭식 장애", "eating disorder"),
+        "kidney_disease": ("신장질환", "신장 질환", "콩팥", "만성신부전", "ckd", "kidney disease", "renal", "kidney", "renal disease"),
+        "gout": ("통풍", "요산", "gout", "uric acid", "hyperuricemia"),
+        "pregnancy": ("임신", "임산부", "pregnant", "pregnancy", "prenatal"),
+        "eating_disorder_risk": ("폭식", "절식", "섭식장애", "섭식 장애", "eating disorder", "binge", "purge", "omad", "detox", "cleanse"),
         "arthritis": ("관절염", "arthritis"),
         "food_allergy": ("알레르기", "allergy", "유당", "유제품", "우유", "계란", "달걀", "견과", "갑각류", "밀", "대두"),
         "dairy_allergy": ("유당", "유제품", "우유", "milk", "dairy"),
@@ -1072,7 +1077,7 @@ def _external_constraints_for_profile_and_query(profile: dict, query: str) -> li
         "vegan": ("비건", "vegan"),
         "obesity": ("비만", "bmi", "체질량", "obesity"),
         "low_time": ("바빠", "시간", "8분", "10분", "15분", "짧"),
-        "extreme_diet_risk": ("900kcal", "굶", "단식", "일주일에 7kg", "극단"),
+        "extreme_diet_risk": ("900kcal", "굶", "단식", "일주일에 7kg", "극단", "800kcal", "very low calorie", "one meal a day", "omad", "detox", "cleanse"),
     }
     for constraint, keywords in markers.items():
         if any(keyword in text for keyword in keywords):
@@ -1124,10 +1129,10 @@ def _negated_constraint_patterns() -> tuple[tuple[str, str], ...]:
         ("diabetes", pattern(r"당뇨|혈당|diabetes|glucose")),
         ("cardiovascular_disease", pattern(r"심혈관|심장|협심증|cardiovascular|heart disease")),
         ("asthma", pattern(r"천식|asthma")),
-        ("kidney_disease", pattern(r"신장질환|신장\s*질환|콩팥|만성신부전|ckd|kidney disease|renal")),
-        ("gout", pattern(r"통풍|요산|gout|uric acid")),
-        ("pregnancy", pattern(r"임신|임산부|pregnant|pregnancy")),
-        ("eating_disorder_risk", pattern(r"폭식|절식|섭식장애|섭식\s*장애|eating disorder")),
+        ("kidney_disease", pattern(r"신장질환|신장\s*질환|콩팥|만성신부전|ckd|kidney disease|renal|kidney|renal disease")),
+        ("gout", pattern(r"통풍|요산|gout|uric acid|hyperuricemia")),
+        ("pregnancy", pattern(r"임신|임산부|pregnant|pregnancy|prenatal")),
+        ("eating_disorder_risk", pattern(r"폭식|절식|섭식장애|섭식\s*장애|eating disorder|binge|purge|omad|detox|cleanse")),
         ("arthritis", pattern(r"관절염|arthritis")),
         ("knee_pain", pattern(r"무릎|knee", r"(?:통증|부상|pain)?")),
         ("back_pain", pattern(r"허리|요통|back|sciatica", r"(?:통증|부상|pain)?")),
@@ -1162,6 +1167,21 @@ def _external_goals_for_profile_and_query(profile: dict, query: str) -> list[str
         if any(keyword in text for keyword in keywords):
             goals.append(goal)
     return list(dict.fromkeys(goals))
+
+
+def _external_goal_values(goals: list[str]) -> list[str]:
+    aliases = {
+        "weight_loss": "fat_loss",
+        "weight management": "fat_loss",
+        "weight_management": "fat_loss",
+    }
+    allowed = {"bone_health", "fat_loss", "glucose_control", "habit", "heart_health", "mobility", "muscle_gain"}
+    normalized: list[str] = []
+    for goal in goals:
+        value = aliases.get(str(goal).strip().lower(), str(goal).strip().lower())
+        if value in allowed:
+            normalized.append(value)
+    return list(dict.fromkeys(normalized))
 
 
 def _external_populations_for_profile(state: GraphState) -> list[str]:
