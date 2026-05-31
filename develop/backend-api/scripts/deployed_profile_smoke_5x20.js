@@ -422,6 +422,7 @@ async function createUser(profile) {
 
 function assertResponse(profile, turn, payload) {
   const response = String(payload.response || payload.answer || payload.message || '');
+  const conflictText = scrubAllowedConstraintMentions(response);
   const issues = [];
   const intent = String(payload.intent || '');
   const approvalTurn = intent === '계획_승인' || /진행|저장|확정/.test(turn);
@@ -430,7 +431,7 @@ function assertResponse(profile, turn, payload) {
   if (/[怨諛吏寃媛瑜�]/.test(response)) issues.push('mojibake');
   if (planLike) {
     for (const pattern of profile.forbidden || []) {
-      if (pattern.test(response)) issues.push(`profile_conflict:${pattern}`);
+      if (pattern.test(conflictText)) issues.push(`profile_conflict:${pattern}`);
     }
   }
   if (/식단\s*플랜|식단.*작성/.test(turn) && /스쿼트|푸쉬업|세트|유산소/.test(response)) {
@@ -440,6 +441,18 @@ function assertResponse(profile, turn, payload) {
     issues.push('workout_response_contains_diet_terms');
   }
   return { response, issues };
+}
+
+function scrubAllowedConstraintMentions(text) {
+  return String(text || '')
+    .replace(/(?:글루텐|gluten)\s*(?:프리|없는|없이|제외|free)/gi, '')
+    .replace(/무\s*글루텐|gluten[-\s]?free/gi, '')
+    .replace(/(?:유제품|우유|dairy|milk)\s*(?:프리|없는|없이|제외|free)/gi, '')
+    .replace(/무\s*유제품|dairy[-\s]?free|non[-\s]?dairy/gi, '')
+    .replace(/(?:계란|달걀|egg)\s*(?:없는|없이|제외|free)/gi, '')
+    .replace(/(?:견과|땅콩|nut|peanut)\s*(?:없는|없이|제외|free)/gi, '')
+    .replace(/(?:대두|두부|두유|soy)\s*(?:없는|없이|제외|free)/gi, '')
+    .replace(/(?:갑각류|새우|shellfish|shrimp)\s*(?:없는|없이|제외|free)/gi, '');
 }
 
 async function run() {
@@ -485,7 +498,8 @@ async function run() {
         issues: checked.issues,
         preview: checked.response.slice(0, 180),
       });
-      console.log(`[${profile.label}] ${index + 1}/${selectedTurns.length} ${checked.issues.length ? 'WARN' : 'OK'} ${turn}`);
+      const issueLabel = checked.issues.length ? `WARN ${checked.issues.join(',')}` : 'OK';
+      console.log(`[${profile.label}] ${index + 1}/${selectedTurns.length} ${issueLabel} ${turn}`);
     }
   }
   const failures = results.filter((item) => item.issues.length);
