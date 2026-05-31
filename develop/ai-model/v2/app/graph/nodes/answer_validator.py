@@ -999,6 +999,12 @@ def _requires_external_fail_closed(state: GraphState, profile_constraints: dict[
     retrieval_decision = state.get("retrieval_decision") or {}
     if not retrieval_decision.get("requires_external") and not profile_constraints.get("should_use_rag"):
         return False
+    action_intent = state.get("action_intent")
+    if action_intent in {"create", "modify"}:
+        # Demo behavior: RAG enriches constrained plans, but a temporary Pinecone
+        # miss must not prevent plan proposals when deterministic profile guards
+        # can still enforce allergies, injuries, diseases, time, and frequency.
+        return False
     constrained = bool(
         profile_constraints.get("safety_risks")
         or profile_constraints.get("critical_constraints")
