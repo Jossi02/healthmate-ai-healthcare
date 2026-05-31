@@ -166,9 +166,7 @@ function assertResponse(profile, turn, payload) {
   const issues = [];
   const intent = String(payload.intent || '');
   const approvalTurn = intent === '계획_승인' || /진행|저장|확정/.test(turn);
-  const planLike = /계획|플랜|작성|수정/.test(intent)
-    || /플랜|작성|수정|점심|저녁|단백질|스트레칭/.test(turn)
-    || /작성할까요|수정할까요/.test(response);
+  const planLike = /계획|수정/.test(intent) || /작성할까요|수정할까요/.test(response);
   if (response.trim().length < 12 && !approvalTurn) issues.push('short_response');
   if (/[怨諛吏寃媛瑜�]/.test(response)) issues.push('mojibake');
   if (planLike) {

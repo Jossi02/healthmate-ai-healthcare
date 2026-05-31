@@ -19,6 +19,7 @@ from app.graph.nodes.generate import (
     _expand_long_range_plan_if_requested,
     _is_mixed_plan_type_request,
     _minimize_plan_exposition,
+    _normalize_plan_core_message,
     _normalize_plan_approval_question,
     _plan_contract_needs_fallback,
     _render_plan_preview_from_items,
@@ -585,6 +586,13 @@ def test_explicit_workout_overrides_wrong_draft_plan_type() -> None:
         ],
     )
     assert_true(resolved == "workout", "explicit workout request and exercise items should override wrong draft diet label")
+
+    components = _normalize_plan_core_message(
+        normalize_draft_components({"core_message": "식단 플랜을 제안해요."}),
+        resolved,
+        "create",
+    )
+    assert_true(components["core_message"] == "운동 플랜을 제안해요.", "core message should follow resolved plan type")
 
 
 def test_safe_diet_fallback_respects_compound_allergies() -> None:
