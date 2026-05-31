@@ -471,6 +471,24 @@ def test_invalid_llm_plan_contract_triggers_fallback() -> None:
     )
 
 
+def test_modify_without_active_plan_creates_new_proposal() -> None:
+    components, draft_text, plan, plan_type, action = _build_modify_plan_fallback(
+        {
+            "user_message": "이번 주 운동을 3일로 줄여줘",
+            "modify_target": "workout",
+            "domain": "workout",
+            "active_proposal": None,
+            "user_profile": {},
+        }
+    )
+
+    assert_true(plan_type == "workout", "explicit workout modify without active proposal should keep workout domain")
+    assert_true(action == "create", "modify without active proposal should create a fresh proposal")
+    assert_true(len(plan) >= 1, "modify without active proposal should synthesize a proposal")
+    assert_true(bool(components.get("approval_question")), "fresh proposal should ask for approval")
+    assert_true(bool(draft_text), "fresh proposal should render a response")
+
+
 def test_demo_plan_semantic_judge_does_not_block_structured_plans() -> None:
     plan_state = {
         "action_intent": "create",
@@ -555,6 +573,7 @@ def main() -> None:
         test_month_workout_plan_expands_weekly_sessions,
         test_demo_plan_rag_degraded_does_not_fail_closed,
         test_invalid_llm_plan_contract_triggers_fallback,
+        test_modify_without_active_plan_creates_new_proposal,
         test_demo_plan_semantic_judge_does_not_block_structured_plans,
         test_dairy_free_replacement_is_not_allergen_conflict,
     ]

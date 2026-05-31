@@ -2461,6 +2461,9 @@ def _build_modify_plan_fallback(
     base_plan = state.get("proposed_plan") or active_proposal.get("items") or []
     proposed_plan = [dict(item) for item in base_plan if isinstance(item, dict)]
     if not proposed_plan or plan_type not in {"workout", "diet"}:
+        if plan_type in {"workout", "diet"}:
+            starter_state = {**state, "domain": plan_type}
+            return _build_starter_plan_fallback(starter_state)
         components = normalize_draft_components(
             {
                 "core_message": "수정할 플랜 항목을 확인하지 못했어요.",
