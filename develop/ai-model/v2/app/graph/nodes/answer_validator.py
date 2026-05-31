@@ -172,32 +172,11 @@ def _safe_diet_fallback_for_validation_failure(
     if not critical_codes or not critical_codes <= recoverable:
         return None
 
-    today = kst_today_iso()
-    proposed_plan = [
-        {
-            "name": "아침",
-            "detail": "오트밀, 두유, 베리류, 견과류",
-            "day": today,
-            "ex_list": [],
-        },
-        {
-            "name": "점심",
-            "detail": "현미밥, 두부 스테이크, 채소 샐러드",
-            "day": today,
-            "ex_list": [],
-        },
-        {
-            "name": "저녁",
-            "detail": "렌틸콩 수프, 통곡물빵, 구운 채소",
-            "day": today,
-            "ex_list": [],
-        },
-    ]
+    proposed_plan = _build_safe_diet_fallback_items(state)
+    plan_preview = _format_simple_plan_preview(proposed_plan)
     response = (
         "식단 플랜을 제안해요.\n"
-        f"- {today} 아침: 오트밀, 두유, 베리류, 견과류\n"
-        f"- {today} 점심: 현미밥, 두부 스테이크, 채소 샐러드\n"
-        f"- {today} 저녁: 렌틸콩 수프, 통곡물빵, 구운 채소\n"
+        f"{plan_preview}\n"
         "이 식단 플랜으로 작성할까요?"
     )
     patched_report = dict(report)
@@ -223,7 +202,7 @@ def _safe_diet_fallback_for_validation_failure(
         "draft_response": response,
         "draft_components": {
             "core_message": "식단 플랜을 제안해요.",
-            "plan_preview": response,
+            "plan_preview": plan_preview,
             "approval_question": "이 식단 플랜으로 작성할까요?",
             "reason_points": [],
             "safety_notes": [],
@@ -237,6 +216,72 @@ def _safe_diet_fallback_for_validation_failure(
         "needs_clarification": False,
         "self_eval_failure_reason": None,
     }
+
+
+def _build_safe_diet_fallback_items(state: GraphState) -> list[dict[str, Any]]:
+    today = kst_today_iso()
+    profile_text = _profile_request_constraint_text(state)
+    plant_based = _contains_any(profile_text, ("vegetarian", "vegan", "plant based", "plant-based", "채식", "비건"))
+    soy_free = _contains_any(profile_text, ("soy", "soybean", "대두", "콩 알레르기", "콩알레르기"))
+    egg_free = _contains_any(profile_text, ("egg", "계란", "달걀"))
+    fish_free = _contains_any(profile_text, ("fish", "seafood", "생선", "해산물"))
+    diabetes = _contains_any(profile_text, ("diabetes", "blood sugar", "glucose", "당뇨", "혈당"))
+    hypertension = _contains_any(profile_text, ("hypertension", "blood pressure", "고혈압", "혈압"))
+    muscle = _contains_any(profile_text, ("muscle", "strength", "근육", "근력", "증량"))
+
+    breakfast_protein = "병아리콩" if plant_based or egg_free else "삶은 달걀"
+    lunch_protein = "렌틸콩볼" if plant_based or soy_free else "두부 스테이크"
+    if soy_free and not plant_based:
+        lunch_protein = "닭가슴살"
+    dinner_protein = "렌틸콩 수프" if plant_based or soy_free else "두부 채소볶음"
+    if soy_free and not plant_based:
+        dinner_protein = "닭가슴살구이" if fish_free else "흰살생선구이"
+
+    breakfast = f"현미죽, 블루베리, {breakfast_protein}"
+    lunch = f"현미밥, {lunch_protein}, 구운 채소"
+    dinner = f"{dinner_protein}, 고구마, 데친 채소"
+
+    if diabetes:
+        breakfast = f"현미죽, 블루베리, {breakfast_protein}"
+        lunch = f"현미밥 반 공기, {lunch_protein}, 구운 채소"
+        dinner = f"{dinner_protein}, 고구마 소량, 데친 채소"
+    if hypertension:
+        lunch = lunch.replace("구운 채소", "저염 구운 채소")
+        dinner = dinner.replace("데친 채소", "저염 데친 채소")
+    if muscle:
+        lunch = f"{lunch}, 삶은 병아리콩"
+
+    return [
+        {"name": "아침", "detail": breakfast, "day": today, "ex_list": []},
+        {"name": "점심", "detail": lunch, "day": today, "ex_list": []},
+        {"name": "저녁", "detail": dinner, "day": today, "ex_list": []},
+    ]
+
+
+def _profile_request_constraint_text(state: GraphState) -> str:
+    profile = _effective_user_profile(state)
+    constraints = state.get("profile_constraints") or {}
+    parts: list[str] = [str(state.get("user_message") or "")]
+    for container in (profile, constraints):
+        for value in container.values():
+            if isinstance(value, (list, tuple, set)):
+                parts.extend(str(item) for item in value)
+            elif isinstance(value, dict):
+                parts.extend(str(item) for item in value.values())
+            else:
+                parts.append(str(value))
+    return " ".join(part for part in parts if part).lower()
+
+
+def _contains_any(text: str, markers: tuple[str, ...]) -> bool:
+    return any(marker in text for marker in markers)
+
+
+def _format_simple_plan_preview(plan: list[dict[str, Any]]) -> str:
+    lines = []
+    for item in plan:
+        lines.append(f"- {item.get('day')} {item.get('name')}: {item.get('detail')}")
+    return "\n".join(lines)
 
 
 def _validate_state(state: GraphState) -> dict[str, Any]:
@@ -320,7 +365,8 @@ def _skip_semantic_validation(deps: NodeDeps, state: GraphState, reason: str) ->
 
 
 async def _semantic_validate_state(deps: NodeDeps, state: GraphState) -> dict[str, Any] | None:
-    if not _should_run_semantic_validation(state):
+    mode = _semantic_validation_mode(state)
+    if mode == "skip":
         return _skip_semantic_validation(deps, state, "not_required")
 
     started_at = time.perf_counter()
@@ -359,7 +405,7 @@ async def _semantic_validate_state(deps: NodeDeps, state: GraphState) -> dict[st
             stage="answer_validator.semantic_judge",
             status="warn",
             title="Semantic validation unavailable",
-            detail={"error": str(exc)},
+            detail={"error": str(exc), "mode": mode},
             duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
         )
         return None
@@ -375,20 +421,33 @@ async def _semantic_validate_state(deps: NodeDeps, state: GraphState) -> dict[st
                 "code": code,
                 "message": issue.message or code,
                 "retry": retry,
-                "detail": {"source": "semantic_judge"},
+                "detail": {"source": "semantic_judge", "mode": mode},
             }
         )
 
+    if mode == "observe":
+        issues = [
+            {
+                **issue,
+                "severity": "warning",
+                "retry": False,
+                "detail": {**(issue.get("detail") or {}), "observe_only": True},
+            }
+            for issue in issues
+        ]
+
     report = _report(
-        not any(issue["severity"] == "critical" for issue in issues),
+        True if mode == "observe" else not any(issue["severity"] == "critical" for issue in issues),
         issues,
-        any(issue.get("retry") for issue in issues),
+        False if mode == "observe" else any(issue.get("retry") for issue in issues),
     )
+    report["mode"] = mode
     deps.trace.record_current_event(
         stage="answer_validator.semantic_judge",
         status="ok" if report["passed"] else "warn",
         title="Semantic validation completed",
         detail={
+            "mode": mode,
             "passed": report["passed"],
             "judge_passed": judged.passed,
             "issue_count": len(issues),
@@ -400,18 +459,16 @@ async def _semantic_validate_state(deps: NodeDeps, state: GraphState) -> dict[st
 
 
 def _should_run_semantic_validation(state: GraphState) -> bool:
+    return _semantic_validation_mode(state) != "skip"
+
+
+def _semantic_validation_mode(state: GraphState) -> str:
     if state.get("request_kind") == "home_recommendation":
-        return False
+        return "skip"
     if not str(state.get("response") or "").strip():
-        return False
+        return "skip"
     proposed_plan = state.get("proposed_plan") or []
     action_intent = state.get("action_intent")
-    if action_intent in {"create", "modify"}:
-        # Demo behavior: deterministic validators own blocking decisions for
-        # structured plan proposals. The LLM semantic judge is useful for
-        # observability, but in production-like deploys it can over-block valid
-        # profile-safe fallback plans when RAG is weak or profile metadata is rich.
-        return False
     retrieval_decision = state.get("retrieval_decision") or {}
     profile_constraints = state.get("profile_constraints") or {}
     field_coverage = profile_constraints.get("profile_field_coverage") or {}
@@ -422,17 +479,22 @@ def _should_run_semantic_validation(state: GraphState) -> bool:
         or profile_constraints.get("hard_profile_constraints")
         or profile_constraints.get("request_hard_constraints")
     )
-    return bool(
+    should_run = bool(
         (proposed_plan and (rich_profile or high_risk_or_constrained))
         or (action_intent in {"create", "modify"} and high_risk_or_constrained)
         or retrieval_decision.get("requires_external")
     )
+    if not should_run:
+        return "skip"
+    if action_intent in {"create", "modify"}:
+        return "observe"
+    return "blocking"
 
 
 def _semantic_validation_strict_required(state: GraphState) -> bool:
     profile_constraints = state.get("profile_constraints") or {}
     return bool(
-        _should_run_semantic_validation(state)
+        _semantic_validation_mode(state) == "blocking"
         and (
             _requires_external_fail_closed(state, profile_constraints)
             or profile_constraints.get("safety_risks")
@@ -478,6 +540,7 @@ def _merge_validation_reports(base: dict[str, Any], semantic: dict[str, Any] | N
     merged["semantic_judge"] = {
         "passed": semantic.get("passed"),
         "issue_count": len(semantic.get("issues") or []),
+        "mode": semantic.get("mode") or "blocking",
     }
     return merged
 
@@ -1193,14 +1256,29 @@ def _validation_quality_dimensions(state: GraphState, report: dict[str, Any]) ->
     search_results = state.get("search_results") or []
     grounding_summary = str((state.get("draft_components") or {}).get("search_grounding_summary") or "").strip()
     requires_external = bool(retrieval_decision.get("requires_external") or profile_constraints.get("should_use_rag"))
+    search_quality = state.get("search_quality")
+    retrieval_hit = (not requires_external) or bool(search_results)
+    evidence_used = (not requires_external) or bool(grounding_summary or search_results)
+    if not requires_external:
+        evidence_status = "not_required"
+    elif search_quality == "degraded":
+        evidence_status = "degraded_fail_open" if state.get("action_intent") in {"create", "modify"} else "degraded"
+    elif not search_results:
+        evidence_status = "missing"
+    elif grounding_summary or search_results:
+        evidence_status = "grounded"
+    else:
+        evidence_status = "weak"
     return {
         "profile_fit_passed": not bool(critical_codes & _PROFILE_FIT_CODES),
         "plan_write_contract_passed": not bool(critical_codes & _PLAN_CONTRACT_CODES),
-        "retrieval_hit": (not requires_external) or bool(search_results),
-        "evidence_used": (not requires_external) or bool(grounding_summary or search_results),
+        "retrieval_hit": retrieval_hit,
+        "evidence_used": evidence_used,
+        "evidence_status": evidence_status,
+        "rag_fail_open": evidence_status == "degraded_fail_open",
         "semantic_judge": report.get("semantic_judge") or {"passed": None, "issue_count": 0},
         "requires_external": requires_external,
-        "search_quality": state.get("search_quality"),
+        "search_quality": search_quality,
         "profile_field_coverage": profile_constraints.get("profile_field_coverage") or {},
     }
 

@@ -418,6 +418,7 @@ function isDuplicateIdempotencyError(error) {
 }
 
 const MEMORY_IDEMPOTENCY_TTL_MS = 30 * 60 * 1000;
+const MEMORY_IDEMPOTENCY_MAX_ENTRIES = 500;
 const memoryIdempotencyStore = new Map();
 
 function cleanupMemoryIdempotencyStore() {
@@ -427,6 +428,36 @@ function cleanupMemoryIdempotencyStore() {
       memoryIdempotencyStore.delete(key);
     }
   }
+  if (memoryIdempotencyStore.size <= MEMORY_IDEMPOTENCY_MAX_ENTRIES) {
+    return;
+  }
+  const overflow = memoryIdempotencyStore.size - MEMORY_IDEMPOTENCY_MAX_ENTRIES;
+  const oldestKeys = [...memoryIdempotencyStore.entries()]
+    .sort(([, left], [, right]) => {
+      const leftTime = Number(left.updatedAt || left.createdAt || 0);
+      const rightTime = Number(right.updatedAt || right.createdAt || 0);
+      return leftTime - rightTime;
+    })
+    .slice(0, overflow)
+    .map(([key]) => key);
+  for (const key of oldestKeys) {
+    memoryIdempotencyStore.delete(key);
+  }
+}
+
+function getMemoryIdempotencyStatus() {
+  cleanupMemoryIdempotencyStore();
+  const statuses = {};
+  for (const value of memoryIdempotencyStore.values()) {
+    const status = value.status || 'unknown';
+    statuses[status] = (statuses[status] || 0) + 1;
+  }
+  return {
+    ttl_ms: MEMORY_IDEMPOTENCY_TTL_MS,
+    max_entries: MEMORY_IDEMPOTENCY_MAX_ENTRIES,
+    size: memoryIdempotencyStore.size,
+    statuses,
+  };
 }
 
 function isStaleIdempotencyProcessing(row) {
@@ -665,6 +696,11 @@ async function sendWithIdempotency(res, context, statusCode, body) {
   await finishIdempotency(context, statusCode, body);
   return res.status(statusCode).json(body);
 }
+
+exports.__private = {
+  getMemoryIdempotencyStatus,
+  cleanupMemoryIdempotencyStore,
+};
 
 // GET /api/user/profile/:user_id
 exports.getProfile = async (req, res) => {

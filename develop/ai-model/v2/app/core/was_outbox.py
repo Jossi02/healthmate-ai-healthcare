@@ -14,6 +14,10 @@ from app.schemas.state import PendingWrite
 
 logger = logging.getLogger(__name__)
 
+_MAX_OUTBOX_ATTEMPTS = 8
+_OUTBOX_RETAIN_SUCCEEDED_DAYS = 1
+_OUTBOX_RETAIN_DEAD_DAYS = 7
+
 
 async def ensure_was_outbox_table(db_path: str) -> None:
     async with aiosqlite.connect(db_path) as db:
@@ -123,6 +127,7 @@ async def replay_due_was_outbox(
         except Exception as exc:
             failed += 1
             await _mark_was_outbox_failed(db_path, write_id, attempt_count, exc)
+    await prune_was_outbox(db_path)
     return {"attempted": len(rows), "succeeded": succeeded, "failed": failed}
 
 
@@ -166,6 +171,22 @@ async def _mark_was_outbox_failed(
     attempt_count: int,
     exc: Exception,
 ) -> None:
+    next_attempt_count = int(attempt_count or 0) + 1
+    if next_attempt_count >= _MAX_OUTBOX_ATTEMPTS:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                "UPDATE was_outbox SET "
+                "  status = 'dead',"
+                "  attempt_count = attempt_count + 1,"
+                "  last_error = ?,"
+                "  next_attempt_at = datetime('now'),"
+                "  updated_at = datetime('now') "
+                "WHERE write_id = ?",
+                (str(exc), write_id),
+            )
+            await db.commit()
+        return
+
     delay_minutes = min(60, max(1, 2 ** int(attempt_count or 0)))
     async with aiosqlite.connect(db_path) as db:
         await db.execute(
@@ -176,5 +197,23 @@ async def _mark_was_outbox_failed(
             "  updated_at = datetime('now') "
             "WHERE write_id = ?",
             (str(exc), f"+{delay_minutes} minutes", write_id),
+        )
+        await db.commit()
+
+
+async def prune_was_outbox(db_path: str) -> None:
+    await ensure_was_outbox_table(db_path)
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute(
+            "DELETE FROM was_outbox "
+            "WHERE status = 'succeeded' "
+            "AND updated_at < datetime('now', ?)",
+            (f"-{_OUTBOX_RETAIN_SUCCEEDED_DAYS} days",),
+        )
+        await db.execute(
+            "DELETE FROM was_outbox "
+            "WHERE status = 'dead' "
+            "AND updated_at < datetime('now', ?)",
+            (f"-{_OUTBOX_RETAIN_DEAD_DAYS} days",),
         )
         await db.commit()

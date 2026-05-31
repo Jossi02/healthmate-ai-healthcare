@@ -1922,8 +1922,13 @@ def _sanitize_diet_detail_for_profile(detail: str, allergies: list[str]) -> str:
         )
     if any(marker in allergy_text for marker in ("계란", "egg")):
         next_detail = re.sub(r"계란|달걀|egg", "두부", next_detail, flags=re.IGNORECASE)
+    if any(marker in allergy_text for marker in ("대두", "콩 알레르기", "콩알레르기", "soy")):
+        next_detail = re.sub(r"두부\s*스테이크|두부|대두|콩요거트|두유|soy", "렌틸콩볼", next_detail, flags=re.IGNORECASE)
+    if any(marker in allergy_text for marker in ("밀", "글루텐", "wheat", "gluten")):
+        next_detail = re.sub(r"통곡물빵|빵|파스타|밀|wheat|gluten", "고구마", next_detail, flags=re.IGNORECASE)
     if any(marker in allergy_text for marker in ("갑각류", "새우", "shellfish", "shrimp")):
-        next_detail = re.sub(r"새우|갑각류|shrimp|shellfish", "두부", next_detail, flags=re.IGNORECASE)
+        shellfish_replacement = "렌틸콩볼" if any(marker in allergy_text for marker in ("대두", "콩 알레르기", "콩알레르기", "soy")) else "두부"
+        next_detail = re.sub(r"새우|갑각류|shrimp|shellfish", shellfish_replacement, next_detail, flags=re.IGNORECASE)
     if any(marker in allergy_text for marker in ("양파", "onion")):
         next_detail = re.sub(r"양파|onion", "저자극 채소", next_detail, flags=re.IGNORECASE)
     return next_detail
@@ -1966,7 +1971,9 @@ def _adapt_diet_detail_for_profile(detail: str, profile: dict) -> str:
     if any(marker in goal_text for marker in ("muscle", "strength", "근육", "근력", "증량")):
         lower = next_detail.lower()
         if not any(marker in lower for marker in ("chicken", "두부", "콩", "렌틸", "salmon", "egg", "단백")):
-            next_detail = f"{next_detail} + 두부"
+            allergy_text = " ".join(_as_text_list(profile.get("allergies") or profile.get("dietary_restrictions"))).lower()
+            protein_boost = "렌틸콩볼" if any(marker in allergy_text for marker in ("대두", "콩 알레르기", "콩알레르기", "soy")) else "두부"
+            next_detail = f"{next_detail} + {protein_boost}"
 
     return next_detail
 
@@ -2495,20 +2502,20 @@ def _build_starter_plan_fallback(
     if plan_type == "diet":
         proposed_plan = [
             {
-                "name": "Breakfast",
-                "detail": "그릭요거트, 바나나, 견과류를 곁들인 가벼운 아침",
+                "name": "아침",
+                "detail": "현미죽, 블루베리, 삶은 달걀",
                 "day": today,
                 "ex_list": [],
             },
             {
-                "name": "Lunch",
-                "detail": "현미밥, 닭가슴살, 채소 위주의 균형 점심",
+                "name": "점심",
+                "detail": "현미밥, 두부 스테이크, 구운 채소",
                 "day": today,
                 "ex_list": [],
             },
             {
-                "name": "Dinner",
-                "detail": "단백질과 채소 중심의 부담 적은 저녁",
+                "name": "저녁",
+                "detail": "렌틸콩 수프, 고구마, 데친 채소",
                 "day": today,
                 "ex_list": [],
             },

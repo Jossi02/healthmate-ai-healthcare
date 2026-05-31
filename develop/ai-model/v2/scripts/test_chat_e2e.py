@@ -929,9 +929,20 @@ async def run_semantic_validator_smoke() -> None:
             debug = create["debug_state"]
             report = debug["validation_report"]
             require(report["passed"] is True, "plan semantic judge should not block deterministic-valid plan flows")
+            semantic_issue = next(
+                (issue for issue in report.get("issues") or [] if issue.get("code") == "semantic_profile_conflict"),
+                None,
+            )
             require(
-                not any(issue.get("code") == "semantic_profile_conflict" for issue in report.get("issues") or []),
-                "plan flows should skip blocking semantic judge issues",
+                semantic_issue is not None
+                and semantic_issue.get("severity") == "warning"
+                and semantic_issue.get("retry") is False
+                and (semantic_issue.get("detail") or {}).get("observe_only") is True,
+                "plan flows should downgrade semantic judge issues to observe-only warnings",
+            )
+            require(
+                (report.get("semantic_judge") or {}).get("mode") == "observe",
+                "plan semantic judge should be marked as observe mode",
             )
             require(debug["proposed_plan_count"] >= 1, "semantic skip should preserve a valid proposal")
             print("[e2e-semantic-validator] 1/1 passed")

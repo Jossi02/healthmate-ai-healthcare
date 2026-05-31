@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import time
+from typing import Any
 
 from app.core.conversation_state import empty_context_resolution
 from app.core.exceptions import ExternalServiceError
@@ -11,6 +12,9 @@ from app.graph.deps import NodeDeps
 from app.schemas.state import GraphState
 
 logger = logging.getLogger(__name__)
+
+_MAX_PENDING_WRITES = 24
+_MAX_SESSION_REPLAY_ATTEMPTS = 4
 
 
 def make_preprocess_node(deps: NodeDeps):
@@ -51,12 +55,29 @@ def make_preprocess_node(deps: NodeDeps):
             "needs_clarification": False,
         }
 
-        pending = list(state.get("pending_writes", []))
+        current_turn = int(state.get("turn_count", 0) or 0) + 1
+        pending = _normalize_pending_writes(state.get("pending_writes", []), current_turn=current_turn)
         still_pending = []
         replayed_profile_changes: dict = {}
         pending_profile_overlay: dict = {}
         replayed_plan_write = False
         for write in pending:
+            if _pending_write_waiting_for_retry(write, current_turn):
+                still_pending.append(write)
+                if write.get("write_type") == "profile" and isinstance(write.get("payload"), dict):
+                    pending_profile_overlay.update(write["payload"])
+                continue
+            if _pending_write_exhausted(write):
+                deps.trace.record_current_alert(
+                    severity="warning",
+                    message="Pending write moved to durable outbox after repeated session replay failures",
+                    detail={
+                        "write_type": write.get("write_type"),
+                        "write_id": write.get("write_id"),
+                        "attempt_count": write.get("attempt_count"),
+                    },
+                )
+                continue
             try:
                 await _execute_write(deps, state["user_id"], write)
                 db_path = state.get("checkpoint_db_path")
@@ -73,18 +94,26 @@ def make_preprocess_node(deps: NodeDeps):
                     title="Pending write replayed",
                     detail={"write_type": write["write_type"]},
                 )
-            except ExternalServiceError:
-                still_pending.append(write)
+            except ExternalServiceError as exc:
+                failed_write = _mark_pending_write_failed(write, current_turn, exc)
+                if not _pending_write_exhausted(failed_write):
+                    still_pending.append(failed_write)
                 if write.get("write_type") == "profile" and isinstance(write.get("payload"), dict):
                     pending_profile_overlay.update(write["payload"])
                 logger.warning("Pending write still failing: %s", write["write_type"])
                 deps.trace.record_current_alert(
                     severity="warning",
                     message="Pending write replay still failing",
-                    detail={"write_type": write["write_type"]},
+                    detail={
+                        "write_type": write["write_type"],
+                        "attempt_count": failed_write.get("attempt_count"),
+                        "next_retry_turn": failed_write.get("next_retry_turn"),
+                    },
                 )
             except Exception as exc:
-                still_pending.append(write)
+                failed_write = _mark_pending_write_failed(write, current_turn, exc)
+                if not _pending_write_exhausted(failed_write):
+                    still_pending.append(failed_write)
                 if write.get("write_type") == "profile" and isinstance(write.get("payload"), dict):
                     pending_profile_overlay.update(write["payload"])
                 logger.warning(
@@ -95,9 +124,14 @@ def make_preprocess_node(deps: NodeDeps):
                 deps.trace.record_current_alert(
                     severity="error",
                     message="Pending write replay raised unexpected error",
-                    detail={"write_type": write["write_type"], "error": str(exc)},
+                    detail={
+                        "write_type": write["write_type"],
+                        "error": str(exc),
+                        "attempt_count": failed_write.get("attempt_count"),
+                        "next_retry_turn": failed_write.get("next_retry_turn"),
+                    },
                 )
-        updates["pending_writes"] = still_pending
+        updates["pending_writes"] = _cap_pending_writes(still_pending)
         if replayed_profile_changes:
             await _mark_profile_updated(deps, state["user_id"])
 
@@ -202,7 +236,7 @@ def make_preprocess_node(deps: NodeDeps):
             updates["pending_profile_overlay"] = None
             updates["effective_user_profile"] = None
 
-        updates["turn_count"] = state.get("turn_count", 0) + 1
+        updates["turn_count"] = current_turn
         deps.trace.record_current_event(
             stage="preprocess",
             status="ok",
@@ -223,6 +257,62 @@ async def _mark_profile_updated(deps: NodeDeps, user_id: str) -> None:
 
 async def _execute_write(deps: NodeDeps, user_id: str, write: dict) -> None:
     await execute_outbox_write(deps, user_id, write)
+
+
+def _normalize_pending_writes(writes: object, *, current_turn: int) -> list[dict[str, Any]]:
+    if not isinstance(writes, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for write in writes:
+        if not isinstance(write, dict):
+            continue
+        key = str(write.get("write_id") or write.get("idempotency_key") or f"{write.get('write_type')}:{repr(write.get('payload'))}")
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        next_write = dict(write)
+        next_write.setdefault("write_id", key)
+        next_write.setdefault("idempotency_key", key)
+        next_write.setdefault("attempt_count", 0)
+        next_write.setdefault("created_turn", current_turn)
+        next_write.setdefault("next_retry_turn", current_turn)
+        normalized.append(next_write)
+    return _cap_pending_writes(normalized)
+
+
+def _cap_pending_writes(writes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if len(writes) <= _MAX_PENDING_WRITES:
+        return writes
+    return writes[-_MAX_PENDING_WRITES:]
+
+
+def _pending_write_waiting_for_retry(write: dict[str, Any], current_turn: int) -> bool:
+    try:
+        next_retry_turn = int(write.get("next_retry_turn") or current_turn)
+    except (TypeError, ValueError):
+        next_retry_turn = current_turn
+    return next_retry_turn > current_turn
+
+
+def _pending_write_exhausted(write: dict[str, Any]) -> bool:
+    try:
+        attempt_count = int(write.get("attempt_count") or 0)
+    except (TypeError, ValueError):
+        attempt_count = 0
+    return attempt_count >= _MAX_SESSION_REPLAY_ATTEMPTS
+
+
+def _mark_pending_write_failed(write: dict[str, Any], current_turn: int, exc: Exception) -> dict[str, Any]:
+    failed = dict(write)
+    try:
+        attempt_count = int(failed.get("attempt_count") or 0) + 1
+    except (TypeError, ValueError):
+        attempt_count = 1
+    failed["attempt_count"] = attempt_count
+    failed["last_error"] = str(exc)
+    failed["next_retry_turn"] = current_turn + min(8, 2 ** max(0, attempt_count - 1))
+    return failed
 
 
 def _strip_write_metadata(payload: dict) -> dict:

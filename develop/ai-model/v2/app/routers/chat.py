@@ -37,6 +37,8 @@ from app.services.langsmith_quality import (
 
 logger = logging.getLogger(__name__)
 
+_MAX_PENDING_WRITES = 24
+
 REQUEST_TIMEOUT = 120
 router = APIRouter(prefix="/chat", tags=["chat"])
 _SESSION_LOCKS: dict[str, asyncio.Lock] = {}
@@ -1167,8 +1169,13 @@ def _merge_pending_writes(existing: list[dict[str, Any]], new_writes: list[dict[
         if key in seen:
             continue
         seen.add(key)
-        merged.append(write)
-    return merged
+        normalized = dict(write)
+        normalized.setdefault("write_id", key)
+        normalized.setdefault("idempotency_key", key)
+        normalized.setdefault("attempt_count", 0)
+        normalized.setdefault("next_retry_turn", 0)
+        merged.append(normalized)
+    return merged[-_MAX_PENDING_WRITES:]
 
 
 def _has_was_write_work(
