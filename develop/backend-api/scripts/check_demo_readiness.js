@@ -5,6 +5,7 @@ const { execSync } = require('child_process');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const supabase = require('../src/config/db');
+const internalController = require('../src/controllers/internalController');
 
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return {};
@@ -109,6 +110,7 @@ async function main() {
     env_checks: checks,
     idempotency_table: idempotencyTable,
     idempotency_mode: idempotencyTable.ok ? 'database' : 'memory_fallback',
+    idempotency_memory_fallback: internalController.__private?.getMemoryIdempotencyStatus?.() || null,
   };
 
   console.log(JSON.stringify(result, null, 2));

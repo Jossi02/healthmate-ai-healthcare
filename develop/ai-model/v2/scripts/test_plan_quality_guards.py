@@ -27,10 +27,19 @@ from app.graph.nodes.generate import (
 from app.graph.nodes.context_resolver import _resolve_context
 from app.graph.nodes.answer_validator import (
     _requires_external_fail_closed,
+    _safe_diet_fallback_for_validation_failure,
+    _semantic_validation_mode,
     _should_run_semantic_validation,
     _validate_state,
+    _validation_quality_dimensions,
 )
 from app.services.home_recommendations import kst_today_iso
+from app.graph.nodes.finalize import _looks_like_mojibake, _safe_response_from_state
+from app.graph.nodes.preprocess import (
+    _mark_pending_write_failed,
+    _normalize_pending_writes,
+    _pending_write_exhausted,
+)
 from app.schemas.was import to_plan_create_batches
 from app.services.home_recommendations import normalize_home_recommendations
 from app.schemas.home import (
@@ -444,6 +453,31 @@ def test_demo_plan_rag_degraded_does_not_fail_closed() -> None:
         "specialized info answers should still fail closed when required external evidence is unavailable",
     )
 
+    report = _validate_state(
+        {
+            **plan_state,
+            "response": "식단 플랜을 제안해요.",
+            "intent": "계획",
+            "domain": "diet",
+            "proposed_plan_type": "diet",
+            "proposed_plan": [
+                {"name": "점심", "detail": "현미밥, 두부 스테이크, 채소", "day": kst_today_iso(), "ex_list": []}
+            ],
+            "profile_constraints": constraints,
+            "search_quality": "degraded",
+        }
+    )
+    dimensions = _validation_quality_dimensions(
+        {
+            **plan_state,
+            "profile_constraints": constraints,
+            "search_quality": "degraded",
+            "search_results": [],
+        },
+        report,
+    )
+    assert_true(dimensions["evidence_status"] == "degraded_fail_open", "plan RAG degradation should be tracked explicitly")
+
 
 def test_invalid_llm_plan_contract_triggers_fallback() -> None:
     invalid_workout = [
@@ -516,13 +550,75 @@ def test_demo_plan_semantic_judge_does_not_block_structured_plans() -> None:
     }
 
     assert_true(
-        not _should_run_semantic_validation(plan_state),
-        "structured plan flows should rely on deterministic validators instead of a blocking semantic judge",
+        _should_run_semantic_validation(plan_state),
+        "structured plan flows should run the semantic judge for observability",
+    )
+    assert_true(
+        _semantic_validation_mode(plan_state) == "observe",
+        "structured plan semantic judge should be observe-only so deterministic validators own blocking decisions",
     )
     assert_true(
         _should_run_semantic_validation(info_state),
         "non-plan specialized answers should still use the semantic judge",
     )
+    assert_true(
+        _semantic_validation_mode(info_state) == "blocking",
+        "non-plan specialized answers should keep blocking semantic validation",
+    )
+
+
+def test_safe_diet_fallback_respects_compound_allergies() -> None:
+    fallback = _safe_diet_fallback_for_validation_failure(
+        {
+            "passed": False,
+            "requires_retry": False,
+            "issues": [
+                {"severity": "critical", "code": "allergen_conflict", "message": "allergen", "retry": False}
+            ],
+        },
+        {
+            "action_intent": "create",
+            "domain": "diet",
+            "proposed_plan_type": "diet",
+            "user_message": "soy, dairy, nut, egg 없이 채식 식단 작성해줘",
+            "user_profile": {
+                "diet_type": "vegetarian",
+                "allergies": ["soy", "dairy", "nut", "egg"],
+            },
+        },
+    )
+    assert_true(fallback is not None, "recoverable diet conflicts should get deterministic safe fallback")
+    text = " ".join(item["detail"] for item in fallback["proposed_plan"])
+    assert_true(not any(token in text for token in ("두부", "두유", "견과", "달걀", "요거트")), "fallback should avoid compound allergy terms")
+    assert_true("렌틸콩" in text or "병아리콩" in text, "fallback should still contain concrete plant protein")
+
+
+def test_pending_writes_are_bounded_and_dead_lettered() -> None:
+    writes = [
+        {"write_type": "profile", "payload": {"nickname": f"user-{index}"}, "write_id": f"write-{index}"}
+        for index in range(30)
+    ]
+    normalized = _normalize_pending_writes(writes, current_turn=1)
+    assert_true(len(normalized) == 24, "session pending writes should be capped")
+    assert_true(normalized[0]["write_id"] == "write-6", "cap should keep the most recent pending writes")
+
+    failed = normalized[0]
+    for turn in range(1, 5):
+        failed = _mark_pending_write_failed(failed, turn, RuntimeError("WAS unavailable"))
+    assert_true(_pending_write_exhausted(failed), "repeated session replay failures should move to outbox-only handling")
+
+
+def test_finalize_mojibake_guard_can_repair_plan_response() -> None:
+    state = {
+        "proposed_plan_type": "diet",
+        "proposed_plan": [
+            {"name": "점심", "detail": "현미밥, 두부 스테이크, 채소", "day": kst_today_iso(), "ex_list": []}
+        ],
+    }
+    repaired = _safe_response_from_state(state)
+    assert_true(_looks_like_mojibake("怨꾪쉷 ?대룞"), "known broken text should be detected")
+    assert_true(not _looks_like_mojibake(repaired or ""), "repaired response should not contain mojibake markers")
+    assert_true("이 식단 플랜으로 작성할까요?" in (repaired or ""), "repaired plan response should keep approval UX")
 
 
 def test_dairy_free_replacement_is_not_allergen_conflict() -> None:
@@ -637,6 +733,9 @@ def main() -> None:
         test_invalid_llm_plan_contract_triggers_fallback,
         test_modify_without_active_plan_creates_new_proposal,
         test_demo_plan_semantic_judge_does_not_block_structured_plans,
+        test_safe_diet_fallback_respects_compound_allergies,
+        test_pending_writes_are_bounded_and_dead_lettered,
+        test_finalize_mojibake_guard_can_repair_plan_response,
         test_dairy_free_replacement_is_not_allergen_conflict,
         test_diet_constraint_conflict_triggers_safe_fallback,
         test_explicit_new_domain_ignores_active_proposal_context,

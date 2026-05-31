@@ -102,6 +102,10 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
     pending_writes_count = int(state_summary.get("pending_writes_count") or 0)
     needs_clarification = bool(state_summary.get("needs_clarification"))
     draft_components = state_summary.get("draft_components") or {}
+    validation_report = state_summary.get("validation_report") or {}
+    validation_dimensions = validation_report.get("quality_dimensions") or {}
+    evidence_status = validation_dimensions.get("evidence_status")
+    semantic_judge = validation_dimensions.get("semantic_judge") or validation_report.get("semantic_judge") or {}
 
     issues: list[dict[str, Any]] = []
 
@@ -157,6 +161,14 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
             message="Search quality was degraded during generation.",
             penalty=0.18,
         )
+    if evidence_status == "degraded_fail_open":
+        _issue(
+            issues,
+            severity="warning",
+            code="rag_fail_open_plan",
+            message="Plan generation continued with deterministic guards after degraded external retrieval.",
+            penalty=0.10,
+        )
     if action_intent == "info" and search_results_count == 0 and search_quality != "ok":
         _issue(
             issues,
@@ -191,6 +203,14 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
             code="safety_notes_missing",
             message="Safety intent did not expose structured safety notes.",
             penalty=0.20,
+        )
+    if semantic_judge.get("mode") == "observe" and int(semantic_judge.get("issue_count") or 0) > 0:
+        _issue(
+            issues,
+            severity="warning",
+            code="semantic_observer_warning",
+            message="Plan semantic observer reported non-blocking fit concerns.",
+            penalty=0.08,
         )
 
     issue_penalty = sum(float(item["penalty"]) for item in issues)
@@ -259,6 +279,8 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
             "search_results_count": search_results_count,
             "proposed_plan_count": proposed_plan_count,
             "pending_writes_count": pending_writes_count,
+            "evidence_status": evidence_status,
+            "semantic_judge": semantic_judge,
             "plan_sync_applied": (
                 response_payload.get("plan_sync_applied")
                 if isinstance(response_payload, dict)
