@@ -99,6 +99,49 @@ async def mark_was_outbox_succeeded(db_path: str, write_id: str | None) -> None:
         await db.commit()
 
 
+async def reconcile_pending_writes_with_outbox(
+    db_path: str,
+    writes: list[PendingWrite] | list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Drop checkpoint pending writes that the durable outbox has already replayed."""
+    if not writes:
+        return [], []
+
+    write_ids = [
+        str(write.get("write_id") or write.get("idempotency_key") or "")
+        for write in writes
+        if isinstance(write, dict)
+    ]
+    write_ids = [write_id for write_id in dict.fromkeys(write_ids) if write_id]
+    if not write_ids:
+        return [dict(write) for write in writes if isinstance(write, dict)], []
+
+    await ensure_was_outbox_table(db_path)
+    placeholders = ",".join("?" for _ in write_ids)
+    async with aiosqlite.connect(db_path) as db:
+        cursor = await db.execute(
+            f"SELECT write_id, status FROM was_outbox WHERE write_id IN ({placeholders})",
+            write_ids,
+        )
+        rows = await cursor.fetchall()
+
+    succeeded_ids = {
+        str(write_id)
+        for write_id, status in rows
+        if str(status or "").lower() == "succeeded"
+    }
+    if not succeeded_ids:
+        return [dict(write) for write in writes if isinstance(write, dict)], []
+
+    kept = [
+        dict(write)
+        for write in writes
+        if isinstance(write, dict)
+        and str(write.get("write_id") or write.get("idempotency_key") or "") not in succeeded_ids
+    ]
+    return kept, sorted(succeeded_ids)
+
+
 async def replay_due_was_outbox(
     db_path: str,
     deps: NodeDeps,

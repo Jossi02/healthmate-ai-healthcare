@@ -164,8 +164,33 @@ export default function RecommendPage() {
       };
     });
 
+  const clearDetailHighlightSnapshot = <T extends WorkoutDetailItem | DietDetailItem,>(
+    items: T[],
+    ids: string[]
+  ) =>
+    items.map((detail) =>
+      ids.includes(detail.updateId) ? { ...detail, isHighlighted: false } : detail
+    );
+
+  const dismissPlanUpdateEverywhere = (id: string) => {
+    dismissPlanUpdate(id);
+    setDetailPopup((previous) => {
+      if (!previous) return previous;
+      if (previous.kind === 'workout') {
+        return {
+          ...previous,
+          items: clearDetailHighlightSnapshot(previous.items, [id]),
+        };
+      }
+      return {
+        ...previous,
+        items: clearDetailHighlightSnapshot(previous.items, [id]),
+      };
+    });
+  };
+
   const dismissUpdateIds = (ids: string[]) => {
-    ids.forEach((id) => dismissPlanUpdate(id));
+    ids.forEach((id) => dismissPlanUpdateEverywhere(id));
   };
 
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -452,7 +477,7 @@ export default function RecommendPage() {
                         kind: 'workout',
                         title: group.label,
                         dateStr: todayDateStr,
-                        items: detailItems,
+                        items: clearDetailHighlightSnapshot(detailItems, highlightIds),
                       })
                     }
                     className={`relative w-full rounded-2xl p-5 text-left shadow-[0_4px_16px_-6px_rgba(0,0,0,0.06)] border flex items-center hover:shadow-[0_8px_24px_-6px_rgba(37,99,235,0.12)] hover:-translate-y-1 transition-all duration-300 group ${isHighlighted ? 'bg-rose-50/70 border-rose-200 ring-2 ring-rose-200' : 'bg-white border-gray-100'}`}
@@ -516,17 +541,20 @@ export default function RecommendPage() {
                     key={updateId}
                     data-plan-update-highlight={isHighlighted ? 'true' : undefined}
                     onMouseEnter={() => {
-                      if (isHighlighted) dismissPlanUpdate(updateId);
+                      if (isHighlighted) dismissPlanUpdateEverywhere(updateId);
                     }}
                     onPointerDown={() => {
-                      if (isHighlighted) dismissPlanUpdate(updateId);
+                      if (isHighlighted) dismissPlanUpdateEverywhere(updateId);
                     }}
                     onClick={() =>
                       setDetailPopup({
                         kind: 'diet',
                         title: display.mealLabel,
                         dateStr: todayDateStr,
-                        items: buildDietDetailItems(todayPlan, [{ item: diet, index: idx }]),
+                        items: clearDetailHighlightSnapshot(
+                          buildDietDetailItems(todayPlan, [{ item: diet, index: idx }]),
+                          [updateId]
+                        ),
                       })
                     }
                     className={`relative rounded-2xl p-5 flex flex-col items-center text-center shadow-[0_4px_16px_-6px_rgba(0,0,0,0.06)] border hover:shadow-[0_8px_24px_-6px_rgba(37,99,235,0.12)] transition-all shrink-0 cursor-pointer ${isHighlighted ? 'bg-rose-50/70 border-rose-200 ring-2 ring-rose-200' : 'bg-white border-gray-100'} ${isCompleted ? 'opacity-50 grayscale bg-gray-50/50' : ''}`}
@@ -628,7 +656,7 @@ export default function RecommendPage() {
                               kind: 'workout',
                               title: group.label,
                               dateStr: selectedPlan.date,
-                              items: detailItems,
+                              items: clearDetailHighlightSnapshot(detailItems, highlightIds),
                             })
                           }
                           className={`relative flex w-full items-center justify-between rounded-xl px-3 py-3 text-left transition-colors ${isHighlighted ? 'bg-rose-50 ring-1 ring-rose-200' : 'bg-white/70 hover:bg-white'}`}
@@ -673,17 +701,20 @@ export default function RecommendPage() {
                           type="button"
                           data-plan-update-highlight={isHighlighted ? 'true' : undefined}
                           onMouseEnter={() => {
-                            if (isHighlighted) dismissPlanUpdate(updateId);
+                            if (isHighlighted) dismissPlanUpdateEverywhere(updateId);
                           }}
                           onPointerDown={() => {
-                            if (isHighlighted) dismissPlanUpdate(updateId);
+                            if (isHighlighted) dismissPlanUpdateEverywhere(updateId);
                           }}
                           onClick={() =>
                             setDetailPopup({
                               kind: 'diet',
                               title: display.mealLabel,
                               dateStr: selectedPlan.date,
-                              items: buildDietDetailItems(selectedPlan, [{ item: diet, index: idx }]),
+                              items: clearDetailHighlightSnapshot(
+                                buildDietDetailItems(selectedPlan, [{ item: diet, index: idx }]),
+                                [updateId]
+                              ),
                             })
                           }
                           className={`flex w-full justify-between items-center rounded-xl px-3 py-3 text-left transition-colors ${isHighlighted ? 'bg-rose-50 ring-1 ring-rose-200' : 'bg-white/70 hover:bg-white'}`}
@@ -753,10 +784,10 @@ export default function RecommendPage() {
                         key={updateId}
                         data-plan-update-highlight={isHighlighted ? 'true' : undefined}
                         onMouseEnter={() => {
-                          if (isHighlighted) dismissPlanUpdate(updateId);
+                          if (isHighlighted) dismissPlanUpdateEverywhere(updateId);
                         }}
                         onPointerDown={() => {
-                          if (isHighlighted) dismissPlanUpdate(updateId);
+                          if (isHighlighted) dismissPlanUpdateEverywhere(updateId);
                         }}
                         className={`rounded-2xl border p-4 transition-colors ${isHighlighted ? 'border-rose-200 bg-rose-50 ring-1 ring-rose-200' : 'border-gray-100 bg-white'}`}
                       >
@@ -806,10 +837,10 @@ export default function RecommendPage() {
                           key={updateId}
                           data-plan-update-highlight={isHighlighted ? 'true' : undefined}
                           onMouseEnter={() => {
-                            if (isHighlighted) dismissPlanUpdate(updateId);
+                            if (isHighlighted) dismissPlanUpdateEverywhere(updateId);
                           }}
                           onPointerDown={() => {
-                            if (isHighlighted) dismissPlanUpdate(updateId);
+                            if (isHighlighted) dismissPlanUpdateEverywhere(updateId);
                           }}
                           className={`rounded-2xl border p-4 transition-colors ${isHighlighted ? 'border-rose-200 bg-rose-50 ring-1 ring-rose-200' : 'border-gray-100 bg-white'}`}
                         >

@@ -465,6 +465,9 @@ export default function Home() {
     title: '',
     message: '',
   });
+  const [recommendationApplyPending, setRecommendationApplyPending] = useState<
+    Partial<Record<HomeRecommendationHighlightId, boolean>>
+  >({});
 
   const [workoutPopup, setWorkoutPopup] = useState<WorkoutPopupState>({ isOpen: false, target: null });
   const [dietPopup, setDietPopup] = useState<DietPopupState>({ isOpen: false, target: null, mealType: null });
@@ -868,6 +871,11 @@ export default function Home() {
     }
 
     const target = workoutPopup.target;
+    const slot = (target.slot || 'upper_body') as WorkoutSlot;
+    const recommendationId = getWorkoutRecommendationHighlightId(slot);
+    if (recommendationApplyPending[recommendationId]) {
+      return;
+    }
     const todayStr = formatKstDate();
     const todayPlan = getPlanByDate(todayStr);
     const isDuplicate = todayPlan?.exercises.some(
@@ -880,39 +888,43 @@ export default function Home() {
       return;
     }
 
-    const slot = (target.slot || 'upper_body') as WorkoutSlot;
-    const didAdd = await addWorkout(todayStr, {
-      title: target.name,
-      time: target.duration || '추천',
-      level: getWorkoutSlotLabel(slot),
-      calories: `${target.calories || 0} kcal`,
-      color: getWorkoutSlotColor(slot),
-      type: slot,
-      targetSets: slot === 'cardio' ? null : target.sets ?? 3,
-      durationMinutes: slot === 'cardio'
-        ? target.duration_minutes ?? 20
-        : null,
-    });
-
-    if (didAdd) {
-      let nextAdded = recommendationAdded;
-      setRecommendationAdded((prev) => {
-        nextAdded = {
-          ...prev,
-          workout: {
-            ...prev.workout,
-            [slot]: true,
-          },
-        };
-        return nextAdded;
+    setRecommendationApplyPending((previous) => ({ ...previous, [recommendationId]: true }));
+    try {
+      const didAdd = await addWorkout(todayStr, {
+        title: target.name,
+        time: target.duration || '추천',
+        level: getWorkoutSlotLabel(slot),
+        calories: `${target.calories || 0} kcal`,
+        color: getWorkoutSlotColor(slot),
+        type: slot,
+        targetSets: slot === 'cardio' ? null : target.sets ?? 3,
+        durationMinutes: slot === 'cardio'
+          ? target.duration_minutes ?? 20
+          : null,
       });
-      persistHomeRecommendationCache(
-        homeRecommendationsRawRef.current,
-        nextAdded,
-        recommendationHistoryRef.current
-      );
-      markRecommendationHighlighted(getWorkoutRecommendationHighlightId(slot));
-      showPlanSyncToast('workout', target.name);
+
+      if (didAdd) {
+        let nextAdded = recommendationAdded;
+        setRecommendationAdded((prev) => {
+          nextAdded = {
+            ...prev,
+            workout: {
+              ...prev.workout,
+              [slot]: true,
+            },
+          };
+          return nextAdded;
+        });
+        persistHomeRecommendationCache(
+          homeRecommendationsRawRef.current,
+          nextAdded,
+          recommendationHistoryRef.current
+        );
+        markRecommendationHighlighted(recommendationId);
+        showPlanSyncToast('workout', target.name);
+      }
+    } finally {
+      setRecommendationApplyPending((previous) => ({ ...previous, [recommendationId]: false }));
     }
 
     setWorkoutPopup({ isOpen: false, target: null });
@@ -926,6 +938,10 @@ export default function Home() {
 
     const todayStr = formatKstDate();
     const mealType = dietPopup.mealType;
+    const recommendationId = getDietRecommendationHighlightId(mealType);
+    if (recommendationApplyPending[recommendationId]) {
+      return;
+    }
     const todayPlan = getPlanByDate(todayStr);
     const existingDiet = todayPlan?.diets.find((d) =>
       matchesMealSlot(d.type, mealType)
@@ -937,31 +953,36 @@ export default function Home() {
       return;
     }
 
-    const didReplace = await replaceDiet(todayStr, mealType, {
-      name: dietPopup.target.name,
-      desc: dietPopup.target.desc,
-      kcal: `${dietPopup.target.calories || 0} kcal`,
-    });
-
-    if (didReplace) {
-      let nextAdded = recommendationAdded;
-      setRecommendationAdded((prev) => {
-        nextAdded = {
-          ...prev,
-          diet: {
-            ...prev.diet,
-            [mealType]: true,
-          },
-        };
-        return nextAdded;
+    setRecommendationApplyPending((previous) => ({ ...previous, [recommendationId]: true }));
+    try {
+      const didReplace = await replaceDiet(todayStr, mealType, {
+        name: dietPopup.target.name,
+        desc: dietPopup.target.desc,
+        kcal: `${dietPopup.target.calories || 0} kcal`,
       });
-      persistHomeRecommendationCache(
-        homeRecommendationsRawRef.current,
-        nextAdded,
-        recommendationHistoryRef.current
-      );
-      markRecommendationHighlighted(getDietRecommendationHighlightId(mealType));
-      showPlanSyncToast('diet', dietPopup.target.name);
+
+      if (didReplace) {
+        let nextAdded = recommendationAdded;
+        setRecommendationAdded((prev) => {
+          nextAdded = {
+            ...prev,
+            diet: {
+              ...prev.diet,
+              [mealType]: true,
+            },
+          };
+          return nextAdded;
+        });
+        persistHomeRecommendationCache(
+          homeRecommendationsRawRef.current,
+          nextAdded,
+          recommendationHistoryRef.current
+        );
+        markRecommendationHighlighted(recommendationId);
+        showPlanSyncToast('diet', dietPopup.target.name);
+      }
+    } finally {
+      setRecommendationApplyPending((previous) => ({ ...previous, [recommendationId]: false }));
     }
 
     setDietPopup({ isOpen: false, target: null, mealType: null });
@@ -1257,6 +1278,22 @@ export default function Home() {
   const isLowerWorkoutHighlighted = highlightedRecommendationIds.includes(lowerWorkoutHighlightId);
   const isCardioWorkoutHighlighted = highlightedRecommendationIds.includes(cardioWorkoutHighlightId);
   const isStretchingWorkoutHighlighted = highlightedRecommendationIds.includes(stretchingWorkoutHighlightId);
+  const isUpperWorkoutApplying = Boolean(recommendationApplyPending[upperWorkoutHighlightId]);
+  const isLowerWorkoutApplying = Boolean(recommendationApplyPending[lowerWorkoutHighlightId]);
+  const isCardioWorkoutApplying = Boolean(recommendationApplyPending[cardioWorkoutHighlightId]);
+  const isStretchingWorkoutApplying = Boolean(recommendationApplyPending[stretchingWorkoutHighlightId]);
+  const workoutPopupApplyId = workoutPopup.target
+    ? getWorkoutRecommendationHighlightId((workoutPopup.target.slot || 'upper_body') as WorkoutSlot)
+    : null;
+  const isWorkoutPopupApplying = Boolean(
+    workoutPopupApplyId && recommendationApplyPending[workoutPopupApplyId]
+  );
+  const dietPopupApplyId = dietPopup.mealType
+    ? getDietRecommendationHighlightId(dietPopup.mealType)
+    : null;
+  const isDietPopupApplying = Boolean(
+    dietPopupApplyId && recommendationApplyPending[dietPopupApplyId]
+  );
 
 return (
   <div className="min-h-screen bg-[#f8fafc] text-gray-900 font-sans p-6 pb-32 md:p-8 lg:p-12 md:pb-36 lg:pb-40">
@@ -1503,7 +1540,7 @@ return (
               <div className="flex justify-between items-start mb-4">
                 <span className="px-2.5 py-1 bg-blue-50 border border-blue-100 text-blue-600 rounded-full text-xs font-bold shadow-sm">{"\uADFC\uB825 (\uC0C1\uCCB4)"}</span>
                 {aiRecommendations.workout?.strength?.upper && (
-                  <button aria-label={"\uC0C1\uCCB4 \uC6B4\uB3D9 \uCD94\uCC9C \uCD94\uAC00"} onClick={() => openWorkoutRecommendationPopup('upper_body', aiRecommendations.workout.strength.upper!)} disabled={isWorkoutRecommendationAdded('upper_body', aiRecommendations.workout.strength.upper)} className="p-1.5 bg-blue-500 shadow-md text-white hover:bg-blue-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
+                  <button aria-label={"\uC0C1\uCCB4 \uC6B4\uB3D9 \uCD94\uCC9C \uCD94\uAC00"} onClick={() => openWorkoutRecommendationPopup('upper_body', aiRecommendations.workout.strength.upper!)} disabled={isUpperWorkoutApplying || isWorkoutRecommendationAdded('upper_body', aiRecommendations.workout.strength.upper)} className="p-1.5 bg-blue-500 shadow-md text-white hover:bg-blue-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300 disabled:cursor-not-allowed">
                     <Plus className="w-4 h-4" />
                   </button>
                 )}
@@ -1537,7 +1574,7 @@ return (
               <div className="flex justify-between items-start mb-4">
                 <span className="px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-full text-xs font-bold shadow-sm">{"\uADFC\uB825 (\uD558\uCCB4)"}</span>
                 {aiRecommendations.workout?.strength?.lower && (
-                  <button aria-label={"\uD558\uCCB4 \uC6B4\uB3D9 \uCD94\uCC9C \uCD94\uAC00"} onClick={() => openWorkoutRecommendationPopup('lower_body', aiRecommendations.workout.strength.lower!)} disabled={isWorkoutRecommendationAdded('lower_body', aiRecommendations.workout.strength.lower)} className="p-1.5 bg-indigo-500 shadow-md text-white hover:bg-indigo-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
+                  <button aria-label={"\uD558\uCCB4 \uC6B4\uB3D9 \uCD94\uCC9C \uCD94\uAC00"} onClick={() => openWorkoutRecommendationPopup('lower_body', aiRecommendations.workout.strength.lower!)} disabled={isLowerWorkoutApplying || isWorkoutRecommendationAdded('lower_body', aiRecommendations.workout.strength.lower)} className="p-1.5 bg-indigo-500 shadow-md text-white hover:bg-indigo-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300 disabled:cursor-not-allowed">
                     <Plus className="w-4 h-4" />
                   </button>
                 )}
@@ -1571,7 +1608,7 @@ return (
               <div className="flex justify-between items-start mb-4">
                 <span className="px-2.5 py-1 bg-rose-50 border border-rose-100 text-rose-500 rounded-full text-xs font-bold shadow-sm">{"\uC720\uC0B0\uC18C"}</span>
                 {aiRecommendations.workout?.cardio && (
-                  <button aria-label={"\uC720\uC0B0\uC18C \uC6B4\uB3D9 \uCD94\uCC9C \uCD94\uAC00"} onClick={() => openWorkoutRecommendationPopup('cardio', aiRecommendations.workout.cardio!)} disabled={isWorkoutRecommendationAdded('cardio', aiRecommendations.workout.cardio)} className="p-1.5 bg-rose-500 shadow-md text-white hover:bg-rose-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
+                  <button aria-label={"\uC720\uC0B0\uC18C \uC6B4\uB3D9 \uCD94\uCC9C \uCD94\uAC00"} onClick={() => openWorkoutRecommendationPopup('cardio', aiRecommendations.workout.cardio!)} disabled={isCardioWorkoutApplying || isWorkoutRecommendationAdded('cardio', aiRecommendations.workout.cardio)} className="p-1.5 bg-rose-500 shadow-md text-white hover:bg-rose-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300 disabled:cursor-not-allowed">
                     <Plus className="w-4 h-4" />
                   </button>
                 )}
@@ -1605,7 +1642,7 @@ return (
               <div className="flex justify-between items-start mb-4">
                 <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-100 text-emerald-500 rounded-full text-xs font-bold shadow-sm">{"\uC2A4\uD2B8\uB808\uCE6D"}</span>
                 {aiRecommendations.workout?.stretching && (
-                  <button aria-label={"\uC2A4\uD2B8\uB808\uCE6D \uC6B4\uB3D9 \uCD94\uCC9C \uCD94\uAC00"} onClick={() => openWorkoutRecommendationPopup('stretching', aiRecommendations.workout.stretching!)} disabled={isWorkoutRecommendationAdded('stretching', aiRecommendations.workout.stretching)} className="p-1.5 bg-emerald-500 shadow-md text-white hover:bg-emerald-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
+                  <button aria-label={"\uC2A4\uD2B8\uB808\uCE6D \uC6B4\uB3D9 \uCD94\uCC9C \uCD94\uAC00"} onClick={() => openWorkoutRecommendationPopup('stretching', aiRecommendations.workout.stretching!)} disabled={isStretchingWorkoutApplying || isWorkoutRecommendationAdded('stretching', aiRecommendations.workout.stretching)} className="p-1.5 bg-emerald-500 shadow-md text-white hover:bg-emerald-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300 disabled:cursor-not-allowed">
                     <Plus className="w-4 h-4" />
                   </button>
                 )}
@@ -1650,6 +1687,7 @@ return (
               const dietData = aiRecommendations.diet[mealType as 'breakfast' | 'lunch' | 'dinner'];
               const dietHighlightId = getDietRecommendationHighlightId(mealType);
               const isDietHighlighted = highlightedRecommendationIds.includes(dietHighlightId);
+              const isDietApplying = Boolean(recommendationApplyPending[dietHighlightId]);
               const mealLabel = mealType === 'breakfast' ? "\uC544\uCE68" : mealType === 'lunch' ? "\uC810\uC2EC" : "\uC800\uB141";
               return (
                 <div
@@ -1667,7 +1705,7 @@ return (
                   <div className="flex justify-between items-center mb-3">
                     <span className="px-2.5 py-1 bg-orange-50 border border-orange-100 text-orange-600 rounded-full text-xs font-bold shadow-sm">{mealLabel}</span>
                     {dietData && (
-                      <button aria-label={mealLabel + " \uC2DD\uB2E8 \uCD94\uCC9C \uBC18\uC601"} onClick={() => openDietRecommendationPopup(dietData, mealType)} disabled={isDietRecommendationAdded(mealType, dietData)} className="p-1.5 bg-orange-500 shadow-md text-white hover:bg-orange-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
+                      <button aria-label={mealLabel + " \uC2DD\uB2E8 \uCD94\uCC9C \uBC18\uC601"} onClick={() => openDietRecommendationPopup(dietData, mealType)} disabled={isDietApplying || isDietRecommendationAdded(mealType, dietData)} className="p-1.5 bg-orange-500 shadow-md text-white hover:bg-orange-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300 disabled:cursor-not-allowed">
                         <Plus className="w-4 h-4" />
                       </button>
                     )}
@@ -1710,7 +1748,7 @@ return (
               </p>
               <div className="flex space-x-3">
                 <button onClick={() => setWorkoutPopup({ isOpen: false, target: null })} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">취소</button>
-                <button onClick={confirmWorkoutRecommendationAdd} className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md">추가하기</button>
+                <button onClick={confirmWorkoutRecommendationAdd} disabled={isWorkoutPopupApplying} className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md disabled:cursor-not-allowed disabled:opacity-60">추가하기</button>
               </div>
             </div>
           </motion.div>
@@ -1773,7 +1811,7 @@ return (
 
               <div className="flex space-x-3">
                 <button onClick={() => setDietPopup({ isOpen: false, target: null, mealType: null })} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">취소</button>
-                <button onClick={confirmDietRecommendationReplace} className="flex-1 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-md">변경하기</button>
+                <button onClick={confirmDietRecommendationReplace} disabled={isDietPopupApplying} className="flex-1 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-md disabled:cursor-not-allowed disabled:opacity-60">변경하기</button>
               </div>
             </div>
           </motion.div>

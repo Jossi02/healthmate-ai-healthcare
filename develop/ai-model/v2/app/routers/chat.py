@@ -24,7 +24,11 @@ from app.core.internal_auth import require_internal_api_key
 from app.core.lifespan import update_session_activity
 from app.core.session_lock import acquire_session_lock
 from app.core.trace_store import bind_trace, reset_trace, timed_ms
-from app.core.was_outbox import enqueue_was_outbox, mark_was_outbox_succeeded
+from app.core.was_outbox import (
+    enqueue_was_outbox,
+    mark_was_outbox_succeeded,
+    reconcile_pending_writes_with_outbox,
+)
 from app.graph.nodes.feedback import execute_feedback
 from app.graph.nodes.intent import INTENT_APPROVAL, INTENT_RECORD
 from app.graph.nodes.was_write import execute_was_writes
@@ -661,6 +665,35 @@ async def chat(
             saved_values = {
                 key: value for key, value in saved.values.items() if key != "ai_persona"
             }
+            pending_before_reconcile = saved_values.get("pending_writes") or []
+            if pending_before_reconcile:
+                try:
+                    reconciled_pending, resolved_write_ids = await reconcile_pending_writes_with_outbox(
+                        checkpoint_db_path,
+                        pending_before_reconcile,
+                    )
+                    if resolved_write_ids:
+                        saved_values["pending_writes"] = reconciled_pending
+                        await graph.aupdate_state(config, {"pending_writes": reconciled_pending})
+                        trace_store.record_event(
+                            trace_id,
+                            stage="was_outbox",
+                            status="ok",
+                            title="Resolved pending WAS writes from outbox",
+                            detail={
+                                "resolved_count": len(resolved_write_ids),
+                                "pending_before": len(pending_before_reconcile),
+                                "pending_after": len(reconciled_pending),
+                            },
+                        )
+                except Exception as exc:
+                    logger.warning("Failed to reconcile pending WAS writes: %s", exc)
+                    trace_store.record_alert(
+                        trace_id,
+                        severity="warning",
+                        message="Failed to reconcile pending WAS writes",
+                        detail={"error": str(exc)},
+                    )
             profile_context_changed = bool(
                 req.user_profile_override
                 and _profile_override_changes_plan_context(

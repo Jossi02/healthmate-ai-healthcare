@@ -78,6 +78,7 @@ def _build_home_initial_state(req: HomeRecommendationRequest) -> GraphState:
         "force_regenerate": False,
         "validation_report": None,
         "validation_retry_count": 0,
+        "generation_quality_flags": None,
         "self_eval_count": 0,
         "self_eval_failure_reason": None,
         "fallback_count": 0,
@@ -161,6 +162,7 @@ async def _run_home_recommendations(
                 "proposed_plan_count": len(result.get("proposed_plan") or []),
                 "pending_writes_count": len(result.get("pending_writes") or []),
                 "needs_clarification": result.get("needs_clarification"),
+                "generation_quality_flags": result.get("generation_quality_flags"),
             },
         )
         record_quality_for_trace(trace_store, trace_id)

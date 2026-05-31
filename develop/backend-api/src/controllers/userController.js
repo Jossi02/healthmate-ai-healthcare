@@ -578,6 +578,23 @@ exports.addRecommendedExercise = async (req, res) => {
       if (error) throw error;
       plan = createdPlan;
     } else {
+      const { data: existingItem, error: existingItemError } = await supabase
+        .from('exercise_items')
+        .select('*')
+        .eq('exercise_id', plan.exercise_id)
+        .eq('exercise_name', exerciseName)
+        .maybeSingle();
+
+      if (existingItemError) throw existingItemError;
+      if (existingItem) {
+        return res.json({
+          message: 'Recommended exercise already exists.',
+          already_exists: true,
+          parent_plan: plan,
+          item: existingItem,
+        });
+      }
+
       const { data: updatedPlan, error } = await supabase
         .from('user_exercise_plans')
         .update({
