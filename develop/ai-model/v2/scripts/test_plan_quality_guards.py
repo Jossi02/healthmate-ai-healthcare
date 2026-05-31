@@ -24,6 +24,7 @@ from app.graph.nodes.generate import (
     _plan_contract_needs_fallback,
     _render_plan_preview_from_items,
     _resolve_proposed_plan_type,
+    _response_render_state,
     _workout_item_category,
 )
 from app.graph.nodes.context_resolver import _resolve_context
@@ -593,6 +594,12 @@ def test_explicit_workout_overrides_wrong_draft_plan_type() -> None:
         "create",
     )
     assert_true(components["core_message"] == "운동 플랜을 제안해요.", "core message should follow resolved plan type")
+
+    render_state = _response_render_state(
+        {"intent": "계획", "domain": "diet", "user_message": "스트레칭 위주 운동 플랜 작성해줘"},
+        {"proposed_plan_type": "workout", "proposed_plan_action": "create"},
+    )
+    assert_true(render_state["domain"] == "workout", "persona renderer should use resolved payload domain")
 
 
 def test_safe_diet_fallback_respects_compound_allergies() -> None:

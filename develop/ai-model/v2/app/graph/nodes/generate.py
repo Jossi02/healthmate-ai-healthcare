@@ -574,6 +574,7 @@ def _effective_user_profile(state: GraphState) -> dict:
 
 def _finalize_persona_aware_response(deps: NodeDeps, state: GraphState, result: dict) -> dict:
     payload = dict(result)
+    render_state = _response_render_state(state, payload)
     selected_persona, resolved_persona_id, _ = _persona_context(state)
     original_plan_snapshot = _canonical_plan_payload(payload.get("proposed_plan"))
     persona_marker_hits = _plan_persona_marker_hits(payload.get("proposed_plan") or [])
@@ -589,16 +590,16 @@ def _finalize_persona_aware_response(deps: NodeDeps, state: GraphState, result: 
     draft_response = render_draft_preview(draft_components)
     final_response = draft_response
 
-    final_response = strip_plan_flow_preamble(final_response, state)
+    final_response = strip_plan_flow_preamble(final_response, render_state)
     final_response = normalize_plan_flow_preview(
         final_response,
-        state,
+        render_state,
         draft_components,
         resolved_persona_id,
     )
-    if state.get("intent") in {INTENT_PLAN, INTENT_MODIFY, INTENT_APPROVAL}:
+    if render_state.get("intent") in {INTENT_PLAN, INTENT_MODIFY, INTENT_APPROVAL}:
         final_response = dedupe_repeated_sentences(final_response)
-    final_response = apply_persona_signature(final_response, resolved_persona_id, state)
+    final_response = apply_persona_signature(final_response, resolved_persona_id, render_state)
     mutation_report = _persona_mutation_report(
         original_plan_snapshot,
         _canonical_plan_payload(payload.get("proposed_plan")),
@@ -644,6 +645,16 @@ def _finalize_persona_aware_response(deps: NodeDeps, state: GraphState, result: 
         detail=mutation_report,
     )
     return payload
+
+
+def _response_render_state(state: GraphState, payload: dict) -> GraphState:
+    render_state = dict(state)
+    for key in ("proposed_plan", "proposed_plan_type", "proposed_plan_action"):
+        if payload.get(key) is not None:
+            render_state[key] = payload.get(key)
+    if payload.get("proposed_plan_type") in {"workout", "diet"}:
+        render_state["domain"] = payload["proposed_plan_type"]
+    return render_state
 
 
 def _record_evidence_integration(
