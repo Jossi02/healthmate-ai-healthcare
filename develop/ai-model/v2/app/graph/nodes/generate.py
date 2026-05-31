@@ -385,6 +385,7 @@ def make_generate_node(deps: NodeDeps):
             if proposed_plan_type == "diet" and _diet_plan_requires_safe_fallback(
                 proposed_plan,
                 _effective_user_profile(state),
+                state.get("user_message"),
             ):
                 (
                     draft_components,
@@ -2092,6 +2093,7 @@ def _plan_contract_needs_fallback(
 def _diet_plan_requires_safe_fallback(
     proposed_plan: list[dict],
     profile: dict,
+    request_text: object = "",
 ) -> bool:
     if not proposed_plan:
         return False
@@ -2099,6 +2101,7 @@ def _diet_plan_requires_safe_fallback(
     profile_parts: list[str] = []
     for key in ("diet_type", "dietary_restrictions", "allergies", "allergy"):
         profile_parts.extend(_as_text_list(profile.get(key)))
+    profile_parts.append(str(request_text or ""))
     profile_text = " ".join(profile_parts).lower()
     plan_text = _plan_text_for_safety_check(proposed_plan)
 
