@@ -517,6 +517,15 @@ def make_intent_node(deps: NodeDeps):
         if _looks_like_context_setup(message) and not _looks_like_plan_request(routing_message):
             return _build_result(INTENT_CASUAL, state, confidence=0.82)
 
+        if _looks_like_plan_delete_request(message) or _looks_like_plan_delete_request(routing_message):
+            return _build_result(
+                INTENT_RECORD,
+                state,
+                confidence=0.95,
+                record_type="plan_delete",
+                modify_target=_infer_plan_delete_target(routing_message or message),
+            )
+
         if _looks_like_plan_check_record(message) or _looks_like_plan_check_record(routing_message):
             return _build_result(INTENT_RECORD, state, confidence=0.94, record_type="plan_check", is_today=True)
 
@@ -544,6 +553,14 @@ def make_intent_node(deps: NodeDeps):
                 confidence=0.92,
                 search_targets=["vdb_external"],
             )
+
+        if _looks_like_ambiguous_mixed_plan_request(routing_message):
+            _record_intent_fallback(
+                deps,
+                reason="ambiguous_mixed_plan_domain",
+                signals=signals,
+            )
+            return _ambiguous_plan_clarification_result(state, signals)
 
         if _looks_like_new_plan_request(message, routing_message):
             return _build_result(
@@ -644,6 +661,13 @@ def make_intent_node(deps: NodeDeps):
             return _build_result(INTENT_RECORD, state, confidence=0.9)
 
         if _looks_like_modify_request(routing_message):
+            if _looks_like_ambiguous_mixed_plan_request(routing_message):
+                _record_intent_fallback(
+                    deps,
+                    reason="ambiguous_mixed_plan_domain",
+                    signals=signals,
+                )
+                return _ambiguous_plan_clarification_result(state, signals)
             return _build_result(
                 INTENT_MODIFY,
                 state,
@@ -653,6 +677,13 @@ def make_intent_node(deps: NodeDeps):
             )
 
         if _looks_like_plan_request(routing_message):
+            if _looks_like_ambiguous_mixed_plan_request(routing_message):
+                _record_intent_fallback(
+                    deps,
+                    reason="ambiguous_mixed_plan_domain",
+                    signals=signals,
+                )
+                return _ambiguous_plan_clarification_result(state, signals)
             return _build_result(
                 INTENT_PLAN,
                 state,
@@ -704,6 +735,20 @@ def make_intent_node(deps: NodeDeps):
         if output.profile_changes:
             profile_changes_dict = {item.field: item.value for item in output.profile_changes}
         output_intent = _coerce_llm_intent(output.intent, state, routing_message)
+        contract = _contract_fields(
+            output_intent,
+            state,
+            record_type=output.record_type,
+            modify_target=output.modify_target,
+            profile_changes=profile_changes_dict,
+            routing_message=routing_message,
+            emotion_override={
+                "label": output.emotion.label,
+                "intensity": output.emotion.intensity,
+            },
+        )
+        routing_diagnostics = _routing_diagnostics(signals, output_intent, contract)
+        contract["ambiguous"] = bool(contract.get("ambiguous") or routing_diagnostics.get("domain_ambiguous"))
         deps.trace.record_current_event(
             stage="intent",
             status="warn" if output_intent == INTENT_FALLBACK else "ok",
@@ -713,6 +758,7 @@ def make_intent_node(deps: NodeDeps):
                 "coerced_intent": output_intent,
                 "confidence": output.confidence,
                 "signals": signals,
+                "routing_diagnostics": routing_diagnostics,
                 "fallback_reason": "llm_or_coercion_returned_fallback"
                 if output_intent == INTENT_FALLBACK
                 else None,
@@ -721,18 +767,8 @@ def make_intent_node(deps: NodeDeps):
 
         return {
             "intent": output_intent,
-            **_contract_fields(
-                output_intent,
-                state,
-                record_type=output.record_type,
-                modify_target=output.modify_target,
-                profile_changes=profile_changes_dict,
-                routing_message=routing_message,
-                emotion_override={
-                    "label": output.emotion.label,
-                    "intensity": output.emotion.intensity,
-                },
-            ),
+            **contract,
+            "routing_diagnostics": routing_diagnostics,
             "confidence": output.confidence,
             "emotion": {
                 "label": output.emotion.label,
@@ -772,9 +808,12 @@ def _build_result(
 ) -> dict:
     is_profile_record = intent == INTENT_RECORD and _looks_like_profile_record(str(state.get("user_message") or ""))
     resolved_record_type = record_type or ("profile" if is_profile_record else None)
+    contract = _contract_fields(intent, state, record_type=resolved_record_type, modify_target=modify_target)
+    routing_diagnostics = _routing_diagnostics({}, intent, contract)
     return {
         "intent": intent,
-        **_contract_fields(intent, state, record_type=resolved_record_type, modify_target=modify_target),
+        **contract,
+        "routing_diagnostics": routing_diagnostics,
         "confidence": confidence,
         "emotion": state.get("emotion") or {"label": "중립", "intensity": 0.0},
         "previous_intent": state.get("intent"),
@@ -792,6 +831,25 @@ def _build_result(
         "fallback_count": state.get("fallback_count", 0),
         "self_eval_count": 0,
     }
+
+
+def _ambiguous_plan_clarification_result(state: GraphState, signals: dict[str, Any]) -> dict:
+    result = _build_result(INTENT_PLAN, state, confidence=0.9)
+    result["ambiguous"] = True
+    result["needs_clarification"] = True
+    result["routing_diagnostics"] = {
+        "intent": INTENT_PLAN,
+        "action_intent": "create",
+        "domain": "general",
+        "inferred_domain": signals.get("inferred_domain"),
+        "domain_ambiguous": True,
+        "needs_clarification_recommended": True,
+        "reason_codes": ["ambiguous_mixed_plan_domain"],
+        "plan_like": True,
+        "info_like": bool(signals.get("info_request_match") or signals.get("question_followup_match")),
+        "context_ambiguous": bool(signals.get("context_ambiguous")),
+    }
+    return result
 
 
 def _record_intent_fallback(deps: NodeDeps, *, reason: str, signals: dict[str, Any]) -> None:
@@ -823,11 +881,49 @@ def _intent_signal_snapshot(message: str, routing_message: str, state: GraphStat
         "offtopic_match": _looks_like_offtopic_request(routing_message),
         "question_followup_match": _looks_like_question_followup(routing_message),
         "plan_request_match": _looks_like_plan_request(routing_message),
+        "plan_delete_match": _looks_like_plan_delete_request(routing_message),
         "info_request_match": _looks_like_info_request(routing_message),
         "modify_request_match": _looks_like_modify_request(routing_message),
         "profile_record_match": _looks_like_profile_record(routing_message),
         "memory_query_match": _looks_like_memory_query(routing_message),
         "has_question_mark": "?" in normalized,
+    }
+
+
+def _routing_diagnostics(signals: dict[str, Any], intent: str, contract: dict[str, Any]) -> dict[str, Any]:
+    plan_like = bool(signals.get("plan_request_match") or signals.get("modify_request_match"))
+    info_like = bool(signals.get("info_request_match") or signals.get("question_followup_match"))
+    inferred_domain = signals.get("inferred_domain")
+    action_intent = contract.get("action_intent")
+    domain = contract.get("domain")
+    domain_ambiguous = bool(
+        contract.get("ambiguous")
+        or (plan_like and info_like and action_intent in {"create", "modify", "info"})
+        or (action_intent in {"create", "modify"} and domain == "general")
+        or (inferred_domain == "general" and action_intent in {"create", "modify"})
+    )
+    reason_codes: list[str] = []
+    if contract.get("ambiguous"):
+        reason_codes.append("llm_contract_ambiguous")
+    if plan_like and info_like:
+        reason_codes.append("plan_info_overlap")
+    if action_intent in {"create", "modify"} and domain == "general":
+        reason_codes.append("plan_domain_general")
+    if inferred_domain == "general" and action_intent in {"create", "modify"}:
+        reason_codes.append("inferred_domain_general")
+    if signals.get("context_ambiguous"):
+        reason_codes.append("context_ambiguous")
+    return {
+        "intent": intent,
+        "action_intent": action_intent,
+        "domain": domain,
+        "inferred_domain": inferred_domain,
+        "domain_ambiguous": domain_ambiguous,
+        "needs_clarification_recommended": domain_ambiguous and action_intent in {"create", "modify"},
+        "reason_codes": reason_codes,
+        "plan_like": plan_like,
+        "info_like": info_like,
+        "context_ambiguous": bool(signals.get("context_ambiguous")),
     }
 
 
@@ -1493,6 +1589,61 @@ def _looks_like_modify_request(message: str) -> bool:
     if _looks_like_plan_request(normalized) and not has_hard_modify_keyword:
         return False
     return has_domain_keyword and has_modify_keyword
+
+
+def _looks_like_plan_delete_request(message: str) -> bool:
+    normalized = message.strip().lower()
+    if not normalized:
+        return False
+
+    has_plan_context = any(
+        keyword in normalized
+        for keyword in (
+            "플랜",
+            "계획",
+            "일정",
+            "루틴",
+            "운동",
+            "식단",
+            "식사",
+            "메뉴",
+            "workout",
+            "exercise",
+            "diet",
+            "meal",
+        )
+    )
+    has_delete_marker = any(
+        marker in normalized
+        for marker in (
+            "삭제",
+            "지워",
+            "지우",
+            "없애",
+            "취소",
+            "remove",
+            "delete",
+            "cancel",
+        )
+    )
+    return has_plan_context and has_delete_marker
+
+
+def _infer_plan_delete_target(message: str) -> str | None:
+    normalized = message.strip().lower()
+    has_workout = any(
+        keyword in normalized
+        for keyword in ("운동", "루틴", "헬스", "근력", "유산소", "workout", "exercise")
+    )
+    has_diet = any(
+        keyword in normalized
+        for keyword in ("식단", "식사", "메뉴", "아침", "점심", "저녁", "diet", "meal")
+    )
+    if has_workout and not has_diet:
+        return "workout"
+    if has_diet and not has_workout:
+        return "diet"
+    return None
 
 
 def _looks_like_plan_check_record(message: str) -> bool:

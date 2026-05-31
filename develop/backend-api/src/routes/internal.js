@@ -23,6 +23,9 @@ router.post('/plan/create/:user_id', internalController.createPlan);
 // 3.5 플랜 수정
 router.put('/plan/update/:user_id', internalController.updatePlan);
 
+// 3.5-추가 플랜 삭제
+router.delete('/plan/delete/:user_id', internalController.deletePlan);
+
 // 3.6 플랜 체크 완료
 router.put('/plan/check/:user_id', internalController.checkPlan);
 

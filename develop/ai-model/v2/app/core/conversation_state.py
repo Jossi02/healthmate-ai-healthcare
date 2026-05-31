@@ -15,6 +15,54 @@ from app.schemas.state import (
 
 RECENT_TURN_LIMIT = 4
 ACTIVE_PROPOSAL_STALE_TURNS = 2
+_PLAN_CONTEXT_PROFILE_FIELDS = {
+    "age",
+    "gender",
+    "sex",
+    "height",
+    "height_cm",
+    "weight",
+    "body_weight",
+    "current_weight",
+    "bmi",
+    "activity_level",
+    "exercise_level",
+    "fitness_level",
+    "goal",
+    "primary_goal",
+    "exercise_goal",
+    "training_goal",
+    "diet_goal",
+    "diet_type",
+    "dietary_preferences",
+    "dietary_restrictions",
+    "foods_to_avoid",
+    "allergies",
+    "allergy",
+    "injury_history",
+    "pain_points",
+    "medical_history",
+    "medical_conditions",
+    "conditions",
+    "lifestyle",
+    "schedule",
+    "available_time_minutes",
+    "exercise_frequency",
+    "workout_frequency",
+    "frequency_per_week",
+    "weekly_workouts",
+    "target_workouts_per_week",
+    "preferred_workout_days",
+    "social_orientation",
+    "personality_axis",
+    "personality_type",
+    "personality",
+    "exercise_style",
+    "introversion_extroversion",
+    "mbti",
+    "emotional_context",
+    "context_notes",
+}
 
 _WORKOUT_KEYWORDS = (
     "운동",
@@ -179,6 +227,9 @@ def evolve_active_proposal(previous: ActiveProposal | None, state: GraphState) -
     if generated:
         return generated
 
+    if _should_clear_active_proposal(state):
+        return None
+
     if not previous:
         return None
 
@@ -200,6 +251,53 @@ def evolve_active_proposal(previous: ActiveProposal | None, state: GraphState) -
     return previous
 
 
+def _should_clear_active_proposal(state: GraphState) -> bool:
+    if _profile_changes_affect_active_proposal(state.get("profile_changes")):
+        return True
+
+    report = state.get("validation_report") or {}
+    if isinstance(report, dict) and report.get("passed") is False:
+        issues = report.get("issues") or []
+        if any(isinstance(issue, dict) and issue.get("severity") == "critical" for issue in issues):
+            return True
+
+    return bool(
+        state.get("needs_clarification")
+        and state.get("action_intent") in {"create", "modify"}
+        and not state.get("proposed_plan")
+    )
+
+
+def _profile_changes_affect_active_proposal(changes: object) -> bool:
+    return bool(_profile_change_fields(changes) & _PLAN_CONTEXT_PROFILE_FIELDS)
+
+
+def profile_changes_affect_plan_context(changes: object) -> bool:
+    return _profile_changes_affect_active_proposal(changes)
+
+
+def profile_change_fields(changes: object) -> set[str]:
+    return _profile_change_fields(changes)
+
+
+def _profile_change_fields(changes: object) -> set[str]:
+    fields: set[str] = set()
+    if isinstance(changes, dict):
+        field = changes.get("field") or changes.get("key") or changes.get("name")
+        if isinstance(field, str):
+            fields.add(field)
+        for key, value in changes.items():
+            if isinstance(key, str) and key in _PLAN_CONTEXT_PROFILE_FIELDS:
+                fields.add(key)
+            fields.update(_profile_change_fields(value))
+    elif isinstance(changes, list):
+        for item in changes:
+            fields.update(_profile_change_fields(item))
+    elif isinstance(changes, str) and changes in _PLAN_CONTEXT_PROFILE_FIELDS:
+        fields.add(changes)
+    return fields
+
+
 def derive_state_effect(state: GraphState) -> StateEffect:
     if state.get("needs_clarification"):
         return "clarification_requested"
@@ -214,6 +312,8 @@ def derive_state_effect(state: GraphState) -> StateEffect:
             return "profile_recorded"
         if state.get("record_type") == "plan_check":
             return "plan_checked"
+        if state.get("record_type") == "plan_delete":
+            return "plan_deleted"
     return "none"
 
 
@@ -288,6 +388,8 @@ def _assistant_summary(
         return "프로필 변경 기록 처리"
     if state_effect == "plan_checked":
         return "오늘 계획 체크 처리"
+    if state_effect == "plan_deleted":
+        return "계획 삭제 처리"
     if state_effect == "clarification_requested":
         return "의도 확인 질문"
     if action_intent == "info":

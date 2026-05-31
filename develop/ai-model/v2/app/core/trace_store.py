@@ -61,6 +61,10 @@ def _build_list_summary(trace: dict[str, Any]) -> dict[str, Any]:
         "search_results_count": state_summary.get("search_results_count"),
         "modify_target": state_summary.get("modify_target"),
         "resolved_persona_id": state_summary.get("resolved_persona_id"),
+        "retrieval_decision": state_summary.get("retrieval_decision"),
+        "validation_passed": (state_summary.get("validation_report") or {}).get("passed")
+        if isinstance(state_summary.get("validation_report"), dict)
+        else None,
         "proposed_plan_type": state_summary.get("proposed_plan_type"),
         "proposed_plan_action": state_summary.get("proposed_plan_action"),
         "proposed_plan_count": state_summary.get("proposed_plan_count"),

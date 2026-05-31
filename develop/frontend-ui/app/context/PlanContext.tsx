@@ -85,13 +85,18 @@ interface PlanContextType {
     mealType: string,
     newDiet: Omit<DietItem, "type">
   ) => Promise<boolean>;
+  deletePlanItem: (
+    dateStr: string,
+    idx: number,
+    kind: PlanItemKind
+  ) => Promise<boolean>;
   completeWorkout: (dateStr: string, idx: number) => Promise<void>;
   completeDiet: (dateStr: string, idx: number) => Promise<void>;
   getPlanByDate: (date: Date | string) => DailyPlan | null;
   dismissPlanUpdate: (itemId: string) => void;
   userData: UserData | null;
   isUserLoading: boolean;
-  fetchPlans: (options?: FetchPlansOptions) => Promise<void>;
+  fetchPlans: (options?: FetchPlansOptions) => Promise<boolean>;
   fetchUserProfile: () => Promise<void>;
   updateUserData: (data: Partial<UserData>) => void;
 }
@@ -165,6 +170,14 @@ function getAuthHeaders() {
     "ngrok-skip-browser-warning": "true",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
+}
+
+function isIgnorableFetchAbort(error: unknown) {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return true;
+  }
+
+  return error instanceof TypeError && error.message === "Failed to fetch";
 }
 
 function safeParseArray(value: unknown) {
@@ -425,7 +438,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   }, [updateHighlightedPlanItemIds]);
 
   const fetchPlans = useCallback(async (options?: FetchPlansOptions) => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") return false;
 
     const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
     if (!token) {
@@ -433,7 +446,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       plansRef.current = [];
       setCompletedTasks({});
       updateHighlightedPlanItemIds([]);
-      return;
+      return false;
     }
 
     const currentYear = Number(formatKstDate().slice(0, 4));
@@ -452,7 +465,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
 
       if (response.status === 401) {
         redirectToLoginForExpiredSession();
-        return;
+        return false;
       }
 
       if (!response.ok) {
@@ -475,11 +488,16 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       plansRef.current = normalized.plans;
       setPlans(normalized.plans);
       setCompletedTasks(normalized.completedTasks);
+      return true;
     } catch (error) {
+      if (isIgnorableFetchAbort(error)) {
+        return false;
+      }
       console.error("Failed to sync plans", error);
       setPlans([]);
       plansRef.current = [];
       setCompletedTasks({});
+      return false;
     }
   }, [updateHighlightedPlanItemIds]);
 
@@ -541,6 +559,9 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       setUserData(mergedData);
       localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(mergedData));
     } catch (error) {
+      if (isIgnorableFetchAbort(error)) {
+        return;
+      }
       console.error("Failed to sync profile", error);
     } finally {
       setIsUserLoading(false);
@@ -684,6 +705,44 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     [fetchPlans]
   );
 
+  const deletePlanItem = useCallback(
+    async (dateStr: string, idx: number, kind: PlanItemKind) => {
+      const plan = plans.find((item) => item.date === dateStr);
+      const target =
+        kind === "workout" ? plan?.exercises[idx] : plan?.diets[idx];
+
+      if (!target?.itemId) {
+        return false;
+      }
+
+      try {
+        const response = await fetch(
+          buildApiUrl(`/api/v1/users/plans/${encodeURIComponent(target.itemId)}`),
+          {
+            method: "DELETE",
+            headers: getAuthHeaders(),
+          }
+        );
+
+        if (response.status === 401) {
+          redirectToLoginForExpiredSession();
+          return false;
+        }
+
+        if (!response.ok) {
+          throw new Error("Failed to delete plan item.");
+        }
+
+        await fetchPlans();
+        return true;
+      } catch (error) {
+        console.error("Failed to delete plan item", error);
+        return false;
+      }
+    },
+    [fetchPlans, plans]
+  );
+
   const getPlanByDate = useCallback(
     (date: Date | string) => {
       const dateKey = formatDateKey(date);
@@ -701,6 +760,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
         hasPlanUpdates: highlightedPlanItemIds.length > 0,
         addWorkout,
         replaceDiet,
+        deletePlanItem,
         completeWorkout,
         completeDiet,
         getPlanByDate,

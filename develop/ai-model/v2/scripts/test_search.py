@@ -34,5 +34,12 @@ async def test_search():
         for i, r in enumerate(results):
             print(f"[{i+1}] Score: {r['score']:.4f} | Source: {r['source']} | Text: {r['text'][:100]}...")
 
+    close_index = getattr(index, "close", None)
+    if close_index:
+        maybe_awaitable = close_index()
+        if asyncio.iscoroutine(maybe_awaitable):
+            await maybe_awaitable
+    await pc_core.close()
+
 if __name__ == "__main__":
     asyncio.run(test_search())

@@ -5,9 +5,16 @@ import asyncio
 import logging
 import re
 import time
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from app.core.conversation_state import infer_domain
+from app.core.profile_constraints import (
+    build_profile_constraint_set,
+    query_mentions_specialized_topic as _shared_query_mentions_specialized_topic,
+    query_needs_evidence as _shared_query_needs_evidence,
+    query_needs_user_memory as _shared_query_needs_user_memory,
+)
 from app.core.prompt_loader import load_prompt
 from app.graph.deps import NodeDeps
 from app.schemas.llm_responses import QueryRegenResponse, SearchEvalResponse
@@ -21,6 +28,7 @@ INTENT_MODIFY = "수정"
 INTENT_INFO = "정보"
 
 TOP_K = 8
+EXTERNAL_FETCH_TOP_K = 30
 _WEB_ENABLED_INTENTS = {INTENT_INFO}
 _ACCEPT_SCORE_BY_INTENT = {
     INTENT_INFO: 0.6,
@@ -42,16 +50,29 @@ _INFO_WEB_KEYWORDS = (
     "최근",
     "요즘",
     "뉴스",
-    "연구",
-    "논문",
     "업데이트",
-    "근거",
-    "가이드라인",
-    "권고",
 )
 
 _EVAL_SYSTEM_PROMPT = load_prompt("nodes/search/eval.md")
 _QUERY_REGEN_PROMPT = load_prompt("nodes/search/query_regen.md")
+
+
+@dataclass(frozen=True)
+class RetrievalSpec:
+    should_search: bool
+    targets: list[str]
+    domain: str
+    query_span: str
+    topics: list[str]
+    use_cases: list[str]
+    profile_targets: list[str]
+    constraints: list[str]
+    critical_constraints: list[str]
+    negative_constraints: list[str]
+    goals: list[str]
+    requires_recency: bool
+    strict_filter: dict[str, Any] | None
+    relaxed_filter: dict[str, Any] | None
 
 
 def make_search_node(deps: NodeDeps):
@@ -73,22 +94,26 @@ def make_search_node(deps: NodeDeps):
             },
         )
 
-        query = _augment_query(query, state)
-        targets = _normalize_targets(state, query, targets)
-        external_filter, relaxed_external_filter = _build_external_filters(state, query)
+        spec = _build_retrieval_spec(state, query, targets)
+        query = spec.query_span
+        targets = spec.targets
         deps.trace.record_current_event(
             stage="search",
             status="info",
-            title="Search query prepared",
+            title="Retrieval spec prepared",
             detail={
-                "query": query,
-                "targets": targets,
-                "external_filter": external_filter,
-                "relaxed_external_filter": relaxed_external_filter,
+                "spec": _retrieval_spec_trace(spec),
+                "strict_filter": spec.strict_filter,
+                "relaxed_filter": spec.relaxed_filter,
             },
         )
 
-        if intent in _WEB_ENABLED_INTENTS and "vdb_external" in targets and "web" not in targets:
+        if (
+            intent in _WEB_ENABLED_INTENTS
+            and "vdb_external" in targets
+            and "web" not in targets
+            and _info_needs_web(_resolved_query(state))
+        ):
             targets.append("web")
 
         if not targets:
@@ -118,7 +143,7 @@ def make_search_node(deps: NodeDeps):
             query,
             query_vec,
             targets,
-            external_filter=external_filter,
+            external_filter=spec.strict_filter,
         )
         merged_results = _merge_results(raw_results)
         merged_results = await _expand_external_results_if_needed(
@@ -126,9 +151,13 @@ def make_search_node(deps: NodeDeps):
             query_vec,
             targets,
             merged_results,
-            strict_filter=external_filter,
-            relaxed_filter=relaxed_external_filter,
+            strict_filter=spec.strict_filter,
+            relaxed_filter=spec.relaxed_filter,
         )
+        merged_results, post_filter_quality = _post_filter_external_results(merged_results, spec)
+        merged_results = _rerank_external_results(merged_results, spec)
+        merged_results = merged_results[:TOP_K]
+        search_quality = _search_quality_from_results(spec, merged_results, post_filter_quality)
 
         if _should_skip_eval(state, merged_results):
             deps.trace.record_current_event(
@@ -137,14 +166,16 @@ def make_search_node(deps: NodeDeps):
                 title="Search completed with lightweight policy",
                 detail={
                     "results": len(merged_results),
+                    "search_quality": search_quality,
                     "reason": _skip_eval_reason(state, merged_results),
                     "top_results": _preview_results(merged_results),
+                    "returned_kb_ids": _returned_kb_ids(merged_results),
                 },
                 duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
             )
             return {
                 "search_results": merged_results,
-                "search_quality": "ok" if merged_results else "degraded",
+                "search_quality": search_quality,
                 "search_retry_count": retry_count,
             }
 
@@ -160,14 +191,16 @@ def make_search_node(deps: NodeDeps):
                 detail={
                     "score": score,
                     "accept_score": accept_score,
+                    "search_quality": search_quality,
                     "results": len(merged_results),
                     "top_results": _preview_results(merged_results),
+                    "returned_kb_ids": _returned_kb_ids(merged_results),
                 },
                 duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
             )
             return {
                 "search_results": merged_results,
-                "search_quality": "ok",
+                "search_quality": search_quality,
                 "search_retry_count": retry_count,
             }
 
@@ -319,6 +352,41 @@ def _profile_weight_value(profile: dict) -> int | None:
     return None
 
 
+def _profile_bmi_value(profile: dict) -> float | None:
+    raw_bmi = profile.get("bmi")
+    if raw_bmi:
+        try:
+            if isinstance(raw_bmi, str):
+                match = re.search(r"-?\d+(?:\.\d+)?", raw_bmi)
+                if not match:
+                    return None
+                return float(match.group(0))
+            return float(raw_bmi)
+        except (TypeError, ValueError):
+            return None
+
+    weight = _profile_weight_value(profile)
+    height = profile.get("height") or profile.get("height_cm") or profile.get("body_height_cm")
+    if not weight or not height:
+        return None
+    try:
+        if isinstance(height, str):
+            match = re.search(r"-?\d+(?:\.\d+)?", height)
+            if not match:
+                return None
+            height_value = float(match.group(0))
+        else:
+            height_value = float(height)
+    except (TypeError, ValueError):
+        return None
+    if height_value <= 0:
+        return None
+    height_m = height_value / 100 if height_value > 3 else height_value
+    if height_m <= 0:
+        return None
+    return round(weight / (height_m * height_m), 1)
+
+
 def _profile_social_orientation(profile: dict) -> str | None:
     for key in (
         "social_orientation",
@@ -364,7 +432,12 @@ def _normalize_targets(state: GraphState, query: str, targets: list[str]) -> lis
     action_intent = state.get("action_intent")
 
     if action_intent in {"create", "modify"} or intent == INTENT_MODIFY:
-        return [target for target in normalized if target != "web"]
+        filtered = [target for target in normalized if target != "web"]
+        if not _query_needs_user_memory(query):
+            filtered = [target for target in filtered if target not in {"vdb_memory", "vdb_user_important"}]
+        if not _plan_needs_external_rag(state, query):
+            filtered = [target for target in filtered if target != "vdb_external"]
+        return filtered
 
     if intent == INTENT_INFO and "web" in normalized and not _info_needs_web(query):
         return [target for target in normalized if target != "web"]
@@ -377,38 +450,410 @@ def _info_needs_web(query: str) -> bool:
     return any(keyword in normalized for keyword in _INFO_WEB_KEYWORDS)
 
 
-def _build_external_filters(state: GraphState, query: str) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-    domain = _resolved_domain(state, query)
+def _apply_rag_trigger_targets(state: GraphState, query: str, targets: list[str]) -> list[str]:
+    normalized = list(dict.fromkeys(targets))
+    intent = state.get("intent")
     action_intent = str(state.get("action_intent") or "")
-    category_candidates = _external_categories_for_domain(domain)
-    use_case_candidates = _external_use_cases_for_request(domain, action_intent, query)
-    population_candidates = _external_populations_for_profile(state)
+
+    if intent in {INTENT_PLAN, INTENT_MODIFY} or action_intent in {"create", "modify"}:
+        if _plan_needs_external_rag(state, query) and "vdb_external" not in normalized:
+            normalized.append("vdb_external")
+        if _query_needs_user_memory(query):
+            for target in ("vdb_memory", "vdb_user_important"):
+                if target not in normalized:
+                    normalized.append(target)
+        return normalized
+
+    if intent == INTENT_INFO:
+        if "vdb_external" not in normalized:
+            normalized.append("vdb_external")
+        if _info_needs_web(query) and "web" not in normalized:
+            normalized.append("web")
+        if _query_needs_user_memory(query):
+            for target in ("vdb_memory", "vdb_user_important"):
+                if target not in normalized:
+                    normalized.append(target)
+        return normalized
+
+    if intent == INTENT_CARE and state.get("requires_past_memory"):
+        for target in ("vdb_memory", "vdb_user_important"):
+            if target not in normalized:
+                normalized.append(target)
+
+    return normalized
+
+
+def _plan_needs_external_rag(state: GraphState, query: str) -> bool:
+    user_query = str(state.get("user_message") or query)
+    profile_constraints = state.get("profile_constraints") or {}
+    return (
+        bool(profile_constraints.get("should_use_rag"))
+        or _profile_has_rag_risk(state.get("user_profile") or {})
+        or _query_needs_evidence(user_query)
+        or _query_mentions_specialized_topic(user_query)
+    )
+
+
+def _query_needs_evidence(query: str) -> bool:
+    return _shared_query_needs_evidence(query)
+
+
+def _query_mentions_specialized_topic(query: str) -> bool:
+    return _shared_query_mentions_specialized_topic(query)
+
+
+def _query_needs_user_memory(query: str) -> bool:
+    return _shared_query_needs_user_memory(query)
+
+
+def _profile_has_rag_risk(profile: dict) -> bool:
+    age = _safe_int(profile.get("age"))
+    weight = _profile_weight_value(profile)
+    bmi = _profile_bmi_value(profile)
+    if age is not None and (age < 19 or age >= 60):
+        return True
+    if weight is not None and weight >= 90:
+        return True
+    if bmi is not None and bmi >= 25:
+        return True
+
+    risk_fields = (
+        "injury_history",
+        "medical_history",
+        "medical_conditions",
+        "conditions",
+        "pain_points",
+        "allergies",
+        "allergy",
+        "dietary_restrictions",
+    )
+    if any(_as_text_list(profile.get(field)) for field in risk_fields):
+        return True
+    if _is_plant_based_profile(profile):
+        return True
+
+    profile_text = " ".join(
+        str(profile.get(field) or "")
+        for field in ("goal", "primary_goal", "diet_goal", "context_notes", "lifestyle", "schedule")
+    ).lower()
+    return any(
+        keyword in profile_text
+        for keyword in (
+            "diabetes",
+            "당뇨",
+            "혈당",
+            "hypertension",
+            "고혈압",
+            "heart",
+            "심장",
+            "심혈관",
+            "천식",
+            "asthma",
+            "arthritis",
+            "관절염",
+            "비만",
+            "bmi",
+            "bone",
+            "골감소",
+        )
+    )
+
+
+def _build_retrieval_spec(state: GraphState, query: str, initial_targets: list[str]) -> RetrievalSpec:
+    query_span = _build_query_span(query)
+    targets = _apply_rag_trigger_targets(state, query_span, list(initial_targets or []))
+    targets = _normalize_targets(state, query_span, targets)
+    requires_recency = _info_needs_web(query_span)
+    domain = _resolved_domain(state, query_span)
+    action_intent = str(state.get("action_intent") or "")
+    profile = state.get("user_profile") or {}
+    topics = _external_topics_for_query(domain, query_span)
+    use_cases = _external_use_cases_for_request(domain, action_intent, query_span)
+    compiled_constraints = state.get("profile_constraints") or build_profile_constraint_set(
+        profile,
+        query_span,
+        domain=domain,
+    )
+    profile_targets = list(compiled_constraints.get("profile_targets") or [])
+    negative_constraints = list(compiled_constraints.get("negative_constraints") or [])
+    if "retrieval_constraints" in compiled_constraints:
+        constraints = list(compiled_constraints.get("retrieval_constraints") or [])
+    else:
+        constraints = list(compiled_constraints.get("constraints") or [])
+    goals = list(compiled_constraints.get("goals") or [])
+    if "retrieval_critical_constraints" in compiled_constraints:
+        critical_constraints = list(compiled_constraints.get("retrieval_critical_constraints") or [])
+    else:
+        critical_constraints = list(compiled_constraints.get("critical_constraints") or _critical_constraints_for_request(constraints))
+    strict_filter, relaxed_filter = _build_external_filters_from_parts(
+        domain=domain,
+        topics=topics,
+        use_cases=use_cases,
+        profile_targets=profile_targets,
+        constraints=constraints,
+        goals=goals,
+    )
+    return RetrievalSpec(
+        should_search=bool(targets),
+        targets=targets,
+        domain=domain,
+        query_span=query_span,
+        topics=topics,
+        use_cases=use_cases,
+        profile_targets=profile_targets,
+        constraints=constraints,
+        critical_constraints=critical_constraints,
+        negative_constraints=negative_constraints,
+        goals=goals,
+        requires_recency=requires_recency,
+        strict_filter=strict_filter,
+        relaxed_filter=relaxed_filter,
+    )
+
+
+def _build_query_span(query: str) -> str:
+    text = str(query or "").strip()
+    text = re.sub(r"\s*\[[^\]]+\]\s*$", "", text).strip()
+    return text or str(query or "").strip()
+
+
+def _critical_constraints_for_request(constraints: list[str]) -> list[str]:
+    non_critical = {"low_time"}
+    return [constraint for constraint in constraints if constraint not in non_critical]
+
+
+def _retrieval_spec_trace(spec: RetrievalSpec) -> dict[str, Any]:
+    payload = asdict(spec)
+    payload.pop("strict_filter", None)
+    payload.pop("relaxed_filter", None)
+    payload["raw_top_k"] = EXTERNAL_FETCH_TOP_K
+    payload["final_top_k"] = TOP_K
+    return payload
+
+
+def _build_external_filters(state: GraphState, query: str) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    spec = _build_retrieval_spec(state, query, list(state.get("search_targets") or []))
+    return spec.strict_filter, spec.relaxed_filter
+
+
+def _build_external_filters_from_parts(
+    *,
+    domain: str,
+    topics: list[str],
+    use_cases: list[str],
+    profile_targets: list[str],
+    constraints: list[str],
+    goals: list[str],
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
     clauses: list[dict[str, Any]] = []
     relaxed_filter: dict[str, Any] | None = None
 
-    if category_candidates:
-        clauses.append({"category": {"$in": category_candidates}})
-    if use_case_candidates:
-        clauses.append({"use_case": {"$in": use_case_candidates}})
-    if population_candidates:
-        clauses.append({"population": {"$in": population_candidates}})
+    clauses.append({"source_type": {"$in": ["external_kb"]}})
+    if domain in {"workout", "diet", "safety", "habit"}:
+        clauses.append({"domain": {"$in": [domain]}})
+    if use_cases:
+        clauses.append({"use_cases": {"$in": use_cases}})
+    if profile_targets:
+        clauses.append({"profile_targets": {"$in": profile_targets}})
+    if constraints:
+        clauses.append({"constraints": {"$in": constraints}})
+    if goals:
+        clauses.append({"goals": {"$in": goals}})
 
     if not clauses:
         return None, None
-    if category_candidates:
-        relaxed_filter = {"category": {"$in": category_candidates}}
+    relaxed_clauses = [{"source_type": {"$in": ["external_kb"]}}]
+    if domain in {"workout", "diet", "safety", "habit"}:
+        relaxed_clauses.append({"domain": {"$in": [domain]}})
+    if use_cases:
+        relaxed_clauses.append({"use_cases": {"$in": use_cases}})
+    elif topics:
+        relaxed_clauses.append({"topic": {"$in": topics}})
+
+    if len(relaxed_clauses) == 1:
+        relaxed_filter = relaxed_clauses[0]
+    else:
+        relaxed_filter = {"$and": relaxed_clauses}
+
     if len(clauses) == 1:
         return clauses[0], relaxed_filter if relaxed_filter != clauses[0] else None
     return {"$and": clauses}, relaxed_filter
 
 
+def _rerank_external_results(
+    results: list[dict],
+    spec_or_state: RetrievalSpec | GraphState,
+    query: str | None = None,
+) -> list[dict]:
+    if not results:
+        return results
+
+    if isinstance(spec_or_state, RetrievalSpec):
+        spec = spec_or_state
+    else:
+        spec = _build_retrieval_spec(spec_or_state, str(query or ""), list(spec_or_state.get("search_targets") or []))
+
+    domain = spec.domain
+    expected_topics = set(spec.topics)
+    specific_topics = expected_topics - {"physical_activity", "meal_planning"}
+    expected_targets = set(spec.profile_targets)
+    expected_constraints = set(spec.constraints)
+    expected_goals = set(spec.goals)
+
+    def match_bonus(result: dict) -> int:
+        if result.get("source") != "external" and result.get("source_type") != "external_kb":
+            return 0
+        bonus = 0
+        if domain and result.get("domain") == domain:
+            bonus += 20
+        result_constraints = set(_metadata_values(result.get("constraints")))
+        result_targets = set(_metadata_values(result.get("profile_targets")))
+        result_goals = set(_metadata_values(result.get("goals")))
+        matched_constraints = len(expected_constraints & result_constraints)
+        extra_constraints = len(result_constraints - expected_constraints) if expected_constraints else 0
+        bonus += 16 * matched_constraints
+        bonus -= 2 * extra_constraints
+        bonus += 6 * len(expected_targets & result_targets)
+        bonus += 5 * len(expected_goals & result_goals)
+        if specific_topics and result.get("topic") in specific_topics:
+            bonus += 15
+        elif result.get("topic") in expected_topics:
+            bonus += 2
+        bonus += _evidence_quality_bonus(result)
+        bonus += _specificity_bonus(result, expected_constraints)
+        return bonus
+
+    decorated = [
+        (match_bonus(result), float(result.get("score") or 0.0), -index, result)
+        for index, result in enumerate(results)
+    ]
+    return [result for *_unused, result in sorted(decorated, reverse=True)]
+
+
+def _post_filter_external_results(results: list[dict], spec: RetrievalSpec) -> tuple[list[dict], str]:
+    if "vdb_external" not in spec.targets:
+        return results, "ok"
+
+    negative = set(spec.negative_constraints)
+    critical = set(spec.critical_constraints)
+    non_external = [
+        result
+        for result in results
+        if result.get("source") != "external" and result.get("source_type") != "external_kb"
+    ]
+    external = [
+        result
+        for result in results
+        if result.get("source") == "external" or result.get("source_type") == "external_kb"
+    ]
+    if not external:
+        return results, "degraded"
+
+    without_negative = [
+        result
+        for result in external
+        if not (negative & set(_metadata_values(result.get("constraints"))))
+    ]
+    if not without_negative:
+        return non_external, "weak"
+
+    if not critical:
+        return _merge_results(non_external + without_negative), "ok"
+
+    critical_matches = [
+        result
+        for result in without_negative
+        if critical.issubset(set(_metadata_values(result.get("constraints"))))
+    ]
+    if critical_matches:
+        return _merge_results(non_external + critical_matches), "ok"
+    return _merge_results(non_external + without_negative), "weak"
+
+
+def _search_quality_from_results(spec: RetrievalSpec, results: list[dict], post_filter_quality: str) -> str:
+    if not spec.should_search:
+        return "ok"
+    if not results:
+        return "degraded"
+    if post_filter_quality in {"weak", "degraded"}:
+        return post_filter_quality
+    if "vdb_external" not in spec.targets:
+        return "ok"
+
+    external = [
+        result
+        for result in results
+        if result.get("source") == "external" or result.get("source_type") == "external_kb"
+    ]
+    if not external:
+        return "degraded"
+    if spec.domain in {"workout", "diet"} and not any(result.get("domain") == spec.domain for result in external):
+        return "weak"
+    critical = set(spec.critical_constraints)
+    if critical and not any(critical.issubset(set(_metadata_values(result.get("constraints")))) for result in external):
+        return "weak"
+    return "ok"
+
+
+def _evidence_quality_bonus(result: dict) -> int:
+    bonus = 0
+    try:
+        rank = int(float(result.get("evidence_rank") or 0))
+    except (TypeError, ValueError):
+        rank = 0
+    bonus += min(max(rank, 0), 5)
+    try:
+        year = int(float(result.get("year") or 0))
+    except (TypeError, ValueError):
+        year = 0
+    if year >= 2024:
+        bonus += 2
+    elif year and year < 2015:
+        bonus -= 1
+    if result.get("risk_level") in {"avoid", "caution"}:
+        bonus += 1
+    return bonus
+
+
+def _specificity_bonus(result: dict, expected_constraints: set[str]) -> int:
+    constraints = set(_metadata_values(result.get("constraints")))
+    if not constraints:
+        return 0
+    if expected_constraints and expected_constraints.issubset(constraints):
+        if len(constraints) <= max(len(expected_constraints) + 2, 3):
+            return 6
+        return -2
+    if len(constraints) >= 6:
+        return -4
+    return 0
+
+
+def _metadata_values(value: object) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value if item is not None]
+    if isinstance(value, tuple):
+        return [str(item) for item in value if item is not None]
+    if value is None:
+        return []
+    return [str(value)]
+
+
+def _returned_kb_ids(results: list[dict]) -> list[str]:
+    ids: list[str] = []
+    for result in results:
+        kb_id = str(result.get("kb_id") or (result.get("metadata") or {}).get("kb_id") or "")
+        if kb_id:
+            ids.append(kb_id)
+    return ids
+
+
 def _resolved_domain(state: GraphState, query: str) -> str:
     domain = str(state.get("domain") or "").strip()
-    if domain in {"workout", "diet", "profile", "general"}:
+    if domain in {"workout", "diet", "profile"}:
         return domain
     resolution = state.get("context_resolution") or {}
     resolved_domain = str(resolution.get("resolved_domain") or "").strip()
-    if resolved_domain in {"workout", "diet", "profile", "general"} and resolved_domain != "none":
+    if resolved_domain in {"workout", "diet", "profile"} and resolved_domain != "none":
         return resolved_domain
     return infer_domain(query)
 
@@ -440,11 +885,40 @@ def _external_categories_for_domain(domain: str) -> list[str]:
     return []
 
 
+def _external_topics_for_query(domain: str, query: str) -> list[str]:
+    normalized = query.lower()
+    topics: list[str] = []
+    if domain == "workout":
+        if any(keyword in normalized for keyword in ("유산소", "심박", "cardio", "걷기", "산책")):
+            topics.append("cardio")
+        if any(keyword in normalized for keyword in ("근력", "근비대", "상체", "하체", "세트", "hypertrophy")):
+            topics.append("resistance_training")
+        if any(keyword in normalized for keyword in ("스트레칭", "가동성", "mobility", "pnf")):
+            topics.append("mobility")
+        if any(keyword in normalized for keyword in ("hiit", "인터벌")):
+            topics.append("hiit")
+        topics.append("physical_activity")
+    elif domain == "diet":
+        if any(keyword in normalized for keyword in ("단백질", "protein", "근육", "근비대")):
+            topics.append("protein")
+        if any(keyword in normalized for keyword in ("알레르기", "유당", "우유", "계란", "견과", "갑각류")):
+            topics.append("food_allergy")
+        if any(keyword in normalized for keyword in ("혈당", "당뇨", "diabetes")):
+            topics.append("diabetes_nutrition")
+        if any(keyword in normalized for keyword in ("고혈압", "혈압", "나트륨", "dash")):
+            topics.append("heart_health_nutrition")
+        if any(keyword in normalized for keyword in ("보충제", "크레아틴", "오메가")):
+            topics.append("supplement")
+        topics.append("meal_planning")
+    return list(dict.fromkeys(topics))
+
+
 def _external_use_cases_for_request(domain: str, action_intent: str, query: str) -> list[str]:
     normalized = query.lower()
     if domain == "workout":
         use_cases = {
             "create": [
+                "plan_create",
                 "program_design",
                 "novice_programming",
                 "intermediate_programming",
@@ -453,6 +927,8 @@ def _external_use_cases_for_request(domain: str, action_intent: str, query: str)
                 "coaching",
             ],
             "modify": [
+                "plan_modify",
+                "risk_repair",
                 "program_adjustment",
                 "fatigue_management",
                 "injury_prevention",
@@ -461,6 +937,7 @@ def _external_use_cases_for_request(domain: str, action_intent: str, query: str)
                 "coaching",
             ],
             "info": [
+                "info_answer",
                 "program_design",
                 "technique_cueing",
                 "evidence_interpretation",
@@ -469,14 +946,19 @@ def _external_use_cases_for_request(domain: str, action_intent: str, query: str)
                 "mobility",
                 "coaching",
             ],
-        }.get(action_intent, ["program_design", "coaching", "evidence_interpretation"])
+        }.get(action_intent, ["info_answer", "program_design", "coaching", "evidence_interpretation"])
         if any(keyword in normalized for keyword in ("통증", "부상", "아픔", "무릎", "허리", "어깨")):
             use_cases.extend(["injury_prevention", "risk_screening", "mobility"])
+        if any(keyword in normalized for keyword in ("근비대", "근육", "상체", "하체", "세트")):
+            use_cases.extend(["hypertrophy_programming", "strength_programming"])
+        if any(keyword in normalized for keyword in ("hiit", "인터벌")):
+            use_cases.extend(["hiit_programming", "cardio_programming"])
         return list(dict.fromkeys(use_cases))
 
     if domain == "diet":
         use_cases = {
             "create": [
+                "plan_create",
                 "meal_planning",
                 "training_day_nutrition",
                 "muscle_gain",
@@ -484,12 +966,15 @@ def _external_use_cases_for_request(domain: str, action_intent: str, query: str)
                 "coaching",
             ],
             "modify": [
+                "plan_modify",
+                "risk_repair",
                 "meal_planning",
                 "fat_loss",
                 "allergy_safe_planning",
                 "coaching",
             ],
             "info": [
+                "info_answer",
                 "meal_planning",
                 "training_day_nutrition",
                 "supplement_use",
@@ -497,14 +982,178 @@ def _external_use_cases_for_request(domain: str, action_intent: str, query: str)
                 "evidence_interpretation",
                 "coaching",
             ],
-        }.get(action_intent, ["meal_planning", "coaching", "evidence_interpretation"])
+        }.get(action_intent, ["info_answer", "meal_planning", "coaching", "evidence_interpretation"])
         if any(keyword in normalized for keyword in ("알레르기", "유당", "갑각류", "계란", "우유", "견과")):
             use_cases.append("allergy_safe_planning")
         if any(keyword in normalized for keyword in ("보충제", "크레아틴", "오메가3")):
             use_cases.append("supplement_use")
+        if any(keyword in normalized for keyword in ("혈당", "당뇨", "diabetes")):
+            use_cases.append("glucose_control")
+        if any(keyword in normalized for keyword in ("고혈압", "혈압", "나트륨", "dash")):
+            use_cases.append("heart_health")
         return list(dict.fromkeys(use_cases))
 
     return []
+
+
+def _external_profile_targets_for_profile(profile: dict) -> list[str]:
+    targets: list[str] = ["general_adult"]
+    age = _safe_int(profile.get("age"))
+    if age is not None:
+        if age < 19:
+            targets.append("minor")
+        if age >= 60:
+            targets.append("older_adult")
+
+    level = str(profile.get("exercise_level") or profile.get("fitness_level") or profile.get("activity_level") or "").lower()
+    if any(keyword in level for keyword in ("beginner", "초보", "low", "낮", "거의 없음", "가벼운", "앉아서")):
+        targets.append("beginner")
+    if any(keyword in level for keyword in ("advanced", "상급", "high", "높", "격렬")):
+        targets.append("advanced")
+
+    weight = _profile_weight_value(profile)
+    bmi = _profile_bmi_value(profile)
+    if weight is not None and weight >= 90:
+        targets.append("high_weight")
+    if bmi is not None and bmi >= 25:
+        targets.append("high_weight")
+
+    if _as_text_list(profile.get("allergies")) or _as_text_list(profile.get("allergy")):
+        targets.append("food_allergy")
+    if _is_plant_based_profile(profile):
+        targets.append("plant_based")
+    return list(dict.fromkeys(targets))
+
+
+def _external_constraints_for_profile_and_query(profile: dict, query: str) -> list[str]:
+    values: list[str] = []
+    for field in (
+        "injury_history",
+        "medical_history",
+        "medical_conditions",
+        "conditions",
+        "pain_points",
+        "allergies",
+        "allergy",
+        "diet_type",
+        "diet_goal",
+        "dietary_restrictions",
+        "goal",
+        "context_notes",
+    ):
+        values.extend(_as_text_list(profile.get(field)))
+    text = " ".join(values).lower()
+    text = f"{text} {query.lower()}"
+    text = _strip_negated_constraint_mentions(text)
+    constraints: list[str] = []
+    markers = {
+        "knee_pain": ("무릎", "knee"),
+        "back_pain": ("허리", "요통", "back", "sciatica"),
+        "shoulder_pain": ("어깨", "shoulder"),
+        "wrist_pain": ("손목", "wrist"),
+        "ankle_pain": ("발목", "ankle"),
+        "hypertension": ("고혈압", "혈압", "hypertension"),
+        "diabetes": ("당뇨", "혈당", "diabetes", "glucose"),
+        "cardiovascular_disease": ("심혈관", "심장", "협심증", "cardiovascular", "heart disease"),
+        "asthma": ("천식", "asthma"),
+        "arthritis": ("관절염", "arthritis"),
+        "food_allergy": ("알레르기", "allergy", "유당", "유제품", "우유", "계란", "달걀", "견과", "갑각류", "밀", "대두"),
+        "dairy_allergy": ("유당", "유제품", "우유", "milk", "dairy"),
+        "egg_allergy": ("계란", "달걀", "egg"),
+        "nut_allergy": ("견과", "땅콩", "peanut", "nut"),
+        "shellfish_allergy": ("갑각류", "새우", "shellfish", "shrimp"),
+        "wheat_allergy": ("밀", "wheat", "gluten"),
+        "soy_allergy": ("대두", "soy"),
+        "vegetarian": ("채식", "vegetarian"),
+        "vegan": ("비건", "vegan"),
+        "obesity": ("비만", "bmi", "체질량", "obesity"),
+        "low_time": ("바빠", "시간", "8분", "10분", "15분", "짧"),
+        "extreme_diet_risk": ("900kcal", "굶", "단식", "일주일에 7kg", "극단"),
+    }
+    for constraint, keywords in markers.items():
+        if any(keyword in text for keyword in keywords):
+            constraints.append(constraint)
+    bmi = _profile_bmi_value(profile)
+    if bmi is not None and bmi >= 25:
+        constraints.append("obesity")
+    return list(dict.fromkeys(constraints))
+
+
+def _external_negative_constraints_for_profile_and_query(profile: dict, query: str) -> list[str]:
+    values: list[str] = []
+    for field in (
+        "injury_history",
+        "medical_history",
+        "medical_conditions",
+        "conditions",
+        "pain_points",
+        "allergies",
+        "allergy",
+        "dietary_restrictions",
+        "context_notes",
+    ):
+        values.extend(_as_text_list(profile.get(field)))
+    text = " ".join(values).lower()
+    text = f"{text} {query.lower()}"
+    negatives: list[str] = []
+    for constraint, pattern in _negated_constraint_patterns():
+        if re.search(pattern, text, flags=re.IGNORECASE):
+            negatives.append(constraint)
+    return list(dict.fromkeys(negatives))
+
+
+def _strip_negated_constraint_mentions(text: str) -> str:
+    cleaned = text
+    for _constraint, pattern in _negated_constraint_patterns():
+        cleaned = re.sub(pattern, " ", cleaned, flags=re.IGNORECASE)
+    return cleaned
+
+
+def _negated_constraint_patterns() -> tuple[tuple[str, str], ...]:
+    none_words = r"(?:해당\s*없음|해당없음|없음|없어|없어요|아님|아니야|아니에요|없고|없지만)"
+
+    def pattern(words: str, suffix: str = "") -> str:
+        return rf"(?:{words})(?:\s*{suffix})?\s*(?:은|는|이|가|도)?\s*{none_words}"
+
+    return (
+        ("hypertension", pattern(r"고혈압|혈압|hypertension")),
+        ("diabetes", pattern(r"당뇨|혈당|diabetes|glucose")),
+        ("cardiovascular_disease", pattern(r"심혈관|심장|협심증|cardiovascular|heart disease")),
+        ("asthma", pattern(r"천식|asthma")),
+        ("arthritis", pattern(r"관절염|arthritis")),
+        ("knee_pain", pattern(r"무릎|knee", r"(?:통증|부상|pain)?")),
+        ("back_pain", pattern(r"허리|요통|back|sciatica", r"(?:통증|부상|pain)?")),
+        ("shoulder_pain", pattern(r"어깨|shoulder", r"(?:통증|부상|pain)?")),
+        ("wrist_pain", pattern(r"손목|wrist", r"(?:통증|부상|pain)?")),
+        ("ankle_pain", pattern(r"발목|ankle", r"(?:통증|부상|pain)?")),
+        ("dairy_allergy", pattern(r"유제품|유당|우유|dairy|milk", r"알레르기?")),
+        ("egg_allergy", pattern(r"달걀|계란|egg", r"알레르기?")),
+        ("nut_allergy", pattern(r"견과류|견과|땅콩|nut|peanut", r"알레르기?")),
+        ("shellfish_allergy", pattern(r"갑각류|새우|shellfish|shrimp", r"알레르기?")),
+        ("wheat_allergy", pattern(r"밀|wheat|gluten", r"알레르기?")),
+        ("soy_allergy", pattern(r"대두|soy", r"알레르기?")),
+    )
+
+
+def _external_goals_for_profile_and_query(profile: dict, query: str) -> list[str]:
+    text = " ".join(
+        str(profile.get(field) or "")
+        for field in ("goal", "primary_goal", "diet_goal", "context_notes", "lifestyle")
+    ).lower()
+    text = f"{text} {query.lower()}"
+    goals: list[str] = []
+    markers = {
+        "fat_loss": ("fat_loss", "weight_loss", "다이어트", "감량", "체중"),
+        "muscle_gain": ("muscle", "strength", "근육", "근비대", "근력"),
+        "mobility": ("mobility", "가동성", "스트레칭", "유연성", "관절"),
+        "glucose_control": ("glucose", "diabetes", "혈당", "당뇨"),
+        "heart_health": ("heart", "cardio", "혈압", "고혈압", "심장", "심혈관", "건강 유지"),
+        "habit": ("habit", "consistency", "습관", "꾸준", "건강 유지", "건강"),
+    }
+    for goal, keywords in markers.items():
+        if any(keyword in text for keyword in keywords):
+            goals.append(goal)
+    return list(dict.fromkeys(goals))
 
 
 def _external_populations_for_profile(state: GraphState) -> list[str]:
@@ -592,7 +1241,7 @@ async def _parallel_search(
         elif target == "vdb_user_important":
             tasks.append(deps.pinecone.search_important(user_id, vector, TOP_K))
         elif target == "vdb_external":
-            tasks.append(deps.pinecone.search_external(vector, TOP_K, metadata_filter=external_filter))
+            tasks.append(deps.pinecone.search_external(vector, EXTERNAL_FETCH_TOP_K, metadata_filter=external_filter))
         elif target == "web":
             tasks.append(_web_search(deps, query))
 
@@ -625,14 +1274,18 @@ async def _expand_external_results_if_needed(
 
     expanded_results = list(merged_results)
     if relaxed_filter and relaxed_filter != strict_filter:
-        relaxed_results = await deps.pinecone.search_external(vector, TOP_K, metadata_filter=relaxed_filter)
+        relaxed_results = await deps.pinecone.search_external(
+            vector,
+            EXTERNAL_FETCH_TOP_K,
+            metadata_filter=relaxed_filter,
+        )
         expanded_results = _merge_results(expanded_results + relaxed_results)
         external_results = [result for result in expanded_results if result.get("source") == "external"]
         if len(external_results) >= 2:
             return expanded_results
 
     if strict_filter:
-        semantic_results = await deps.pinecone.search_external(vector, TOP_K)
+        semantic_results = await deps.pinecone.search_external(vector, EXTERNAL_FETCH_TOP_K)
         expanded_results = _merge_results(expanded_results + semantic_results)
 
     return expanded_results
@@ -656,7 +1309,7 @@ def _merge_results(results: list[dict]) -> list[dict]:
             seen.add(text)
             unique.append(result)
 
-    return unique[:5]
+    return unique
 
 
 def _preview_results(results: list[dict], *, limit: int = 5) -> list[dict[str, Any]]:
@@ -665,9 +1318,23 @@ def _preview_results(results: list[dict], *, limit: int = 5) -> list[dict[str, A
         preview.append(
             {
                 "id": result.get("id"),
+                "kb_id": result.get("kb_id") or (result.get("metadata") or {}).get("kb_id"),
                 "source": result.get("source"),
+                "source_title": result.get("source_title"),
                 "score": result.get("score"),
-                "metadata": result.get("metadata") or {},
+                "metadata": {
+                    "domain": result.get("domain"),
+                    "topic": result.get("topic"),
+                    "category": result.get("category"),
+                    "use_cases": result.get("use_cases") or result.get("use_case"),
+                    "profile_targets": result.get("profile_targets"),
+                    "constraints": result.get("constraints"),
+                    "goals": result.get("goals"),
+                    "risk_level": result.get("risk_level"),
+                    "evidence_type": result.get("evidence_type"),
+                    "year": result.get("year"),
+                    "url": result.get("url"),
+                },
                 "text": str(result.get("text") or "")[:240],
             }
         )
@@ -725,3 +1392,61 @@ def _degraded(state: GraphState, intent: str) -> dict:
         "search_results": state.get("search_results") or [],
         "search_quality": "degraded",
     }
+
+
+def _as_text_list(value: object) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [text for item in value if (text := _meaningful_profile_text(item))]
+    if isinstance(value, tuple):
+        return [text for item in value if (text := _meaningful_profile_text(item))]
+    text = _meaningful_profile_text(value)
+    return [text] if text else []
+
+
+def _meaningful_profile_text(value: object) -> str:
+    text = str(value).strip()
+    if not text:
+        return ""
+    normalized = re.sub(r"\s+", "", text).lower()
+    if normalized in {
+        "없음",
+        "해당없음",
+        "해당사항없음",
+        "없다",
+        "없어요",
+        "무",
+        "none",
+        "no",
+        "n/a",
+        "na",
+        "null",
+        "[]",
+    }:
+        return ""
+    return text
+
+
+def _safe_int(value: object) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return int(value)
+    match = re.search(r"-?\d+(?:\.\d+)?", str(value))
+    if not match:
+        return None
+    try:
+        return int(float(match.group(0)))
+    except ValueError:
+        return None
+
+
+def _is_plant_based_profile(profile: dict) -> bool:
+    text = " ".join(
+        str(profile.get(field) or "")
+        for field in ("diet_type", "diet_goal", "dietary_restrictions", "context_notes", "lifestyle")
+    ).lower()
+    return any(keyword in text for keyword in ("vegan", "vegetarian", "plant", "비건", "채식"))

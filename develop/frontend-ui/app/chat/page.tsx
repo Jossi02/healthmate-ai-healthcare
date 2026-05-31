@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import {
@@ -43,6 +43,8 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   isStreaming?: boolean;
+  syncPending?: boolean;
+  syncFailed?: boolean;
   clientMessageId?: string;
   sessionId?: string;
   userMessage?: string;
@@ -212,12 +214,19 @@ function createThreadSessionId() {
   return `thread-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+const CHAT_WELCOME_MESSAGE = "\uC548\uB155\uD558\uC138\uC694. \uAC74\uAC15, \uC2DD\uB2E8, \uC6B4\uB3D9 \uACC4\uD68D\uC5D0 \uB300\uD574 \uD3B8\uD558\uAC8C \uBB3C\uC5B4\uBCF4\uC138\uC694.";
+const CHAT_FALLBACK_MESSAGE = "\uB2F5\uBCC0\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.";
+const CHAT_SEND_ERROR_MESSAGE = "\uBA54\uC2DC\uC9C0\uB97C \uBCF4\uB0B4\uB294 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694.";
+const CHAT_SYNC_PENDING_LABEL = "\uACC4\uD68D \uBC18\uC601 \uC911";
+const CHAT_SYNC_FAILED_LABEL = "\uBC18\uC601\uC774 \uC9C0\uC5F0\uB418\uACE0 \uC788\uC5B4\uC694";
+const CHAT_FEEDBACK_SAVED_LABEL = "\uD53C\uB4DC\uBC31\uC774 \uC800\uC7A5\uB410\uC5B4\uC694.";
+
 function createWelcomeMessages(): Message[] {
   return [
     {
       id: "welcome",
       role: "assistant",
-      content: "안녕하세요. 건강, 식단, 운동 계획에 대해 편하게 물어보세요.",
+      content: CHAT_WELCOME_MESSAGE,
     },
   ];
 }
@@ -239,7 +248,9 @@ export default function ChatPage() {
     isSubmitting: boolean;
   } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pendingSyncTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const selectedPersona = resolveVisiblePersona(userData?.selected_ai_persona);
+  const showFeedbackControls = true;
   const personaConversation = resolvePersonaConversation(
     userData?.selected_ai_persona
   );
@@ -247,7 +258,7 @@ export default function ChatPage() {
     (message) => message.role === "user"
   );
 
-  const mapPersistedMessages = (
+  const mapPersistedMessages = useCallback((
     persistedMessages: PersistedChatMessage[]
   ): Message[] => {
     let latestUserMessage = "";
@@ -278,9 +289,9 @@ export default function ChatPage() {
     });
 
     return mapped.length > 0 ? mapped : createWelcomeMessages();
-  };
+  }, []);
 
-  const loadThreadList = async (token: string) => {
+  const loadThreadList = useCallback(async (token: string) => {
     setIsThreadListLoading(true);
     try {
       const response = await fetch(buildApiUrl("/api/v1/chat/threads"), {
@@ -311,9 +322,9 @@ export default function ChatPage() {
     } finally {
       setIsThreadListLoading(false);
     }
-  };
+  }, []);
 
-  const loadThreadMessages = async (
+  const loadThreadMessages = useCallback(async (
     targetSessionId: string,
     token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
   ) => {
@@ -354,7 +365,7 @@ export default function ChatPage() {
     } catch (error) {
       console.error("Failed to load chat thread:", error);
     }
-  };
+  }, [mapPersistedMessages]);
 
   const startNewThread = () => {
     const nextSessionId = createThreadSessionId();
@@ -410,7 +421,7 @@ export default function ChatPage() {
         await loadThreadMessages(threadList[0].session_id, storedToken);
       }
     })();
-  }, [router]);
+  }, [loadThreadList, loadThreadMessages, router]);
 
   useEffect(() => {
     const persistedMessages =
@@ -435,10 +446,17 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages, isLoading]);
 
+  useEffect(() => {
+    return () => {
+      pendingSyncTimersRef.current.forEach((timer) => clearTimeout(timer));
+      pendingSyncTimersRef.current = [];
+    };
+  }, []);
+
   const simulateStreamingResponse = async (
     fullText: string,
     metadata?: Partial<
-      Pick<Message, "clientMessageId" | "sessionId" | "userMessage" | "intent">
+      Pick<Message, "clientMessageId" | "sessionId" | "userMessage" | "intent" | "syncPending">
     >
   ) => {
     const messageId = metadata?.clientMessageId || Date.now().toString();
@@ -449,10 +467,12 @@ export default function ChatPage() {
         role: "assistant",
         content: "",
         isStreaming: true,
+        syncPending: metadata?.syncPending === true,
+        syncFailed: false,
         clientMessageId: metadata?.clientMessageId,
         sessionId: metadata?.sessionId,
         userMessage: metadata?.userMessage,
-        intent: metadata?.intent ?? null,
+        intent: metadata?.intent,
         feedbackStatus: metadata?.clientMessageId ? "idle" : undefined,
         feedbackRating: null,
         feedbackReasonCodes: [],
@@ -484,6 +504,49 @@ export default function ChatPage() {
         )
       );
   };
+
+  const clearPendingSyncTimers = useCallback(() => {
+    pendingSyncTimersRef.current.forEach((timer) => clearTimeout(timer));
+    pendingSyncTimersRef.current = [];
+  }, []);
+
+  const markMessageSynced = useCallback((messageId: string) => {
+    setMessages((prev) =>
+      prev.map((message) =>
+        message.id === messageId
+          ? { ...message, syncPending: false, syncFailed: false }
+          : message
+      )
+    );
+  }, []);
+
+  const markMessageSyncFailed = useCallback((messageId: string) => {
+    setMessages((prev) =>
+      prev.map((message) =>
+        message.id === messageId
+          ? { ...message, syncPending: false, syncFailed: true }
+          : message
+      )
+    );
+  }, []);
+
+  const schedulePendingPlanRefresh = useCallback(
+    (messageId: string) => {
+      clearPendingSyncTimers();
+      [2500, 6000, 12000, 20000].forEach((delay, index, delays) => {
+        const timer = setTimeout(async () => {
+          const synced = await fetchPlans({ trackChanges: true });
+          if (synced) {
+            markMessageSynced(messageId);
+          } else if (index === delays.length - 1) {
+            markMessageSyncFailed(messageId);
+          }
+        }, delay);
+        pendingSyncTimersRef.current.push(timer);
+      });
+    },
+    [clearPendingSyncTimers, fetchPlans, markMessageSyncFailed, markMessageSynced]
+  );
 
   const submitFeedback = async (
     message: Message,
@@ -730,9 +793,10 @@ export default function ChatPage() {
       }
 
       const botText =
-        data.response || data.answer || data.message || "응답을 불러오지 못했습니다.";
+        data.response || data.answer || data.message || CHAT_FALLBACK_MESSAGE;
       const intent = typeof data.intent === "string" ? data.intent : null;
       const planSyncApplied = data.plan_sync_applied === true;
+      const syncPending = Number(data.pending_writes_count || 0) > 0;
 
       if (planSyncApplied) {
         void fetchPlans({ trackChanges: true });
@@ -747,13 +811,21 @@ export default function ChatPage() {
         sessionId: effectiveSessionId || undefined,
         userMessage,
         intent,
+        syncPending,
       });
+      if (syncPending) {
+        schedulePendingPlanRefresh(
+          typeof data.client_message_id === "string"
+            ? data.client_message_id
+            : assistantMessageId
+        );
+      }
       void loadThreadList(token);
     } catch (error) {
       console.error("Chat API Error:", error);
       setIsLoading(false);
       await simulateStreamingResponse(
-        "메시지를 보내는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+        CHAT_SEND_ERROR_MESSAGE,
         {
           clientMessageId: assistantMessageId,
           sessionId: requestSessionId,
@@ -975,6 +1047,22 @@ export default function ChatPage() {
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{message.content}</p>
+                  {message.role === "assistant" &&
+                    message.syncPending &&
+                    !message.isStreaming && (
+                      <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>{CHAT_SYNC_PENDING_LABEL}</span>
+                      </div>
+                    )}
+                  {message.role === "assistant" &&
+                    message.syncFailed &&
+                    !message.isStreaming && (
+                      <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-600">
+                        <X className="h-3 w-3" />
+                        <span>{CHAT_SYNC_FAILED_LABEL}</span>
+                      </div>
+                    )}
                   {message.isStreaming && (
                     <motion.span
                       animate={{ opacity: [1, 0] }}
@@ -983,6 +1071,7 @@ export default function ChatPage() {
                     />
                   )}
                   {message.role === "assistant" &&
+                    showFeedbackControls &&
                     message.clientMessageId &&
                     !message.isStreaming && (
                       <div className="mt-3 border-t border-gray-100 pt-3">
@@ -1022,7 +1111,7 @@ export default function ChatPage() {
                         {message.feedbackStatus === "submitted" && (
                           <div className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
                             <Check className="h-3.5 w-3.5" />
-                            <span>피드백이 저장되었습니다.</span>
+                            <span>{CHAT_FEEDBACK_SAVED_LABEL}</span>
                           </div>
                         )}
                         {message.feedbackStatus === "error" && (

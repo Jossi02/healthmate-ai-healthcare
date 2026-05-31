@@ -20,4 +20,7 @@ class ChatResponse(BaseModel):
     emotion: Optional[dict[str, Any]] = None
     draft_response: Optional[str] = None
     plan_sync_applied: Optional[bool] = None
+    was_write_status: Optional[dict[str, Any]] = None
+    pending_writes_count: int = 0
+    pending_write_types: list[str] = []
     debug_state: Optional[dict[str, Any]] = None

@@ -13,6 +13,7 @@ const {
   ensureUserHealthProfileRow,
 } = require('../services/profileService');
 const { loadExercisePlansWithItems } = require('../services/exercisePlanReadService');
+const { deletePlanItemByOpaqueId } = require('../services/planMutationService');
 
 const DEFAULT_WORKOUT_COLORS = [
   'from-sky-400 to-blue-500',
@@ -428,6 +429,33 @@ exports.checkTodayPlanItem = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Failed to check plan item.' });
+  }
+};
+
+// @route   DELETE /api/v1/users/plans/:item_id
+// @desc    Delete one workout or diet plan item owned by the current user
+// @access  Private
+exports.deletePlanItem = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const itemId = toOptionalString(req.params.item_id);
+    if (!itemId) {
+      return res.status(400).json({ error: 'item_id is required.' });
+    }
+
+    const deleted = await deletePlanItemByOpaqueId(supabase, userId, itemId);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Plan item not found.' });
+    }
+
+    return res.json({
+      status: 'success',
+      item_id: itemId,
+      deleted,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Failed to delete plan item.' });
   }
 };
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import hashlib
 from typing import Any, TypedDict
 
 from app.core.exceptions import ExternalServiceError
@@ -57,6 +58,9 @@ Return JSON in this format:
 class WriteExecutionResult(TypedDict):
     pending: list[PendingWrite]
     write_succeeded: bool
+    applied_profile_changes: dict[str, Any] | None
+    failed_write_types: list[str]
+    succeeded_write_ids: list[str]
 
 
 async def execute_was_writes(
@@ -80,26 +84,54 @@ async def execute_was_writes(
 
     pending: list[PendingWrite] = []
     write_succeeded = False
+    applied_profile_changes: dict[str, Any] | None = None
+    failed_write_types: list[str] = []
+    succeeded_write_ids: list[str] = []
 
     if intent == INTENT_RECORD and profile_changes:
         if record_type == "plan_check":
             item_id = profile_changes.get("item_id")
             if item_id:
-                write: PendingWrite = {"write_type": "plan_check", "payload": profile_changes}
+                write = _make_pending_write(user_id, "plan_check", profile_changes)
                 try:
-                    await deps.was.put_plan_check(user_id, item_id)
+                    await deps.was.put_plan_check(
+                        user_id,
+                        item_id,
+                        idempotency_key=write["idempotency_key"],
+                    )
                     logger.info("plan_check WAS write succeeded: %s", item_id)
+                    write_succeeded = True
+                    succeeded_write_ids.append(write["write_id"])
                 except ExternalServiceError as exc:
                     logger.warning("plan_check WAS write failed: %s", exc)
                     pending.append(write)
+                    failed_write_types.append("plan_check")
+        elif record_type == "plan_delete":
+            plan_type = profile_changes.get("plan_type")
+            target_dates = profile_changes.get("target_dates") or []
+            if plan_type and target_dates:
+                write = _make_pending_write(user_id, "plan_delete", profile_changes)
+                try:
+                    await deps.was.delete_plan(user_id, write["payload"])
+                    logger.info("plan_delete WAS write succeeded: %s %s", plan_type, target_dates)
+                    write_succeeded = True
+                    succeeded_write_ids.append(write["write_id"])
+                except ExternalServiceError as exc:
+                    logger.warning("plan_delete WAS write failed: %s", exc)
+                    pending.append(write)
+                    failed_write_types.append("plan_delete")
         elif record_type == "profile":
-            write = {"write_type": "profile", "payload": profile_changes}
+            write = _make_pending_write(user_id, "profile", profile_changes)
             try:
-                await deps.was.put_user_profile(user_id, profile_changes)
+                await deps.was.put_user_profile(user_id, write["payload"])
                 logger.info("profile WAS write succeeded")
+                write_succeeded = True
+                succeeded_write_ids.append(write["write_id"])
+                applied_profile_changes = dict(profile_changes)
             except ExternalServiceError as exc:
                 logger.warning("profile WAS write failed: %s", exc)
                 pending.append(write)
+                failed_write_types.append("profile")
 
     if intent == INTENT_APPROVAL and proposed_plan:
         resolved_plan_type = proposed_plan_type or modify_target or "workout"
@@ -126,15 +158,28 @@ async def execute_was_writes(
                 )
         except Exception as exc:
             logger.exception("approval WAS payload generation failed: %s", exc)
-            return {"pending": pending, "write_succeeded": False}
+            return {
+                "pending": pending,
+                "write_succeeded": False,
+                "applied_profile_changes": applied_profile_changes,
+                "failed_write_types": failed_write_types,
+                "succeeded_write_ids": succeeded_write_ids,
+            }
 
         if not plan_payloads:
             logger.warning("approval WAS write skipped: plan payload generation returned empty")
-            return {"pending": pending, "write_succeeded": False}
+            return {
+                "pending": pending,
+                "write_succeeded": False,
+                "applied_profile_changes": applied_profile_changes,
+                "failed_write_types": failed_write_types,
+                "succeeded_write_ids": succeeded_write_ids,
+            }
 
         successful_writes = 0
         for plan_payload in plan_payloads:
-            write = {"write_type": write_type, "payload": plan_payload}
+            write = _make_pending_write(user_id, write_type, plan_payload)
+            plan_payload = write["payload"]
             try:
                 if write_type == "plan_update":
                     try:
@@ -164,6 +209,7 @@ async def execute_was_writes(
                     plan_payload.get("plan_type"),
                 )
                 successful_writes += 1
+                succeeded_write_ids.append(write["write_id"])
             except ExternalServiceError as exc:
                 logger.warning(
                     "approval WAS write failed (%s:%s): %s",
@@ -172,10 +218,39 @@ async def execute_was_writes(
                     exc,
                 )
                 pending.append(write)
+                failed_write_types.append(write_type)
 
         write_succeeded = successful_writes == len(plan_payloads) and successful_writes > 0
 
-    return {"pending": pending, "write_succeeded": write_succeeded}
+    return {
+        "pending": pending,
+        "write_succeeded": write_succeeded,
+        "applied_profile_changes": applied_profile_changes,
+        "failed_write_types": sorted(set(failed_write_types)),
+        "succeeded_write_ids": succeeded_write_ids,
+    }
+
+
+def _make_pending_write(user_id: str, write_type: str, payload: dict[str, Any]) -> PendingWrite:
+    clean_payload = dict(payload or {})
+    write_id = _stable_write_id(user_id, write_type, clean_payload)
+    clean_payload.setdefault("_idempotency_key", write_id)
+    return {
+        "write_type": write_type,
+        "payload": clean_payload,
+        "write_id": write_id,
+        "idempotency_key": write_id,
+    }
+
+
+def _stable_write_id(user_id: str, write_type: str, payload: dict[str, Any]) -> str:
+    payload_without_key = {
+        key: value
+        for key, value in (payload or {}).items()
+        if key not in {"_idempotency_key", "idempotency_key"}
+    }
+    encoded = json.dumps(payload_without_key, ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha256(f"{user_id}:{write_type}:{encoded}".encode("utf-8")).hexdigest()[:32]
 
 
 async def _extract_plan_from_response(deps: NodeDeps, response: str) -> dict | None:

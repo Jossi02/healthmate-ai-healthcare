@@ -14,7 +14,7 @@ class EmotionOutput(BaseModel):
 
 
 IntentType = Literal["casual", "공감_케어", "기록", "계획", "수정", "계획_승인", "정보", "안전경고", "fallback"]
-RecordType = Literal["profile", "plan_check"]
+RecordType = Literal["profile", "plan_check", "plan_delete"]
 ModifyTarget = Literal["workout", "diet"]
 
 

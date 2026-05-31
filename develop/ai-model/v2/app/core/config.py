@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     LANGSMITH_PROJECT: Optional[str] = None
     LANGSMITH_QUALITY_ENABLED: bool = False
     LANGSMITH_SEND_FULL_TEXT: bool = False
+    LANGSMITH_MAX_CHILD_RUNS: int = 80
+    LANGSMITH_CHILD_EVENT_SAMPLE_RATE: float = 1.0
 
     model_config = {"env_file": ENV_FILE, "env_file_encoding": "utf-8-sig"}
 

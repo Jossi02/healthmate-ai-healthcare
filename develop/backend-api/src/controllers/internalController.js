@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 const supabase = require('../config/db');
 const logger = require('../utils/logger');
 const { formatKstDate, normalizeIsoDate } = require('../utils/kst');
@@ -7,6 +9,7 @@ const {
   toOptionalNumber,
   toOptionalString,
 } = require('../utils/profileFields');
+const { isValidUuid } = require('../utils/ids');
 const {
   buildProfileRowForUpsert,
   ensureUserHealthProfile,
@@ -22,8 +25,33 @@ function normalizePlanType(value) {
   return null;
 }
 
+function ensureValidUserIdParam(res, userId) {
+  if (isValidUuid(userId)) {
+    return true;
+  }
+  res.status(400).json({ error: 'Invalid user_id format.' });
+  return false;
+}
+
+function normalizeDeletePlanType(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (text === 'all' || text === 'both' || text === '전체' || text === '둘다') return 'all';
+  return normalizePlanType(text);
+}
+
 function dedupeDates(items = []) {
   return [...new Set(items.map((item) => item.day))];
+}
+
+function normalizeTargetDates(value) {
+  if (!Array.isArray(value)) return [];
+  return [
+    ...new Set(
+      value
+        .map((item) => normalizeIsoDate(item))
+        .filter(Boolean)
+    ),
+  ];
 }
 
 function normalizeExerciseList(rawExerciseList, detailFallback) {
@@ -332,10 +360,318 @@ async function loadExistingConflictDates(userId, planType, targetDates) {
   return [...new Set((data || []).map((row) => row.target_date))];
 }
 
+function normalizeIdempotencyKey(value) {
+  if (Array.isArray(value)) {
+    return normalizeIdempotencyKey(value[0]);
+  }
+  const text = String(value || '').trim();
+  return text || null;
+}
+
+function readIdempotencyKey(req) {
+  return normalizeIdempotencyKey(
+    req.headers?.['idempotency-key']
+      || req.headers?.['x-idempotency-key']
+      || req.body?._idempotency_key
+      || req.body?.idempotency_key
+  );
+}
+
+function stripIdempotencyFields(value) {
+  if (Array.isArray(value)) {
+    return value.map(stripIdempotencyFields);
+  }
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+  return Object.keys(value)
+    .sort()
+    .reduce((acc, key) => {
+      if (key === '_idempotency_key' || key === 'idempotency_key') {
+        return acc;
+      }
+      acc[key] = stripIdempotencyFields(value[key]);
+      return acc;
+    }, {});
+}
+
+function hashIdempotencyRequest(req, userId, operation) {
+  const normalized = {
+    operation,
+    user_id: userId,
+    body: stripIdempotencyFields(req.body || {}),
+  };
+  return crypto
+    .createHash('sha256')
+    .update(JSON.stringify(normalized))
+    .digest('hex');
+}
+
+function isMissingIdempotencyTableError(error) {
+  return error?.code === '42P01'
+    || String(error?.message || '').includes('ai_was_idempotency_keys');
+}
+
+function isDuplicateIdempotencyError(error) {
+  return error?.code === '23505'
+    || String(error?.message || '').toLowerCase().includes('duplicate');
+}
+
+const MEMORY_IDEMPOTENCY_TTL_MS = 30 * 60 * 1000;
+const memoryIdempotencyStore = new Map();
+
+function cleanupMemoryIdempotencyStore() {
+  const now = Date.now();
+  for (const [key, value] of memoryIdempotencyStore.entries()) {
+    if (now - Number(value.updatedAt || value.createdAt || 0) > MEMORY_IDEMPOTENCY_TTL_MS) {
+      memoryIdempotencyStore.delete(key);
+    }
+  }
+}
+
+function isStaleIdempotencyProcessing(row) {
+  const updatedAt = Date.parse(row?.updated_at || row?.created_at || '');
+  if (!Number.isFinite(updatedAt)) {
+    return false;
+  }
+  return Date.now() - updatedAt > 10 * 60 * 1000;
+}
+
+function isStaleMemoryProcessing(row) {
+  return Date.now() - Number(row?.updatedAt || row?.createdAt || 0) > 10 * 60 * 1000;
+}
+
+function beginMemoryIdempotency(req, res, userId, operation, idempotencyKey, requestHash) {
+  cleanupMemoryIdempotencyStore();
+  const existing = memoryIdempotencyStore.get(idempotencyKey);
+
+  if (existing) {
+    if (
+      String(existing.userId || '').toLowerCase() !== String(userId || '').toLowerCase()
+      || existing.operation !== operation
+    ) {
+      res.status(409).json({ error: 'Idempotency key was already used for another operation.' });
+      return { enabled: true, handled: true, store: 'memory' };
+    }
+    if (existing.requestHash && existing.requestHash !== requestHash) {
+      res.status(409).json({ error: 'Idempotency key was already used with different payload.' });
+      return { enabled: true, handled: true, store: 'memory' };
+    }
+    if (existing.status === 'completed' && existing.responseBody) {
+      res.status(existing.statusCode || 200).json(existing.responseBody);
+      return { enabled: true, handled: true, store: 'memory' };
+    }
+    if (existing.status === 'processing' && !isStaleMemoryProcessing(existing)) {
+      res.status(409).json({ error: 'Duplicate request is already processing.' });
+      return { enabled: true, handled: true, store: 'memory' };
+    }
+  }
+
+  const now = Date.now();
+  memoryIdempotencyStore.set(idempotencyKey, {
+    userId,
+    operation,
+    requestHash,
+    status: 'processing',
+    createdAt: existing?.createdAt || now,
+    updatedAt: now,
+  });
+
+  return {
+    enabled: true,
+    store: 'memory',
+    idempotencyKey,
+    operation,
+    userId,
+    requestHash,
+  };
+}
+
+async function beginIdempotency(req, res, userId, operation) {
+  const idempotencyKey = readIdempotencyKey(req);
+  if (!idempotencyKey) {
+    return { enabled: false };
+  }
+
+  const requestHash = hashIdempotencyRequest(req, userId, operation);
+  const now = new Date().toISOString();
+  const { data: existing, error: readError } = await supabase
+    .from('ai_was_idempotency_keys')
+    .select('*')
+    .eq('idempotency_key', idempotencyKey)
+    .maybeSingle();
+
+  if (readError) {
+    if (isMissingIdempotencyTableError(readError)) {
+      logger.warn('Idempotency table is missing; using in-memory idempotency fallback.');
+      return beginMemoryIdempotency(req, res, userId, operation, idempotencyKey, requestHash);
+    }
+    throw readError;
+  }
+
+  if (existing) {
+    if (
+      String(existing.user_id || '').toLowerCase() !== String(userId || '').toLowerCase()
+      || existing.operation !== operation
+    ) {
+      res.status(409).json({ error: 'Idempotency key was already used for another operation.' });
+      return { enabled: true, handled: true };
+    }
+    if (existing.request_hash && existing.request_hash !== requestHash) {
+      res.status(409).json({ error: 'Idempotency key was already used with different payload.' });
+      return { enabled: true, handled: true };
+    }
+    if (existing.status === 'completed' && existing.response_body) {
+      res.status(existing.status_code || 200).json(existing.response_body);
+      return { enabled: true, handled: true };
+    }
+    if (existing.status === 'processing' && !isStaleIdempotencyProcessing(existing)) {
+      res.status(409).json({ error: 'Duplicate request is already processing.' });
+      return { enabled: true, handled: true };
+    }
+
+    const { error: updateError } = await supabase
+      .from('ai_was_idempotency_keys')
+      .update({
+        status: 'processing',
+        request_hash: requestHash,
+        status_code: null,
+        response_body: null,
+        last_error: null,
+        updated_at: now,
+        completed_at: null,
+      })
+      .eq('idempotency_key', idempotencyKey);
+
+    if (updateError) {
+      if (isMissingIdempotencyTableError(updateError)) {
+        logger.warn('Idempotency table is missing; using in-memory idempotency fallback.');
+        return beginMemoryIdempotency(req, res, userId, operation, idempotencyKey, requestHash);
+      }
+      throw updateError;
+    }
+
+    return {
+      enabled: true,
+      store: 'database',
+      idempotencyKey,
+      operation,
+      userId,
+      requestHash,
+    };
+  }
+
+  const { error: insertError } = await supabase
+    .from('ai_was_idempotency_keys')
+    .insert({
+      idempotency_key: idempotencyKey,
+      user_id: userId,
+      operation,
+      request_hash: requestHash,
+      status: 'processing',
+      created_at: now,
+      updated_at: now,
+    });
+
+  if (insertError) {
+    if (isMissingIdempotencyTableError(insertError)) {
+      logger.warn('Idempotency table is missing; using in-memory idempotency fallback.');
+      return beginMemoryIdempotency(req, res, userId, operation, idempotencyKey, requestHash);
+    }
+    if (isDuplicateIdempotencyError(insertError)) {
+      res.status(409).json({ error: 'Duplicate request is already processing.' });
+      return { enabled: true, handled: true };
+    }
+    throw insertError;
+  }
+
+  return {
+    enabled: true,
+    store: 'database',
+    idempotencyKey,
+    operation,
+    userId,
+    requestHash,
+  };
+}
+
+async function finishIdempotency(context, statusCode, responseBody) {
+  if (!context?.enabled || !context.idempotencyKey) {
+    return;
+  }
+  if (context.store === 'memory') {
+    const existing = memoryIdempotencyStore.get(context.idempotencyKey) || {};
+    memoryIdempotencyStore.set(context.idempotencyKey, {
+      ...existing,
+      status: 'completed',
+      statusCode,
+      responseBody,
+      updatedAt: Date.now(),
+      completedAt: Date.now(),
+    });
+    return;
+  }
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('ai_was_idempotency_keys')
+    .update({
+      status: 'completed',
+      status_code: statusCode,
+      response_body: responseBody,
+      last_error: null,
+      updated_at: now,
+      completed_at: now,
+    })
+    .eq('idempotency_key', context.idempotencyKey);
+
+  if (error) {
+    if (isMissingIdempotencyTableError(error)) {
+      logger.warn('Idempotency table is missing; completed response was not stored.');
+      return;
+    }
+    logger.warn(`Failed to store idempotency result: ${error.message}`);
+  }
+}
+
+async function failIdempotency(context, error) {
+  if (!context?.enabled || !context.idempotencyKey) {
+    return;
+  }
+  if (context.store === 'memory') {
+    const existing = memoryIdempotencyStore.get(context.idempotencyKey) || {};
+    memoryIdempotencyStore.set(context.idempotencyKey, {
+      ...existing,
+      status: 'failed',
+      lastError: String(error?.message || error),
+      updatedAt: Date.now(),
+    });
+    return;
+  }
+  const { error: updateError } = await supabase
+    .from('ai_was_idempotency_keys')
+    .update({
+      status: 'failed',
+      last_error: String(error?.message || error),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('idempotency_key', context.idempotencyKey);
+
+  if (updateError && !isMissingIdempotencyTableError(updateError)) {
+    logger.warn(`Failed to mark idempotency failure: ${updateError.message}`);
+  }
+}
+
+async function sendWithIdempotency(res, context, statusCode, body) {
+  await finishIdempotency(context, statusCode, body);
+  return res.status(statusCode).json(body);
+}
+
 // GET /api/user/profile/:user_id
 exports.getProfile = async (req, res) => {
   try {
     const { user_id: userId } = req.params;
+    if (!ensureValidUserIdParam(res, userId)) return;
+
     const profile = await ensureUserHealthProfile(supabase, userId);
     if (!profile) {
       return res.status(404).json({ error: 'Profile not found.' });
@@ -367,6 +703,8 @@ exports.getProfile = async (req, res) => {
 exports.getTodayPlan = async (req, res) => {
   try {
     const { user_id: userId } = req.params;
+    if (!ensureValidUserIdParam(res, userId)) return;
+
     const today = formatKstDate();
 
     const exercises = await loadExercisePlansWithItems(supabase, {
@@ -430,8 +768,11 @@ exports.getTodayPlan = async (req, res) => {
 
 // PUT /api/user/profile/:user_id
 exports.updateProfile = async (req, res) => {
+  let idempotency = null;
   try {
     const { user_id: userId } = req.params;
+    if (!ensureValidUserIdParam(res, userId)) return;
+
     const allowedUpdates = {
       weight: toOptionalNumber(req.body.weight),
       height: toOptionalNumber(req.body.height),
@@ -456,9 +797,12 @@ exports.updateProfile = async (req, res) => {
       return res.status(400).json({ error: 'No valid profile fields provided.' });
     }
 
+    idempotency = await beginIdempotency(req, res, userId, 'profile_update');
+    if (idempotency.handled) return;
+
     const existingProfile = await ensureUserHealthProfileRow(supabase, userId);
     if (!existingProfile) {
-      return res.status(404).json({ error: 'User not found.' });
+      return sendWithIdempotency(res, idempotency, 404, { error: 'User not found.' });
     }
 
     const profilePayload = buildProfileRowForUpsert(userId, existingProfile, filteredUpdate);
@@ -472,12 +816,13 @@ exports.updateProfile = async (req, res) => {
 
     if (error) throw error;
 
-    return res.json({
+    return sendWithIdempotency(res, idempotency, 200, {
       status: 'success',
       updated_fields: Object.keys(filteredUpdate),
       profile: updatedProfile,
     });
   } catch (error) {
+    await failIdempotency(idempotency, error);
     logger.error(`Internal updateProfile error: ${error.message}`);
     return res.status(500).json({ error: 'Failed to update profile.' });
   }
@@ -485,8 +830,11 @@ exports.updateProfile = async (req, res) => {
 
 // POST /api/plan/create/:user_id
 exports.createPlan = async (req, res) => {
+  let idempotency = null;
   try {
     const { user_id: userId } = req.params;
+    if (!ensureValidUserIdParam(res, userId)) return;
+
     const planType = normalizePlanType(req.body.plan_type);
 
     if (!planType) {
@@ -498,6 +846,9 @@ exports.createPlan = async (req, res) => {
     if (normalizedItems.length === 0) {
       return res.status(400).json({ error: 'plan_type and valid items are required.' });
     }
+
+    idempotency = await beginIdempotency(req, res, userId, 'plan_write');
+    if (idempotency.handled) return;
 
     const targetDates = dedupeDates(normalizedItems);
     const conflictDates = await planMutationService.loadExistingConflictDates(
@@ -508,7 +859,7 @@ exports.createPlan = async (req, res) => {
     );
 
     if (conflictDates.length > 0) {
-      return res.status(409).json({
+      return sendWithIdempotency(res, idempotency, 409, {
         error: 'Existing plans already exist for one or more requested dates.',
         conflict_dates: conflictDates,
         suggested_action: 'update',
@@ -519,13 +870,14 @@ exports.createPlan = async (req, res) => {
       ? await planMutationService.createWorkoutPlans(supabase, userId, normalizedItems)
       : await planMutationService.createDietPlans(supabase, userId, normalizedItems);
 
-    return res.status(201).json({
+    return sendWithIdempotency(res, idempotency, 201, {
       status: 'success',
       plan_type: planType,
       created_count: created.length,
       items: created,
     });
   } catch (error) {
+    await failIdempotency(idempotency, error);
     logger.error(`Internal createPlan error: ${error.message}`);
     return res.status(500).json({ error: 'Failed to create plan.' });
   }
@@ -533,8 +885,11 @@ exports.createPlan = async (req, res) => {
 
 // PUT /api/plan/update/:user_id
 exports.updatePlan = async (req, res) => {
+  let idempotency = null;
   try {
     const { user_id: userId } = req.params;
+    if (!ensureValidUserIdParam(res, userId)) return;
+
     const planType = normalizePlanType(req.body.plan_type);
 
     if (!planType) {
@@ -549,26 +904,88 @@ exports.updatePlan = async (req, res) => {
 
     const targetDates = dedupeDates(normalizedItems);
 
+    idempotency = await beginIdempotency(req, res, userId, 'plan_write');
+    if (idempotency.handled) return;
+
     const updated = planType === 'workout'
       ? await planMutationService.replaceWorkoutPlans(supabase, userId, normalizedItems)
       : await planMutationService.replaceDietPlans(supabase, userId, normalizedItems);
 
-    return res.json({
+    return sendWithIdempotency(res, idempotency, 200, {
       status: 'success',
       plan_type: planType,
       replaced_dates: targetDates,
       updated_count: updated.length,
     });
   } catch (error) {
+    await failIdempotency(idempotency, error);
     logger.error(`Internal updatePlan error: ${error.message}`);
     return res.status(500).json({ error: 'Failed to update plan.' });
   }
 };
 
-// PUT /api/plan/check/:user_id
-exports.checkPlan = async (req, res) => {
+// DELETE /api/plan/delete/:user_id
+exports.deletePlan = async (req, res) => {
+  let idempotency = null;
   try {
     const { user_id: userId } = req.params;
+    if (!ensureValidUserIdParam(res, userId)) return;
+
+    const planType = normalizeDeletePlanType(req.body.plan_type);
+    const targetDates = normalizeTargetDates(req.body.target_dates);
+
+    if (!planType) {
+      return res.status(400).json({ error: 'plan_type is required.' });
+    }
+
+    if (targetDates.length === 0) {
+      return res.status(400).json({ error: 'target_dates is required.' });
+    }
+
+    let deletedWorkoutCount = 0;
+    let deletedDietCount = 0;
+
+    idempotency = await beginIdempotency(req, res, userId, 'plan_delete');
+    if (idempotency.handled) return;
+
+    if (planType === 'workout' || planType === 'all') {
+      deletedWorkoutCount = await planMutationService.deleteWorkoutPlansForDates(
+        supabase,
+        userId,
+        targetDates
+      );
+    }
+
+    if (planType === 'diet' || planType === 'all') {
+      deletedDietCount = await planMutationService.deleteDietPlansForDates(
+        supabase,
+        userId,
+        targetDates
+      );
+    }
+
+    return sendWithIdempotency(res, idempotency, 200, {
+      status: 'success',
+      plan_type: planType,
+      target_dates: targetDates,
+      deleted_workout_count: deletedWorkoutCount,
+      deleted_diet_count: deletedDietCount,
+      deleted_count: deletedWorkoutCount + deletedDietCount,
+    });
+  } catch (error) {
+    await failIdempotency(idempotency, error);
+    logger.error(`Internal deletePlan error: ${error.message}`);
+    return res.status(500).json({ error: 'Failed to delete plan.' });
+  }
+};
+
+// PUT /api/plan/check/:user_id
+exports.checkPlan = async (req, res) => {
+  let idempotency = null;
+  try {
+    const { user_id: userId } = req.params;
+    if (!ensureValidUserIdParam(res, userId)) return;
+
     const { item_id: itemId } = req.body;
     const parsed = parsePlanCheckId(itemId || '');
 
@@ -576,10 +993,13 @@ exports.checkPlan = async (req, res) => {
       return res.status(400).json({ error: 'Invalid item_id format.' });
     }
 
+    idempotency = await beginIdempotency(req, res, userId, 'plan_check');
+    if (idempotency.handled) return;
+
     if (parsed.kind === 'exercise-item') {
       const ownedItem = await getOwnedExerciseItem(userId, parsed.numericId);
       if (!ownedItem) {
-        return res.status(404).json({ error: 'Exercise item not found.' });
+        return sendWithIdempotency(res, idempotency, 404, { error: 'Exercise item not found.' });
       }
 
       const { data: updatedItem, error } = await supabase
@@ -592,7 +1012,7 @@ exports.checkPlan = async (req, res) => {
       if (error) throw error;
 
       const parentStatus = await rebuildParentExerciseStatus(updatedItem.exercise_id);
-      return res.json({
+      return sendWithIdempotency(res, idempotency, 200, {
         status: 'success',
         item_id: itemId,
         checked: true,
@@ -603,7 +1023,7 @@ exports.checkPlan = async (req, res) => {
     if (parsed.kind === 'exercise') {
       const ownedPlan = await getOwnedExercisePlan(userId, parsed.numericId);
       if (!ownedPlan) {
-        return res.status(404).json({ error: 'Exercise plan not found.' });
+        return sendWithIdempotency(res, idempotency, 404, { error: 'Exercise plan not found.' });
       }
 
       const { data: updatedPlan, error: parentError } = await supabase
@@ -616,7 +1036,7 @@ exports.checkPlan = async (req, res) => {
 
       if (parentError) throw parentError;
       if (!updatedPlan) {
-        return res.status(404).json({ error: 'Exercise plan not found.' });
+        return sendWithIdempotency(res, idempotency, 404, { error: 'Exercise plan not found.' });
       }
 
       const { error: itemError } = await supabase
@@ -626,7 +1046,7 @@ exports.checkPlan = async (req, res) => {
 
       if (itemError) throw itemError;
 
-      return res.json({
+      return sendWithIdempotency(res, idempotency, 200, {
         status: 'success',
         item_id: itemId,
         checked: true,
@@ -644,15 +1064,16 @@ exports.checkPlan = async (req, res) => {
 
     if (mealError) throw mealError;
     if (!updatedMeal) {
-      return res.status(404).json({ error: 'Meal plan not found.' });
+      return sendWithIdempotency(res, idempotency, 404, { error: 'Meal plan not found.' });
     }
 
-    return res.json({
+    return sendWithIdempotency(res, idempotency, 200, {
       status: 'success',
       item_id: itemId,
       checked: true,
     });
   } catch (error) {
+    await failIdempotency(idempotency, error);
     logger.error(`Internal checkPlan error: ${error.message}`);
     return res.status(500).json({ error: 'Failed to check plan item.' });
   }
@@ -662,6 +1083,8 @@ exports.checkPlan = async (req, res) => {
 exports.getFullWorkoutPlan = async (req, res) => {
   try {
     const { user_id: userId } = req.params;
+    if (!ensureValidUserIdParam(res, userId)) return;
+
     const exercises = await loadExercisePlansWithItems(supabase, { userId });
 
     return res.json({
@@ -690,6 +1113,7 @@ exports.getFullWorkoutPlan = async (req, res) => {
 exports.getFullDietPlan = async (req, res) => {
   try {
     const { user_id: userId } = req.params;
+    if (!ensureValidUserIdParam(res, userId)) return;
 
     const { data: meals, error } = await supabase
       .from('user_meal_plans')

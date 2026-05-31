@@ -78,6 +78,7 @@ type DietPopupState = {
 
 type RequestedRecommendationScope = Exclude<RecommendationScope, 'all'>;
 type HomeRecommendationHighlightId = `workout:${WorkoutSlot}` | `diet:${DietSlot}`;
+const HOME_RECOMMENDATION_HIGHLIGHT_STORAGE_KEY = 'capstone.homeRecommendationHighlights.v1';
 type PlanSyncToastState = {
   isOpen: boolean;
   title: string;
@@ -98,6 +99,38 @@ const isRecommendationHighlightInScope = (
 ) => {
   if (scope === 'all') return true;
   return id.startsWith(`${scope}:`);
+};
+
+const isHomeRecommendationHighlightId = (
+  value: unknown
+): value is HomeRecommendationHighlightId => {
+  if (typeof value !== 'string') return false;
+  return value.startsWith('workout:') || value.startsWith('diet:');
+};
+
+const readStoredHomeRecommendationHighlights = (): HomeRecommendationHighlightId[] => {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const parsed = JSON.parse(
+      localStorage.getItem(HOME_RECOMMENDATION_HIGHLIGHT_STORAGE_KEY) || '[]'
+    );
+    return Array.isArray(parsed)
+      ? parsed.filter(isHomeRecommendationHighlightId)
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeStoredHomeRecommendationHighlights = (
+  ids: HomeRecommendationHighlightId[]
+) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(
+    HOME_RECOMMENDATION_HIGHLIGHT_STORAGE_KEY,
+    JSON.stringify(Array.from(new Set(ids)))
+  );
 };
 
 const getFoodEmoji = (name: string) => {
@@ -426,7 +459,7 @@ export default function Home() {
     diet: false,
   });
   const [highlightedRecommendationIds, setHighlightedRecommendationIds] =
-    useState<HomeRecommendationHighlightId[]>([]);
+    useState<HomeRecommendationHighlightId[]>(() => readStoredHomeRecommendationHighlights());
   const [planSyncToast, setPlanSyncToast] = useState<PlanSyncToastState>({
     isOpen: false,
     title: '',
@@ -491,29 +524,35 @@ export default function Home() {
 
   const markRecommendationHighlighted = useCallback(
     (id: HomeRecommendationHighlightId) => {
-      setHighlightedRecommendationIds((previous) =>
-        previous.includes(id) ? previous : [...previous, id]
-      );
+      setHighlightedRecommendationIds((previous) => {
+        const next = previous.includes(id) ? previous : [...previous, id];
+        writeStoredHomeRecommendationHighlights(next);
+        return next;
+      });
     },
     []
   );
 
   const dismissRecommendationHighlight = useCallback(
     (id: HomeRecommendationHighlightId) => {
-      setHighlightedRecommendationIds((previous) =>
-        previous.includes(id)
+      setHighlightedRecommendationIds((previous) => {
+        const next = previous.includes(id)
           ? previous.filter((highlightId) => highlightId !== id)
-          : previous
-      );
+          : previous;
+        writeStoredHomeRecommendationHighlights(next);
+        return next;
+      });
     },
     []
   );
 
   const clearRecommendationHighlightsForScope = useCallback(
     (scope: RecommendationScope) => {
-      setHighlightedRecommendationIds((previous) =>
-        previous.filter((id) => !isRecommendationHighlightInScope(id, scope))
-      );
+      setHighlightedRecommendationIds((previous) => {
+        const next = previous.filter((id) => !isRecommendationHighlightInScope(id, scope));
+        writeStoredHomeRecommendationHighlights(next);
+        return next;
+      });
     },
     []
   );
@@ -710,7 +749,7 @@ export default function Home() {
       if (!suppressAlert) {
         setAlertPopup({
           isOpen: true,
-          message: 'AI 異붿쿇??遺덈윭?ㅼ? 紐삵뻽?듬땲?? ?좎떆 ???ㅼ떆 ?쒕룄??二쇱꽭??',
+          message: 'AI 추천을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
         });
       }
       return false;
@@ -770,7 +809,7 @@ export default function Home() {
       if (!workoutLoaded || !dietLoaded) {
         setAlertPopup({
           isOpen: true,
-          message: 'AI 異붿쿇??遺덈윭?ㅼ? 紐삵뻽?듬땲?? ?좎떆 ???ㅼ떆 ?쒕룄??二쇱꽭??',
+          message: 'AI 추천을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
         });
       }
     } catch (error) {
@@ -1229,9 +1268,9 @@ return (
           {isClient && !isUserLoading && userData ? (
             <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
               <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                <span className="text-[#2563eb]">{userData?.nickname || userData?.name || '사용자'}</span> 님,
+                <span className="text-[#2563eb]">{userData?.nickname || userData?.name || "\uC0AC\uC6A9\uC790"}</span>{"\uB2D8"}
               </h1>
-              <p className="text-gray-600 text-base font-medium mt-1">오늘은 <span className="text-[#2563eb] font-bold">{userData?.goal || '건강'}</span>을 목표로 달려봐요!</p>
+              <p className="text-gray-600 text-base font-medium mt-1">{"\uC624\uB298\uC740 "}<span className="text-[#2563eb] font-bold">{userData?.goal || "\uAC74\uAC15"}</span>{"\uC744 \uBAA9\uD45C\uB85C \uC6C0\uC9C1\uC5EC\uBCFC\uAC8C\uC694."}</p>
             </motion.div>
           ) : (
             <div className="flex flex-col justify-center h-[76px] space-y-2 animate-pulse">
@@ -1245,7 +1284,7 @@ return (
           className="px-3 py-3 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100/80 text-[#2563eb] hover:bg-blue-50 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgb(37,99,235,0.12)] transition-all duration-300 flex flex-col items-center justify-center min-w-[76px]"
         >
           <Calendar className="w-6 h-6 mb-1 drop-shadow-sm" />
-          <span className="text-[10.5px] font-bold">오늘의 할 일</span>
+          <span className="text-[10.5px] font-bold">{"\uC624\uB298 \uC77C\uC815"}</span>
         </button>
       </header>
 
@@ -1261,7 +1300,7 @@ return (
               <div className="w-11 h-11 rounded-2xl bg-orange-50/80 flex items-center justify-center text-orange-500 shadow-inner group-hover:scale-110 transition-transform">
                 <Utensils className="w-5 h-5" />
               </div>
-              <h2 className="text-base font-bold text-gray-800 tracking-wide">섭취 칼로리</h2>
+              <h2 className="text-base font-bold text-gray-800 tracking-wide">{"\uC12D\uCDE8 \uCE7C\uB85C\uB9AC"}</h2>
             </div>
           </div>
           <div>
@@ -1288,13 +1327,13 @@ return (
               <div className="w-11 h-11 rounded-2xl bg-emerald-50/80 flex items-center justify-center text-emerald-500 shadow-inner">
                 <Activity className="w-5 h-5" />
               </div>
-              <h2 className="text-base font-bold text-gray-800 tracking-wide">오늘의 영양소 (탄/단/지)</h2>
+              <h2 className="text-base font-bold text-gray-800 tracking-wide">{"\uC624\uB298\uC758 \uC601\uC591\uC18C (\uC8FC\uC694 \uC601\uC591\uC18C)"}</h2>
             </div>
           </div>
           <div className="flex gap-4 items-end justify-between h-full pt-2">
             <div className="flex-1 space-y-1.5 min-w-0">
               <div className="flex justify-between text-[11px] md:text-xs font-bold text-gray-500 whitespace-nowrap">
-                <span>탄수화물</span><span className="truncate ml-1">{intakes.carbs.toLocaleString()}/{targets.carbs.toLocaleString()}g</span>
+                <span>{"\uD0C4\uC218\uD654\uBB3C"}</span><span className="truncate ml-1">{intakes.carbs.toLocaleString()}/{targets.carbs.toLocaleString()}g</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                 <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min((intakes.carbs / targets.carbs) * 100, 100)}%` }} transition={{ duration: 1 }} className="bg-amber-400 h-2 rounded-full"></motion.div>
@@ -1302,7 +1341,7 @@ return (
             </div>
             <div className="flex-1 space-y-1.5 min-w-0">
               <div className="flex justify-between text-[11px] md:text-xs font-bold text-gray-500 whitespace-nowrap">
-                <span>단백질</span><span className="truncate ml-1">{intakes.protein.toLocaleString()}/{targets.protein.toLocaleString()}g</span>
+                <span>{"\uB2E8\uBC31\uC9C8"}</span><span className="truncate ml-1">{intakes.protein.toLocaleString()}/{targets.protein.toLocaleString()}g</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                 <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min((intakes.protein / targets.protein) * 100, 100)}%` }} transition={{ duration: 1, delay: 0.1 }} className="bg-blue-400 h-2 rounded-full"></motion.div>
@@ -1310,7 +1349,7 @@ return (
             </div>
             <div className="flex-1 space-y-1.5 min-w-0">
               <div className="flex justify-between text-[11px] md:text-xs font-bold text-gray-500 whitespace-nowrap">
-                <span>지방</span><span className="truncate ml-1">{intakes.fat.toLocaleString()}/{targets.fat.toLocaleString()}g</span>
+                <span>{"\uC9C0\uBC29"}</span><span className="truncate ml-1">{intakes.fat.toLocaleString()}/{targets.fat.toLocaleString()}g</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                 <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min((intakes.fat / targets.fat) * 100, 100)}%` }} transition={{ duration: 1, delay: 0.2 }} className="bg-rose-400 h-2 rounded-full"></motion.div>
@@ -1353,7 +1392,7 @@ return (
                   transition={{ delay: 0.2, duration: 0.5 }}
                   className="absolute top-[80px] left-1/2 -translate-x-1/2 z-20 bg-blue-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-md"
                 >
-                  오늘의 목표 달성! 🎉
+                  {"\uC624\uB298 \uBAA9\uD45C \uB2EC\uC131!"}
                 </motion.div>
               </>
             )}
@@ -1364,7 +1403,7 @@ return (
               <div className="w-11 h-11 rounded-2xl bg-sky-100/80 flex items-center justify-center text-sky-500 shadow-inner group-hover:scale-110 transition-transform">
                 <Droplets className="w-5 h-5" />
               </div>
-              <h2 className="text-base font-bold text-gray-800 tracking-wide">수분 섭취</h2>
+              <h2 className="text-base font-bold text-gray-800 tracking-wide">{"\uC218\uBD84 \uC12D\uCDE8"}</h2>
             </div>
           </div>
 
@@ -1379,7 +1418,7 @@ return (
                 >
                   {waterGlasses}
                 </motion.p>
-                <span className="text-sm font-semibold text-gray-400">/ {maxWaterGlasses} 잔</span>
+                <span className="text-sm font-semibold text-gray-400">/ {maxWaterGlasses} {"\uCEF5"}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <button onClick={removeWater} className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center text-sky-500 hover:bg-sky-500 hover:text-white transition-colors cursor-pointer disabled:opacity-50" disabled={waterGlasses === 0}>
@@ -1391,24 +1430,24 @@ return (
               </div>
             </div>
             <p className="text-xs text-sky-600 font-semibold mt-3 text-center opacity-0 group-hover:opacity-100 transition-opacity">
-              오늘도 충분한 수분을 섭취하세요!
+              {"\uC624\uB298\uB3C4 \uCDA9\uBD84\uD55C \uC218\uBD84\uC744 \uCC59\uACA8\uC8FC\uC138\uC694."}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Quick Actions (NEW) */}
+      {/* Quick Actions */}
       <div className="pt-2 pb-4">
-        <p className="text-sm font-bold text-gray-500 mb-4 px-1">빠른 실행</p>
+        <p className="text-sm font-bold text-gray-500 mb-4 px-1">{"\uBE60\uB978 \uC2E4\uD589"}</p>
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={() => router.push('/recommend')}
-            className="group bg-gradient-to-r from-[#2563eb] to-blue-500 p-5 rounded-3xl shadow-[0_8px_30px_rgb(37,99,235,0.25)] hover:shadow-[0_12px_40px_rgb(37,99,235,0.35)] hover:-translate-y-1 transition-all duration-300 flex items-center justify-between text-left overflow-hidden relative"
+            className="group relative overflow-hidden bg-gradient-to-br from-[#2563eb] to-indigo-600 p-5 rounded-3xl shadow-[0_12px_32px_rgba(37,99,235,0.24)] hover:shadow-[0_16px_44px_rgba(37,99,235,0.3)] hover:-translate-y-1 transition-all duration-300 flex items-center justify-between text-left"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-110 transition-transform"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-110 transition-transform" />
             <div className="relative z-10">
-              <h3 className="text-white font-bold text-lg mb-1">오늘 운동 추천</h3>
-              <p className="text-blue-100 text-xs font-medium">AI가 분석한 맞춤형 플랜</p>
+              <h3 className="text-white font-bold text-lg mb-1">{"\uC624\uB298 \uC6B4\uB3D9 \uCD94\uCC9C"}</h3>
+              <p className="text-blue-100 text-xs font-medium">{"AI\uAC00 \uBD84\uC11D\uD55C \uB9DE\uCDA4 \uD50C\uB79C"}</p>
             </div>
             <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white relative z-10">
               <Activity className="w-5 h-5" />
@@ -1419,8 +1458,8 @@ return (
             className="group bg-white p-5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100/80 hover:shadow-[0_12px_40px_rgb(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300 flex items-center justify-between text-left"
           >
             <div>
-              <h3 className="text-gray-900 font-bold text-lg mb-1">간편 영양 기록</h3>
-              <p className="text-gray-400 text-xs font-medium">칼로리 관리의 시작</p>
+              <h3 className="text-gray-900 font-bold text-lg mb-1">{"\uAC04\uD3B8 \uC601\uC591 \uAE30\uB85D"}</h3>
+              <p className="text-gray-400 text-xs font-medium">{"\uCE7C\uB85C\uB9AC \uAD00\uB9AC\uC758 \uC2DC\uC791"}</p>
             </div>
             <div className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-500 group-hover:bg-orange-50 group-hover:text-orange-500 transition-colors">
               <Utensils className="w-5 h-5" />
@@ -1435,33 +1474,36 @@ return (
         <div className="bg-white p-6 md:p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/60">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-bold text-gray-900 tracking-wide flex items-center">
-              <span className="bg-gradient-to-r from-[#2563eb] to-indigo-500 text-transparent bg-clip-text mr-2">AI 운동 추천</span>
+              <span className="bg-gradient-to-r from-[#2563eb] to-indigo-500 text-transparent bg-clip-text mr-2">{"AI \uC6B4\uB3D9 \uCD94\uCC9C"}</span>
             </h2>
             <button
               onClick={() => void fetchHomeRecommendations('workout')}
               disabled={recommendationRefresh.workout || isRecommendationLoading}
               className="text-gray-400 hover:text-[#2563eb] hover:bg-blue-50 transition-all p-2 rounded-full cursor-pointer group focus:outline-none disabled:opacity-50"
             >
-              <RefreshCw className={`w-5 h-5 transition-transform duration-500 ${(recommendationRefresh.workout || isRecommendationLoading) ? 'animate-spin' : 'group-hover:rotate-180'}`} />
+              <RefreshCw className={[
+                "w-5 h-5 transition-transform duration-500",
+                (recommendationRefresh.workout || isRecommendationLoading) ? "animate-spin" : "group-hover:rotate-180",
+              ].join(" ")} />
             </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Strength Upper */}
             <div
               onMouseEnter={() => dismissRecommendationHighlight(upperWorkoutHighlightId)}
               onPointerDown={() => dismissRecommendationHighlight(upperWorkoutHighlightId)}
-              className={`rounded-xl p-5 border shadow-sm hover:shadow-[0_8px_24px_rgba(37,99,235,0.1)] transition-all flex flex-col relative group ${isUpperWorkoutHighlighted ? 'bg-emerald-50/70 border-emerald-200 ring-2 ring-emerald-200' : 'bg-white border-gray-100'}`}
+              className={[
+                "rounded-xl p-5 border shadow-sm hover:shadow-[0_8px_24px_rgba(37,99,235,0.1)] transition-all flex flex-col relative group",
+                isUpperWorkoutHighlighted ? "bg-emerald-50/70 border-emerald-200 ring-2 ring-emerald-200" : "bg-white border-gray-100",
+              ].join(" ")}
             >
               {isUpperWorkoutHighlighted && (
-                <span className="absolute right-4 top-14 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
-                  방금 반영됨
-                </span>
+                <span className="absolute right-4 top-14 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">{"\uBC29\uAE08 \uBC18\uC601\uB428"}</span>
               )}
               <div className="flex justify-between items-start mb-4">
-                <span className="px-2.5 py-1 bg-blue-50 border border-blue-100 text-blue-600 rounded-full text-xs font-bold shadow-sm">근력 (상체)</span>
+                <span className="px-2.5 py-1 bg-blue-50 border border-blue-100 text-blue-600 rounded-full text-xs font-bold shadow-sm">{"\uADFC\uB825 (\uC0C1\uCCB4)"}</span>
                 {aiRecommendations.workout?.strength?.upper && (
-                  <button aria-label="상체 운동 추천 추가" onClick={() => openWorkoutRecommendationPopup('upper_body', aiRecommendations.workout.strength.upper!)} disabled={isWorkoutRecommendationAdded('upper_body', aiRecommendations.workout.strength.upper)} className="p-1.5 bg-blue-500 shadow-md text-white hover:bg-blue-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
+                  <button aria-label={"\uC0C1\uCCB4 \uC6B4\uB3D9 \uCD94\uCC9C \uCD94\uAC00"} onClick={() => openWorkoutRecommendationPopup('upper_body', aiRecommendations.workout.strength.upper!)} disabled={isWorkoutRecommendationAdded('upper_body', aiRecommendations.workout.strength.upper)} className="p-1.5 bg-blue-500 shadow-md text-white hover:bg-blue-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
                     <Plus className="w-4 h-4" />
                   </button>
                 )}
@@ -1474,28 +1516,28 @@ return (
                   <h4 className="font-bold text-gray-900 text-[15px] mb-1.5">{aiRecommendations.workout.strength.upper.name}</h4>
                   <p className="text-xs text-gray-500 leading-relaxed">{compactText(aiRecommendations.workout.strength.upper.desc, 42)}</p>
                   <p className="mt-2 text-[11px] font-bold text-blue-500">{aiRecommendations.workout.strength.upper.duration}</p>
-                  {isWorkoutRecommendationAdded('upper_body', aiRecommendations.workout.strength.upper) && <p className="mt-1 text-[11px] font-bold text-emerald-500">추가됨</p>}
+                  {isWorkoutRecommendationAdded('upper_body', aiRecommendations.workout.strength.upper) && <p className="mt-1 text-[11px] font-bold text-emerald-500">{"\uCD94\uAC00\uB428"}</p>}
                 </div>
               ) : (
-                <div className="flex-1 flex items-center justify-center text-xs text-gray-400">추천 항목 없음</div>
+                <div className="flex-1 flex items-center justify-center text-xs text-gray-400">{"\uCD94\uCC9C \uD56D\uBAA9 \uC5C6\uC74C"}</div>
               )}
             </div>
 
-            {/* Strength Lower */}
             <div
               onMouseEnter={() => dismissRecommendationHighlight(lowerWorkoutHighlightId)}
               onPointerDown={() => dismissRecommendationHighlight(lowerWorkoutHighlightId)}
-              className={`rounded-xl p-5 border shadow-sm hover:shadow-[0_8px_24px_rgba(37,99,235,0.1)] transition-all flex flex-col relative group ${isLowerWorkoutHighlighted ? 'bg-emerald-50/70 border-emerald-200 ring-2 ring-emerald-200' : 'bg-white border-gray-100'}`}
+              className={[
+                "rounded-xl p-5 border shadow-sm hover:shadow-[0_8px_24px_rgba(37,99,235,0.1)] transition-all flex flex-col relative group",
+                isLowerWorkoutHighlighted ? "bg-emerald-50/70 border-emerald-200 ring-2 ring-emerald-200" : "bg-white border-gray-100",
+              ].join(" ")}
             >
               {isLowerWorkoutHighlighted && (
-                <span className="absolute right-4 top-14 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
-                  방금 반영됨
-                </span>
+                <span className="absolute right-4 top-14 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">{"\uBC29\uAE08 \uBC18\uC601\uB428"}</span>
               )}
               <div className="flex justify-between items-start mb-4">
-                <span className="px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-full text-xs font-bold shadow-sm">근력 (하체)</span>
+                <span className="px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-full text-xs font-bold shadow-sm">{"\uADFC\uB825 (\uD558\uCCB4)"}</span>
                 {aiRecommendations.workout?.strength?.lower && (
-                  <button aria-label="하체 운동 추천 추가" onClick={() => openWorkoutRecommendationPopup('lower_body', aiRecommendations.workout.strength.lower!)} disabled={isWorkoutRecommendationAdded('lower_body', aiRecommendations.workout.strength.lower)} className="p-1.5 bg-indigo-500 shadow-md text-white hover:bg-indigo-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
+                  <button aria-label={"\uD558\uCCB4 \uC6B4\uB3D9 \uCD94\uCC9C \uCD94\uAC00"} onClick={() => openWorkoutRecommendationPopup('lower_body', aiRecommendations.workout.strength.lower!)} disabled={isWorkoutRecommendationAdded('lower_body', aiRecommendations.workout.strength.lower)} className="p-1.5 bg-indigo-500 shadow-md text-white hover:bg-indigo-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
                     <Plus className="w-4 h-4" />
                   </button>
                 )}
@@ -1508,28 +1550,28 @@ return (
                   <h4 className="font-bold text-gray-900 text-[15px] mb-1.5">{aiRecommendations.workout.strength.lower.name}</h4>
                   <p className="text-xs text-gray-500 leading-relaxed">{compactText(aiRecommendations.workout.strength.lower.desc, 42)}</p>
                   <p className="mt-2 text-[11px] font-bold text-indigo-500">{aiRecommendations.workout.strength.lower.duration}</p>
-                  {isWorkoutRecommendationAdded('lower_body', aiRecommendations.workout.strength.lower) && <p className="mt-1 text-[11px] font-bold text-emerald-500">추가됨</p>}
+                  {isWorkoutRecommendationAdded('lower_body', aiRecommendations.workout.strength.lower) && <p className="mt-1 text-[11px] font-bold text-emerald-500">{"\uCD94\uAC00\uB428"}</p>}
                 </div>
               ) : (
-                <div className="flex-1 flex items-center justify-center text-xs text-gray-400">추천 항목 없음</div>
+                <div className="flex-1 flex items-center justify-center text-xs text-gray-400">{"\uCD94\uCC9C \uD56D\uBAA9 \uC5C6\uC74C"}</div>
               )}
             </div>
 
-            {/* Cardio */}
             <div
               onMouseEnter={() => dismissRecommendationHighlight(cardioWorkoutHighlightId)}
               onPointerDown={() => dismissRecommendationHighlight(cardioWorkoutHighlightId)}
-              className={`rounded-xl p-5 border shadow-sm hover:shadow-[0_8px_24px_rgba(244,63,94,0.15)] transition-all flex flex-col relative group ${isCardioWorkoutHighlighted ? 'bg-emerald-50/70 border-emerald-200 ring-2 ring-emerald-200' : 'bg-white border-gray-100'}`}
+              className={[
+                "rounded-xl p-5 border shadow-sm hover:shadow-[0_8px_24px_rgba(244,63,94,0.15)] transition-all flex flex-col relative group",
+                isCardioWorkoutHighlighted ? "bg-emerald-50/70 border-emerald-200 ring-2 ring-emerald-200" : "bg-white border-gray-100",
+              ].join(" ")}
             >
               {isCardioWorkoutHighlighted && (
-                <span className="absolute right-4 top-14 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
-                  방금 반영됨
-                </span>
+                <span className="absolute right-4 top-14 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">{"\uBC29\uAE08 \uBC18\uC601\uB428"}</span>
               )}
               <div className="flex justify-between items-start mb-4">
-                <span className="px-2.5 py-1 bg-rose-50 border border-rose-100 text-rose-500 rounded-full text-xs font-bold shadow-sm">유산소</span>
+                <span className="px-2.5 py-1 bg-rose-50 border border-rose-100 text-rose-500 rounded-full text-xs font-bold shadow-sm">{"\uC720\uC0B0\uC18C"}</span>
                 {aiRecommendations.workout?.cardio && (
-                  <button aria-label="유산소 운동 추천 추가" onClick={() => openWorkoutRecommendationPopup('cardio', aiRecommendations.workout.cardio!)} disabled={isWorkoutRecommendationAdded('cardio', aiRecommendations.workout.cardio)} className="p-1.5 bg-rose-500 shadow-md text-white hover:bg-rose-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
+                  <button aria-label={"\uC720\uC0B0\uC18C \uC6B4\uB3D9 \uCD94\uCC9C \uCD94\uAC00"} onClick={() => openWorkoutRecommendationPopup('cardio', aiRecommendations.workout.cardio!)} disabled={isWorkoutRecommendationAdded('cardio', aiRecommendations.workout.cardio)} className="p-1.5 bg-rose-500 shadow-md text-white hover:bg-rose-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
                     <Plus className="w-4 h-4" />
                   </button>
                 )}
@@ -1542,28 +1584,28 @@ return (
                   <h4 className="font-bold text-gray-900 text-[15px] mb-1.5">{aiRecommendations.workout.cardio.name}</h4>
                   <p className="text-xs text-gray-500 leading-relaxed">{compactText(aiRecommendations.workout.cardio.desc, 42)}</p>
                   <p className="mt-2 text-[11px] font-bold text-rose-500">{aiRecommendations.workout.cardio.duration}</p>
-                  {isWorkoutRecommendationAdded('cardio', aiRecommendations.workout.cardio) && <p className="mt-1 text-[11px] font-bold text-emerald-500">추가됨</p>}
+                  {isWorkoutRecommendationAdded('cardio', aiRecommendations.workout.cardio) && <p className="mt-1 text-[11px] font-bold text-emerald-500">{"\uCD94\uAC00\uB428"}</p>}
                 </div>
               ) : (
-                <div className="flex-1 flex items-center justify-center text-xs text-gray-400">추천 항목 없음</div>
+                <div className="flex-1 flex items-center justify-center text-xs text-gray-400">{"\uCD94\uCC9C \uD56D\uBAA9 \uC5C6\uC74C"}</div>
               )}
             </div>
 
-            {/* Stretching */}
             <div
               onMouseEnter={() => dismissRecommendationHighlight(stretchingWorkoutHighlightId)}
               onPointerDown={() => dismissRecommendationHighlight(stretchingWorkoutHighlightId)}
-              className={`rounded-xl p-5 border shadow-sm hover:shadow-[0_8px_24px_rgba(16,185,129,0.15)] transition-all flex flex-col relative group ${isStretchingWorkoutHighlighted ? 'bg-emerald-50/70 border-emerald-200 ring-2 ring-emerald-200' : 'bg-white border-gray-100'}`}
+              className={[
+                "rounded-xl p-5 border shadow-sm hover:shadow-[0_8px_24px_rgba(16,185,129,0.15)] transition-all flex flex-col relative group",
+                isStretchingWorkoutHighlighted ? "bg-emerald-50/70 border-emerald-200 ring-2 ring-emerald-200" : "bg-white border-gray-100",
+              ].join(" ")}
             >
               {isStretchingWorkoutHighlighted && (
-                <span className="absolute right-4 top-14 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
-                  방금 반영됨
-                </span>
+                <span className="absolute right-4 top-14 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">{"\uBC29\uAE08 \uBC18\uC601\uB428"}</span>
               )}
               <div className="flex justify-between items-start mb-4">
-                <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-100 text-emerald-500 rounded-full text-xs font-bold shadow-sm">스트레칭</span>
+                <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-100 text-emerald-500 rounded-full text-xs font-bold shadow-sm">{"\uC2A4\uD2B8\uB808\uCE6D"}</span>
                 {aiRecommendations.workout?.stretching && (
-                  <button aria-label="스트레칭 추천 추가" onClick={() => openWorkoutRecommendationPopup('stretching', aiRecommendations.workout.stretching!)} disabled={isWorkoutRecommendationAdded('stretching', aiRecommendations.workout.stretching)} className="p-1.5 bg-emerald-500 shadow-md text-white hover:bg-emerald-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
+                  <button aria-label={"\uC2A4\uD2B8\uB808\uCE6D \uC6B4\uB3D9 \uCD94\uCC9C \uCD94\uAC00"} onClick={() => openWorkoutRecommendationPopup('stretching', aiRecommendations.workout.stretching!)} disabled={isWorkoutRecommendationAdded('stretching', aiRecommendations.workout.stretching)} className="p-1.5 bg-emerald-500 shadow-md text-white hover:bg-emerald-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
                     <Plus className="w-4 h-4" />
                   </button>
                 )}
@@ -1576,10 +1618,10 @@ return (
                   <h4 className="font-bold text-gray-900 text-[15px] mb-1.5">{aiRecommendations.workout.stretching.name}</h4>
                   <p className="text-xs text-gray-500 leading-relaxed">{compactText(aiRecommendations.workout.stretching.desc, 42)}</p>
                   <p className="mt-2 text-[11px] font-bold text-emerald-500">{aiRecommendations.workout.stretching.duration}</p>
-                  {isWorkoutRecommendationAdded('stretching', aiRecommendations.workout.stretching) && <p className="mt-1 text-[11px] font-bold text-emerald-500">추가됨</p>}
+                  {isWorkoutRecommendationAdded('stretching', aiRecommendations.workout.stretching) && <p className="mt-1 text-[11px] font-bold text-emerald-500">{"\uCD94\uAC00\uB428"}</p>}
                 </div>
               ) : (
-                <div className="flex-1 flex items-center justify-center text-xs text-gray-400">추천 항목 없음</div>
+                <div className="flex-1 flex items-center justify-center text-xs text-gray-400">{"\uCD94\uCC9C \uD56D\uBAA9 \uC5C6\uC74C"}</div>
               )}
             </div>
           </div>
@@ -1589,14 +1631,17 @@ return (
         <div className="bg-white p-6 md:p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/60">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-bold text-gray-900 tracking-wide flex items-center">
-              <span className="bg-gradient-to-r from-[#f59e0b] to-orange-500 text-transparent bg-clip-text mr-2">AI 식단 추천</span>
+              <span className="bg-gradient-to-r from-[#f59e0b] to-orange-500 text-transparent bg-clip-text mr-2">{"AI \uC2DD\uB2E8 \uCD94\uCC9C"}</span>
             </h2>
             <button
               onClick={() => void fetchHomeRecommendations('diet')}
               disabled={recommendationRefresh.diet || isRecommendationLoading}
               className="text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-all p-2 rounded-full cursor-pointer group focus:outline-none disabled:opacity-50"
             >
-              <RefreshCw className={`w-5 h-5 transition-transform duration-500 ${recommendationRefresh.diet ? 'animate-spin' : 'group-hover:rotate-180'}`} />
+              <RefreshCw className={[
+                "w-5 h-5 transition-transform duration-500",
+                recommendationRefresh.diet ? "animate-spin" : "group-hover:rotate-180",
+              ].join(" ")} />
             </button>
           </div>
 
@@ -1605,23 +1650,24 @@ return (
               const dietData = aiRecommendations.diet[mealType as 'breakfast' | 'lunch' | 'dinner'];
               const dietHighlightId = getDietRecommendationHighlightId(mealType);
               const isDietHighlighted = highlightedRecommendationIds.includes(dietHighlightId);
-              const mealLabel = mealType === 'breakfast' ? '아침' : mealType === 'lunch' ? '점심' : '저녁';
+              const mealLabel = mealType === 'breakfast' ? "\uC544\uCE68" : mealType === 'lunch' ? "\uC810\uC2EC" : "\uC800\uB141";
               return (
                 <div
                   key={mealType}
                   onMouseEnter={() => dismissRecommendationHighlight(dietHighlightId)}
                   onPointerDown={() => dismissRecommendationHighlight(dietHighlightId)}
-                  className={`rounded-2xl p-4 border relative group flex flex-col transition-all ${isDietHighlighted ? 'bg-emerald-50/70 border-emerald-200 ring-2 ring-emerald-200 shadow-sm' : 'bg-orange-50/30 border-orange-100/50'}`}
+                  className={[
+                    "rounded-2xl p-4 border relative group flex flex-col transition-all",
+                    isDietHighlighted ? "bg-emerald-50/70 border-emerald-200 ring-2 ring-emerald-200 shadow-sm" : "bg-orange-50/30 border-orange-100/50",
+                  ].join(" ")}
                 >
                   {isDietHighlighted && (
-                    <span className="absolute right-4 top-12 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
-                      방금 반영됨
-                    </span>
+                    <span className="absolute right-4 top-12 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">{"\uBC29\uAE08 \uBC18\uC601\uB428"}</span>
                   )}
                   <div className="flex justify-between items-center mb-3">
                     <span className="px-2.5 py-1 bg-orange-50 border border-orange-100 text-orange-600 rounded-full text-xs font-bold shadow-sm">{mealLabel}</span>
                     {dietData && (
-                      <button aria-label={`${mealType} 식단 추천 변경`} onClick={() => openDietRecommendationPopup(dietData, mealType)} disabled={isDietRecommendationAdded(mealType, dietData)} className="p-1.5 bg-orange-500 shadow-md text-white hover:bg-orange-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
+                      <button aria-label={mealLabel + " \uC2DD\uB2E8 \uCD94\uCC9C \uBC18\uC601"} onClick={() => openDietRecommendationPopup(dietData, mealType)} disabled={isDietRecommendationAdded(mealType, dietData)} className="p-1.5 bg-orange-500 shadow-md text-white hover:bg-orange-600 rounded-full transition-colors z-10 disabled:bg-gray-300 disabled:hover:bg-gray-300">
                         <Plus className="w-4 h-4" />
                       </button>
                     )}
@@ -1634,10 +1680,10 @@ return (
                       <h4 className="font-bold text-gray-900 text-sm mb-1">{compactText(dietData.name, 30)}</h4>
                       <p className="text-xs text-gray-500 mb-2 flex-1">{compactText(dietData.desc, 42)}</p>
                       <div className="text-xs font-bold text-orange-500">{dietData.calories} kcal</div>
-                      {isDietRecommendationAdded(mealType, dietData) && <p className="mt-2 text-[11px] font-bold text-emerald-500">추가됨</p>}
+                      {isDietRecommendationAdded(mealType, dietData) && <p className="mt-2 text-[11px] font-bold text-emerald-500">{"\uCD94\uAC00\uB428"}</p>}
                     </div>
                   ) : (
-                    <div className="flex-1 flex items-center justify-center min-h-[120px] text-xs text-gray-400">추천 식단 없음</div>
+                    <div className="flex-1 flex items-center justify-center min-h-[120px] text-xs text-gray-400">{"\uCD94\uCC9C \uC2DD\uB2E8 \uC5C6\uC74C"}</div>
                   )}
                 </div>
               );

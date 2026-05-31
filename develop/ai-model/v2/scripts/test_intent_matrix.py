@@ -229,6 +229,7 @@ CASES: list[Case] = [
     Case("record", "record_workout_check", "오늘 운동 체크했어", "record", "workout", expected_record_type="plan_check"),
     Case("record", "record_goal", "내 목표를 체지방 감량으로 변경해줘", "record", "profile", expected_record_type="profile"),
     Case("record", "record_diet_check", "오늘 식단 체크했어", "record", "diet", expected_record_type="plan_check"),
+    Case("record", "record_workout_delete", "오늘 운동 플랜 삭제해줘", "record", "workout", expected_record_type="plan_delete"),
 
     Case("approval", "approval_basic", "좋아 그걸로 진행해줘", "approval", "workout", active_proposal_domain="workout", expected_reference="active_proposal"),
     Case("approval", "approval_apply_plan", "이 계획으로 적용해줘", "approval", "diet", active_proposal_domain="diet", expected_reference="active_proposal"),
