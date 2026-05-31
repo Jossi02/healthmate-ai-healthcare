@@ -1,6 +1,9 @@
 const assert = require('assert/strict');
 const bcrypt = require('bcrypt');
 
+process.env.SUPABASE_URL ||= 'http://localhost:54321';
+process.env.SUPABASE_SERVICE_ROLE_KEY ||= 'test-service-role-key';
+
 const {
   buildProfileRowForUpsert,
   DEFAULT_SELECTED_AI_PERSONA,
@@ -14,6 +17,7 @@ const { isValidUuid } = require('../src/utils/ids');
 const {
   loadExercisePlansWithItems,
 } = require('../src/services/exercisePlanReadService');
+const userController = require('../src/controllers/userController');
 const {
   listChatThreads,
   loadChatMessages,
@@ -585,6 +589,12 @@ async function testPasswordHashValidationRejectsBadHashes() {
   assert.equal(await verifyPassword('secret', 'not-a-bcrypt-hash'), false);
 }
 
+function testRecommendationNameNormalization() {
+  const { normalizeRecommendationName } = userController.__private__;
+  assert.equal(normalizeRecommendationName('  Band   ROW '), 'band row');
+  assert.equal(normalizeRecommendationName('Ｂａｎｄ　ＲＯＷ'), 'band row');
+}
+
 async function testUuidValidation() {
   assert.equal(isValidUuid('6f6d8c2d-0c1a-4a3f-9f7a-2a8d4b7b9c10'), true);
   assert.equal(isValidUuid('codex-probe-1234'), false);
@@ -639,11 +649,12 @@ async function main() {
   await testReplaceWorkoutPlansSwapsPlansOnSuccess();
   await testDeleteWorkoutPlansForDatesRemovesChildren();
   await testDeletePlanItemByOpaqueExerciseId();
+  testRecommendationNameNormalization();
   await testUuidValidation();
   await testPasswordHashValidationRejectsBadHashes();
   await testPasswordVerificationHandlesValidHashes();
   await testPersistedChatThreadRoundTrip();
-  console.log('[internal-contracts] 15/15 passed');
+  console.log('[internal-contracts] 16/16 passed');
 }
 
 main().catch((error) => {

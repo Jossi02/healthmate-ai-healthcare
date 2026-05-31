@@ -6,6 +6,14 @@ import time
 import re
 from typing import Any
 
+from app.core.diet_safety_rules import (
+    COMMON_EATING_DISORDER_RISK_TERMS,
+    COMMON_GOUT_PURINE_TERMS,
+    COMMON_KIDNEY_HIGH_PROTEIN_TERMS,
+    COMMON_PREGNANCY_FOOD_SAFETY_TERMS,
+    COMMON_SODIUM_HEAVY_TERMS,
+    COMMON_SUGAR_HEAVY_TERMS,
+)
 from app.core.profile_constraints import as_text_list, profile_bmi_value, profile_weight_value
 from app.graph.deps import NodeDeps
 from app.schemas.llm_responses import AnswerValidationJudgeResponse
@@ -37,8 +45,8 @@ _HIGH_IMPACT_TERMS = ("점프", "버피", "마운틴클라이머", "전력질주
 _BACK_LOAD_TERMS = ("데드리프트", "굿모닝", "무거운 스쿼트", "deadlift", "heavy squat")
 _ADVANCED_WORKOUT_TERMS = ("hiit", "인터벌", "전력질주", "고강도", "고중량", "최대", "max", "5세트", "6세트")
 _LONG_WORKOUT_TERMS = ("60분", "70분", "80분", "90분", "1시간")
-_SODIUM_HEAVY_TERMS = ("라면", "햄", "소시지", "베이컨", "짠", "나트륨", "젓갈", "국물", "ramen", "instant noodle", "sausage", "bacon", "processed meat", "pickle", "brine", "soup broth", "salty")
-_SUGAR_HEAVY_TERMS = ("설탕", "시럽", "탄산", "주스", "디저트", "케이크", "과자", "달콤", "soda", "juice", "smoothie", "syrup", "cookie", "candy", "sweetened")
+_SODIUM_HEAVY_TERMS = ("라면", "햄", "소시지", "베이컨", "짠", "나트륨", "젓갈", "국물", *COMMON_SODIUM_HEAVY_TERMS)
+_SUGAR_HEAVY_TERMS = ("설탕", "시럽", "탄산", "주스", "디저트", "케이크", "과자", "달콤", *COMMON_SUGAR_HEAVY_TERMS)
 _MEAT_TERMS = ("닭가슴살", "닭고기", "소고기", "돼지고기", "고기", "햄", "베이컨", "연어", "참치", "생선")
 _VEGAN_CONFLICT_TERMS = (*_MEAT_TERMS, "계란", "달걀", "우유", "치즈", "요거트", "유제품")
 _KIDNEY_DISEASE_HIGH_PROTEIN_TERMS = (
@@ -48,17 +56,12 @@ _KIDNEY_DISEASE_HIGH_PROTEIN_TERMS = (
     "크레아틴",
     "식사대용 쉐이크",
     "단백질바",
-    "protein bar",
-    "protein powder",
-    "whey",
-    "casein",
+    *COMMON_KIDNEY_HIGH_PROTEIN_TERMS,
     "닭가슴살 200",
     "닭가슴살 2",
-    "protein shake",
-    "high protein",
 )
-_GOUT_PURINE_TERMS = ("내장", "곱창", "멸치", "정어리", "맥주", "조개", "새우", "purine", "beer", "anchovy", "sardine", "mackerel", "organ meat", "liver", "shellfish", "clam")
-_PREGNANCY_RISK_TERMS = ("생선회", "회", "날달걀", "알코올", "술", "와인", "맥주", "raw fish", "raw egg", "alcohol", "unpasteurized", "deli meat", "high mercury", "tuna steak")
+_GOUT_PURINE_TERMS = ("내장", "곱창", "멸치", "정어리", "맥주", "조개", "새우", *COMMON_GOUT_PURINE_TERMS)
+_PREGNANCY_RISK_TERMS = ("생선회", "회", "날달걀", "알코올", "술", "와인", "맥주", *COMMON_PREGNANCY_FOOD_SAFETY_TERMS)
 _EATING_DISORDER_RISK_TERMS = (
     "900kcal",
     "800kcal",
@@ -67,12 +70,7 @@ _EATING_DISORDER_RISK_TERMS = (
     "하루 한 끼",
     "원푸드",
     "절식",
-    "fasting",
-    "detox",
-    "cleanse",
-    "one meal a day",
-    "omad",
-    "very low calorie",
+    *COMMON_EATING_DISORDER_RISK_TERMS,
 )
 _STRICT_PLAN_RAG_CONSTRAINTS = {
     "kidney_disease",

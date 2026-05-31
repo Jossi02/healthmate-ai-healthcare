@@ -73,18 +73,19 @@ type PlanItemKind = "workout" | "diet";
 type FetchPlansOptions = {
   trackChanges?: boolean;
 };
+type PlanMutationResult = "changed" | "already_exists" | false;
 
 interface PlanContextType {
   plans: DailyPlan[];
   completedTasks: CompletedTasksType;
   highlightedPlanItemIds: string[];
   hasPlanUpdates: boolean;
-  addWorkout: (dateStr: string, workout: WorkoutItem) => Promise<boolean>;
+  addWorkout: (dateStr: string, workout: WorkoutItem) => Promise<PlanMutationResult>;
   replaceDiet: (
     dateStr: string,
     mealType: string,
     newDiet: Omit<DietItem, "type">
-  ) => Promise<boolean>;
+  ) => Promise<PlanMutationResult>;
   deletePlanItem: (
     dateStr: string,
     idx: number,
@@ -223,8 +224,7 @@ export function getPlanItemKey(
   index: number
 ) {
   const rawId = item.itemId || `${kind}-${index}`;
-  const label = kind === "workout" ? (item as WorkoutItem).title : (item as DietItem).name;
-  return `${date}:${kind}:${rawId}:${label}`;
+  return `${date}:${kind}:${rawId}`;
 }
 
 function buildPlanItemSignature(item: WorkoutItem | DietItem, kind: PlanItemKind) {
@@ -659,8 +659,10 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
           throw new Error("Failed to add recommended exercise.");
         }
 
-        await fetchPlans({ trackChanges: true });
-        return true;
+        const data = await response.json().catch(() => ({}));
+        const alreadyExists = Boolean(data?.already_exists);
+        await fetchPlans({ trackChanges: !alreadyExists });
+        return alreadyExists ? "already_exists" : "changed";
       } catch (error) {
         console.error("Failed to add recommended exercise", error);
         return false;
@@ -695,8 +697,10 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
           throw new Error("Failed to replace recommended meal.");
         }
 
-        await fetchPlans({ trackChanges: true });
-        return true;
+        const data = await response.json().catch(() => ({}));
+        const alreadyExists = Boolean(data?.already_exists);
+        await fetchPlans({ trackChanges: !alreadyExists });
+        return alreadyExists ? "already_exists" : "changed";
       } catch (error) {
         console.error("Failed to replace recommended meal", error);
         return false;
