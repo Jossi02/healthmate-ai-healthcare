@@ -22,6 +22,7 @@ from app.graph.nodes.generate import (
     _normalize_plan_approval_question,
     _plan_contract_needs_fallback,
     _render_plan_preview_from_items,
+    _resolve_proposed_plan_type,
     _workout_item_category,
 )
 from app.graph.nodes.context_resolver import _resolve_context
@@ -567,6 +568,25 @@ def test_demo_plan_semantic_judge_does_not_block_structured_plans() -> None:
     )
 
 
+def test_explicit_workout_overrides_wrong_draft_plan_type() -> None:
+    class WrongDraftType:
+        proposed_plan_type = "diet"
+
+    resolved = _resolve_proposed_plan_type(
+        {"user_message": "스트레칭 위주 운동 플랜 작성해줘"},
+        WrongDraftType(),
+        [
+            {
+                "name": "스트레칭 루틴",
+                "detail": "가벼운 회복 운동",
+                "day": kst_today_iso(),
+                "ex_list": [{"exercise_name": "전신 스트레칭", "sets": 2}],
+            }
+        ],
+    )
+    assert_true(resolved == "workout", "explicit workout request and exercise items should override wrong draft diet label")
+
+
 def test_safe_diet_fallback_respects_compound_allergies() -> None:
     fallback = _safe_diet_fallback_for_validation_failure(
         {
@@ -733,6 +753,7 @@ def main() -> None:
         test_invalid_llm_plan_contract_triggers_fallback,
         test_modify_without_active_plan_creates_new_proposal,
         test_demo_plan_semantic_judge_does_not_block_structured_plans,
+        test_explicit_workout_overrides_wrong_draft_plan_type,
         test_safe_diet_fallback_respects_compound_allergies,
         test_pending_writes_are_bounded_and_dead_lettered,
         test_finalize_mojibake_guard_can_repair_plan_response,
