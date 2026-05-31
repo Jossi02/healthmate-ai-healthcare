@@ -41,6 +41,24 @@ _SUGAR_HEAVY_TERMS = ("설탕", "시럽", "탄산", "주스", "디저트", "케�
 _MEAT_TERMS = ("닭가슴살", "닭고기", "소고기", "돼지고기", "고기", "햄", "베이컨", "연어", "참치", "생선")
 _VEGAN_CONFLICT_TERMS = (*_MEAT_TERMS, "계란", "달걀", "우유", "치즈", "요거트", "유제품")
 
+_DAIRY_ALLOWED_REPLACEMENTS = (
+    "콩요거트",
+    "코코넛요거트",
+    "무가당 콩요거트",
+    "두유",
+    "아몬드유",
+    "오트밀크",
+    "귀리우유",
+    "비건 요거트",
+    "soy yogurt",
+    "coconut yogurt",
+    "soy milk",
+    "almond milk",
+    "oat milk",
+    "non-dairy",
+    "dairy-free",
+)
+
 _SEMANTIC_VALIDATION_PROMPT = """You are a strict semantic validator for a Korean fitness and nutrition assistant.
 Return only the requested JSON schema.
 
@@ -602,7 +620,7 @@ def _validate_profile_conflicts(
 
     if proposed_plan_type == "diet":
         for constraint, terms in _ALLERGEN_TERMS.items():
-            if constraint in constraints and any(term.lower() in plan_text for term in terms):
+            if constraint in constraints and _contains_forbidden_allergen(plan_text, constraint, terms):
                 _issue(
                     issues,
                     "critical",
@@ -629,6 +647,18 @@ def _validate_profile_conflicts(
                 "허리 제약이 있는데 부담 큰 운동이 포함되었습니다.",
                 retry=True,
             )
+
+
+def _contains_forbidden_allergen(
+    plan_text: str,
+    constraint: str,
+    terms: tuple[str, ...],
+) -> bool:
+    normalized = str(plan_text or "").lower()
+    if constraint == "dairy_allergy":
+        for replacement in _DAIRY_ALLOWED_REPLACEMENTS:
+            normalized = normalized.replace(replacement.lower(), "")
+    return any(term.lower() in normalized for term in terms)
 
 
 def _validate_rag_reflection(
