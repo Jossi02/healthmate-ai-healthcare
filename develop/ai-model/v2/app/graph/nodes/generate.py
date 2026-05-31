@@ -426,6 +426,11 @@ def make_generate_node(deps: NodeDeps):
                 proposed_plan_type,
             )
             if proposed_plan:
+                draft_components = _normalize_plan_core_message(
+                    draft_components,
+                    proposed_plan_type,
+                    proposed_plan_action,
+                )
                 draft_components["plan_preview"] = _render_plan_preview_from_items(proposed_plan)
                 draft_components = _normalize_plan_approval_question(
                     draft_components,
@@ -2405,6 +2410,18 @@ def _normalize_plan_approval_question(
     plan_label = "식단" if proposed_plan_type == "diet" else "운동"
     action_label = "수정할까요" if proposed_plan_action == "update" else "작성할까요"
     patched["approval_question"] = f"이 {plan_label} 플랜으로 {action_label}?"
+    return patched
+
+
+def _normalize_plan_core_message(
+    components: DraftComponents,
+    proposed_plan_type: str | None,
+    proposed_plan_action: str | None,
+) -> DraftComponents:
+    patched = normalize_draft_components(dict(components))
+    plan_label = "식단" if proposed_plan_type == "diet" else "운동"
+    action_label = "수정했어요" if proposed_plan_action == "update" else "제안해요"
+    patched["core_message"] = f"{plan_label} 플랜을 {action_label}."
     return patched
 
 
