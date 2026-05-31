@@ -6,6 +6,7 @@ import time
 
 from app.core.conversation_state import empty_context_resolution
 from app.core.exceptions import ExternalServiceError
+from app.core.was_outbox import execute_outbox_write, mark_was_outbox_succeeded
 from app.graph.deps import NodeDeps
 from app.schemas.state import GraphState
 
@@ -29,6 +30,7 @@ def make_preprocess_node(deps: NodeDeps):
             "domain": "general",
             "support_mode": "normal",
             "ambiguous": False,
+            "routing_diagnostics": None,
             "context_resolution": empty_context_resolution(),
             "search_results": [],
             "search_quality": "ok",
@@ -36,9 +38,14 @@ def make_preprocess_node(deps: NodeDeps):
             "search_query": None,
             "profile_changes": None,
             "modify_plan_context": None,
+            "profile_constraints": None,
+            "retrieval_decision": None,
             "draft_response": None,
             "draft_components": None,
             "response": None,
+            "force_regenerate": False,
+            "validation_report": None,
+            "validation_retry_count": 0,
             "self_eval_count": 0,
             "self_eval_failure_reason": None,
             "needs_clarification": False,
@@ -46,9 +53,19 @@ def make_preprocess_node(deps: NodeDeps):
 
         pending = list(state.get("pending_writes", []))
         still_pending = []
+        replayed_profile_changes: dict = {}
+        pending_profile_overlay: dict = {}
+        replayed_plan_write = False
         for write in pending:
             try:
                 await _execute_write(deps, state["user_id"], write)
+                db_path = state.get("checkpoint_db_path")
+                if db_path:
+                    await mark_was_outbox_succeeded(str(db_path), write.get("write_id"))
+                if write.get("write_type") == "profile" and isinstance(write.get("payload"), dict):
+                    replayed_profile_changes.update(_strip_write_metadata(write["payload"]))
+                if write.get("write_type") in {"plan_check", "plan_create", "plan_update", "plan_delete"}:
+                    replayed_plan_write = True
                 logger.info("Replayed pending write: %s", write["write_type"])
                 deps.trace.record_current_event(
                     stage="preprocess",
@@ -58,6 +75,8 @@ def make_preprocess_node(deps: NodeDeps):
                 )
             except ExternalServiceError:
                 still_pending.append(write)
+                if write.get("write_type") == "profile" and isinstance(write.get("payload"), dict):
+                    pending_profile_overlay.update(write["payload"])
                 logger.warning("Pending write still failing: %s", write["write_type"])
                 deps.trace.record_current_alert(
                     severity="warning",
@@ -66,6 +85,8 @@ def make_preprocess_node(deps: NodeDeps):
                 )
             except Exception as exc:
                 still_pending.append(write)
+                if write.get("write_type") == "profile" and isinstance(write.get("payload"), dict):
+                    pending_profile_overlay.update(write["payload"])
                 logger.warning(
                     "Pending write replay failed with unexpected error: %s (%s)",
                     write["write_type"],
@@ -77,6 +98,8 @@ def make_preprocess_node(deps: NodeDeps):
                     detail={"write_type": write["write_type"], "error": str(exc)},
                 )
         updates["pending_writes"] = still_pending
+        if replayed_profile_changes:
+            await _mark_profile_updated(deps, state["user_id"])
 
         user_id = state["user_id"]
         current_profile_version = await deps.profile_sync.get_profile_version(user_id)
@@ -94,6 +117,8 @@ def make_preprocess_node(deps: NodeDeps):
             )
             if profile_override:
                 profile = _normalize_user_profile({**profile, **profile_override})
+            if replayed_profile_changes:
+                profile = _normalize_user_profile({**profile, **replayed_profile_changes})
             today_plan, today_plan_loaded = await _load_today_plan_with_fallback(
                 deps=deps,
                 user_id=user_id,
@@ -103,7 +128,9 @@ def make_preprocess_node(deps: NodeDeps):
 
             updates["user_profile"] = profile
             updates["today_plan"] = today_plan
-            updates["profile_sync_version"] = current_profile_version if profile_loaded else state_profile_version
+            updates["profile_sync_version"] = (
+                current_profile_version if profile_loaded or replayed_profile_changes else state_profile_version
+            )
 
             deps.trace.record_current_event(
                 stage="preprocess",
@@ -124,8 +151,12 @@ def make_preprocess_node(deps: NodeDeps):
                 fallback=state.get("user_profile"),
                 context="refresh",
             )
+            if replayed_profile_changes:
+                profile = _normalize_user_profile({**profile, **replayed_profile_changes})
             updates["user_profile"] = profile
-            updates["profile_sync_version"] = current_profile_version if profile_loaded else state_profile_version
+            updates["profile_sync_version"] = (
+                current_profile_version if profile_loaded or replayed_profile_changes else state_profile_version
+            )
             deps.trace.record_current_event(
                 stage="preprocess",
                 status="ok" if profile_loaded else "warn",
@@ -135,6 +166,41 @@ def make_preprocess_node(deps: NodeDeps):
                     "profile_sync_version": updates["profile_sync_version"],
                 },
             )
+
+        elif replayed_profile_changes:
+            profile = _normalize_user_profile(
+                {**(state.get("user_profile") or {}), **replayed_profile_changes}
+            )
+            updates["user_profile"] = profile
+            updates["profile_sync_version"] = current_profile_version or state_profile_version
+
+        if replayed_plan_write and not is_session_start:
+            today_plan, today_plan_loaded = await _load_today_plan_with_fallback(
+                deps=deps,
+                user_id=user_id,
+                fallback=state.get("today_plan"),
+                context="pending_replay",
+            )
+            updates["today_plan"] = today_plan
+            deps.trace.record_current_event(
+                stage="preprocess",
+                status="ok" if today_plan_loaded else "warn",
+                title="Today plan refreshed after pending write replay",
+                detail={
+                    "today_plan_loaded": today_plan_loaded,
+                    "today_plan_items": len(today_plan or []),
+                },
+            )
+
+        base_profile = _normalize_user_profile(updates.get("user_profile") or state.get("user_profile"))
+        if pending_profile_overlay:
+            updates["pending_profile_overlay"] = pending_profile_overlay
+            updates["effective_user_profile"] = _normalize_user_profile(
+                {**base_profile, **pending_profile_overlay}
+            )
+        elif not any(write.get("write_type") == "profile" for write in still_pending):
+            updates["pending_profile_overlay"] = None
+            updates["effective_user_profile"] = None
 
         updates["turn_count"] = state.get("turn_count", 0) + 1
         deps.trace.record_current_event(
@@ -149,17 +215,22 @@ def make_preprocess_node(deps: NodeDeps):
     return preprocess_node
 
 
+async def _mark_profile_updated(deps: NodeDeps, user_id: str) -> None:
+    marker = getattr(deps.profile_sync, "mark_profile_updated", None)
+    if marker:
+        await marker(user_id)
+
+
 async def _execute_write(deps: NodeDeps, user_id: str, write: dict) -> None:
-    write_type = write["write_type"]
-    payload = write["payload"]
-    if write_type == "profile":
-        await deps.was.put_user_profile(user_id, payload)
-    elif write_type == "plan_check":
-        await deps.was.put_plan_check(user_id, payload["item_id"])
-    elif write_type == "plan_create":
-        await deps.was.post_plan_create(user_id, payload)
-    elif write_type == "plan_update":
-        await deps.was.put_plan_update(user_id, payload)
+    await execute_outbox_write(deps, user_id, write)
+
+
+def _strip_write_metadata(payload: dict) -> dict:
+    return {
+        key: value
+        for key, value in dict(payload or {}).items()
+        if key not in {"_idempotency_key", "idempotency_key"}
+    }
 
 
 async def _load_user_profile_with_fallback(

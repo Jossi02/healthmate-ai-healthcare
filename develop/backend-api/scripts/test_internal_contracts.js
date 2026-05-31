@@ -10,6 +10,7 @@ const {
   isValidBcryptHash,
   verifyPassword,
 } = require('../src/utils/passwordHash');
+const { isValidUuid } = require('../src/utils/ids');
 const {
   loadExercisePlansWithItems,
 } = require('../src/services/exercisePlanReadService');
@@ -505,12 +506,90 @@ async function testReplaceWorkoutPlansSwapsPlansOnSuccess() {
   assert.equal(supabase.tables.exercise_items[0].exercise_name, 'pushup');
 }
 
+async function testDeleteWorkoutPlansForDatesRemovesChildren() {
+  const supabase = new FakeSupabase({
+    user_exercise_plans: [
+      {
+        exercise_id: 10,
+        user_id: 'user-1',
+        exercise_type: 'legacy-plan',
+        target_date: '2026-04-16',
+        created_at: '2026-04-16T07:00:00Z',
+        status: 0,
+      },
+      {
+        exercise_id: 11,
+        user_id: 'user-1',
+        exercise_type: 'keep-plan',
+        target_date: '2026-04-17',
+        created_at: '2026-04-17T07:00:00Z',
+        status: 0,
+      },
+    ],
+    exercise_items: [
+      { item_id: 99, exercise_id: 10, exercise_name: 'legacy-squat' },
+      { item_id: 100, exercise_id: 11, exercise_name: 'keep-walk' },
+    ],
+  });
+
+  const deletedCount = await planMutationService.deleteWorkoutPlansForDates(
+    supabase,
+    'user-1',
+    ['2026-04-16']
+  );
+
+  assert.equal(deletedCount, 1);
+  assert.deepEqual(
+    supabase.tables.user_exercise_plans.map((item) => item.exercise_id),
+    [11]
+  );
+  assert.deepEqual(
+    supabase.tables.exercise_items.map((item) => item.item_id),
+    [100]
+  );
+}
+
+async function testDeletePlanItemByOpaqueExerciseId() {
+  const supabase = new FakeSupabase({
+    user_exercise_plans: [
+      {
+        exercise_id: 10,
+        user_id: 'user-1',
+        exercise_type: 'legacy-plan',
+        target_date: '2026-04-16',
+        created_at: '2026-04-16T07:00:00Z',
+        status: 0,
+      },
+    ],
+    exercise_items: [
+      { item_id: 99, exercise_id: 10, exercise_name: 'legacy-squat' },
+    ],
+  });
+
+  const deleted = await planMutationService.deletePlanItemByOpaqueId(
+    supabase,
+    'user-1',
+    'exercise-10'
+  );
+
+  assert.equal(deleted.kind, 'exercise');
+  assert.deepEqual(supabase.tables.user_exercise_plans, []);
+  assert.deepEqual(supabase.tables.exercise_items, []);
+}
+
 async function testPasswordHashValidationRejectsBadHashes() {
   assert.equal(isValidBcryptHash(null), false);
   assert.equal(isValidBcryptHash(''), false);
   assert.equal(isValidBcryptHash('not-a-bcrypt-hash'), false);
   assert.equal(await verifyPassword('secret', null), false);
   assert.equal(await verifyPassword('secret', 'not-a-bcrypt-hash'), false);
+}
+
+async function testUuidValidation() {
+  assert.equal(isValidUuid('6f6d8c2d-0c1a-4a3f-9f7a-2a8d4b7b9c10'), true);
+  assert.equal(isValidUuid('codex-probe-1234'), false);
+  assert.equal(isValidUuid(''), false);
+  assert.equal(isValidUuid(null), false);
 }
 
 async function testPasswordVerificationHandlesValidHashes() {
@@ -558,10 +637,13 @@ async function main() {
   await testCreateWorkoutPlansRollsBackOnChildInsertFailure();
   await testReplaceWorkoutPlansKeepsOldPlanWhenNewCreateFails();
   await testReplaceWorkoutPlansSwapsPlansOnSuccess();
+  await testDeleteWorkoutPlansForDatesRemovesChildren();
+  await testDeletePlanItemByOpaqueExerciseId();
+  await testUuidValidation();
   await testPasswordHashValidationRejectsBadHashes();
   await testPasswordVerificationHandlesValidHashes();
   await testPersistedChatThreadRoundTrip();
-  console.log('[internal-contracts] 12/12 passed');
+  console.log('[internal-contracts] 15/15 passed');
 }
 
 main().catch((error) => {

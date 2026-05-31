@@ -8,6 +8,14 @@ import time
 from datetime import date, timedelta
 
 from app.core.draft_contract import normalize_draft_components, render_draft_preview
+from app.core.persona_registry import resolve_persona
+from app.core.persona_style import (
+    apply_persona_signature,
+    dedupe_repeated_sentences,
+    normalize_plan_flow_preview,
+    selected_persona_id,
+    strip_plan_flow_preamble,
+)
 from app.core.prompt_loader import compose_prompts, load_prompt
 from app.graph.deps import NodeDeps
 from app.schemas.home import HomeRecommendationResponse
@@ -27,6 +35,7 @@ INTENT_CARE = "공감_케어"
 INTENT_PLAN = "계획"
 INTENT_MODIFY = "수정"
 INTENT_APPROVAL = "계획_승인"
+INTENT_RECORD = "기록"
 INTENT_INFO = "정보"
 INTENT_SAFETY = "안전경고"
 INTENT_CASUAL = "casual"
@@ -159,7 +168,7 @@ _RECENT_DIALOGUE_HISTORY_LIMIT = 4
 
 def make_generate_node(deps: NodeDeps):
     async def generate_node(state: GraphState) -> dict:
-        if state.get("response"):
+        if state.get("response") and not state.get("force_regenerate"):
             return {}
 
         started_at = time.perf_counter()
@@ -192,7 +201,7 @@ def make_generate_node(deps: NodeDeps):
             )
             safety_draft["draft_components"] = safety_components
             safety_draft["draft_response"] = render_draft_preview(safety_components)
-            return safety_draft
+            return _finalize_persona_aware_response(deps, state, safety_draft)
 
         if intent == INTENT_APPROVAL:
             deps.trace.record_current_event(
@@ -201,7 +210,7 @@ def make_generate_node(deps: NodeDeps):
                 title="Approval draft shortcut used",
                 duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
             )
-            return _build_approval_draft_v2(state)
+            return _finalize_persona_aware_response(deps, state, _build_approval_draft_v2(state))
 
         if intent == INTENT_CARE:
             deps.trace.record_current_event(
@@ -210,7 +219,7 @@ def make_generate_node(deps: NodeDeps):
                 title="Care draft shortcut used",
                 duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
             )
-            return _build_care_draft(state)
+            return _finalize_persona_aware_response(deps, state, _build_care_draft(state))
 
         if intent == INTENT_CASUAL:
             deps.trace.record_current_event(
@@ -219,7 +228,16 @@ def make_generate_node(deps: NodeDeps):
                 title="Casual draft shortcut used",
                 duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
             )
-            return _build_casual_draft(state)
+            return _finalize_persona_aware_response(deps, state, _build_casual_draft(state))
+
+        if intent == INTENT_RECORD and state.get("record_type") == "plan_delete":
+            deps.trace.record_current_event(
+                stage="generate",
+                status="ok",
+                title="Plan delete draft shortcut used",
+                duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
+            )
+            return _finalize_persona_aware_response(deps, state, _build_plan_delete_draft(state))
 
         direct_memory_draft = _build_direct_short_term_memory_draft(state)
         if direct_memory_draft is not None:
@@ -230,7 +248,7 @@ def make_generate_node(deps: NodeDeps):
                 detail={"intent": intent},
                 duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
             )
-            return direct_memory_draft
+            return _finalize_persona_aware_response(deps, state, direct_memory_draft)
 
         direct_past_memory_draft = _build_direct_past_memory_draft(state)
         if direct_past_memory_draft is not None:
@@ -241,7 +259,7 @@ def make_generate_node(deps: NodeDeps):
                 detail={"intent": intent, "memory_results": len(_memory_results(state))},
                 duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
             )
-            return direct_past_memory_draft
+            return _finalize_persona_aware_response(deps, state, direct_past_memory_draft)
 
         if intent in {INTENT_PLAN, INTENT_MODIFY} and _is_mixed_plan_type_request(_resolved_user_message(state)):
             deps.trace.record_current_event(
@@ -250,7 +268,7 @@ def make_generate_node(deps: NodeDeps):
                 title="Mixed workout/diet plan request clarified",
                 duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
             )
-            return _build_mixed_plan_clarification_draft()
+            return _finalize_persona_aware_response(deps, state, _build_mixed_plan_clarification_draft())
 
         context = _build_draft_context(state)
         system_prompt = _build_draft_system_prompt(state, failure_reason)
@@ -325,13 +343,37 @@ def make_generate_node(deps: NodeDeps):
                     detail={"domain": proposed_plan_type},
                 )
 
+        _record_evidence_integration(
+            deps,
+            state,
+            draft_components,
+            proposed_plan,
+            proposed_plan_type,
+        )
+
         if intent in {INTENT_PLAN, INTENT_MODIFY}:
+            guard_started_at = time.perf_counter()
+            proposed_plan = _sanitize_plan_data_layer(proposed_plan)
             draft_components, proposed_plan = _apply_profile_quality_guardrails(
                 draft_components,
                 proposed_plan,
                 proposed_plan_type,
                 state,
             )
+            deps.trace.record_current_event(
+                stage="generate.profile_safety_validator",
+                status="ok",
+                title="Profile guardrails applied",
+                detail={
+                    "proposed_plan_count": len(proposed_plan or []),
+                    "proposed_plan_type": proposed_plan_type,
+                    "hard_profile_constraints": (state.get("profile_constraints") or {}).get("hard_profile_constraints") or [],
+                    "request_hard_constraints": (state.get("profile_constraints") or {}).get("request_hard_constraints") or [],
+                    "safety_risks": (state.get("profile_constraints") or {}).get("safety_risks") or [],
+                },
+                duration_ms=round((time.perf_counter() - guard_started_at) * 1000, 2),
+            )
+            normalize_started_at = time.perf_counter()
             proposed_plan = _expand_long_range_plan_if_requested(
                 state,
                 proposed_plan,
@@ -349,9 +391,34 @@ def make_generate_node(deps: NodeDeps):
                     proposed_plan_type,
                 )
             draft_text = render_draft_preview(draft_components)
+            deps.trace.record_current_event(
+                stage="generate.plan_normalizer",
+                status="ok",
+                title="Plan normalized for display/write contract",
+                detail={
+                    "proposed_plan_count": len(proposed_plan or []),
+                    "proposed_plan_type": proposed_plan_type,
+                    "days": _plan_unique_iso_days(proposed_plan or []),
+                    "approval_question_present": bool(draft_components.get("approval_question")),
+                },
+                duration_ms=round((time.perf_counter() - normalize_started_at) * 1000, 2),
+            )
         elif intent == INTENT_INFO:
             draft_components = _apply_info_profile_guardrails(draft_components, state)
             draft_text = render_draft_preview(draft_components)
+
+        deps.trace.record_current_event(
+            stage="generate.answer_composer",
+            status="ok",
+            title="Answer draft composed",
+            detail={
+                "intent": intent,
+                "response_length": len(draft_text),
+                "has_plan_preview": bool(draft_components.get("plan_preview")),
+                "reason_count": len(draft_components.get("reason_points") or []),
+                "safety_note_count": len(draft_components.get("safety_notes") or []),
+            },
+        )
 
         if intent in _SELF_EVAL_INTENTS:
             passed, reason = await _self_evaluate(deps, state, draft_text)
@@ -394,14 +461,288 @@ def make_generate_node(deps: NodeDeps):
             "proposed_plan": proposed_plan,
             "proposed_plan_type": proposed_plan_type,
             "proposed_plan_action": proposed_plan_action,
+            "force_regenerate": False,
             "self_eval_count": 0,
             "self_eval_failure_reason": None,
         }
         if intent in {INTENT_PLAN, INTENT_MODIFY} and proposed_plan:
             result["awaiting_plan_confirmation"] = True
-        return result
+        return _finalize_persona_aware_response(deps, state, result)
 
     return generate_node
+
+
+def _persona_context(state: GraphState) -> tuple[str | None, str, object | None]:
+    profile = _effective_user_profile(state)
+    selected_persona = selected_persona_id(profile)
+    resolved_persona_id, persona_path = resolve_persona(selected_persona)
+    return selected_persona, resolved_persona_id, persona_path
+
+
+def _build_persona_generation_prompt(state: GraphState) -> str:
+    selected_persona, resolved_persona_id, persona_path = _persona_context(state)
+    profile = _effective_user_profile(state)
+    emotion = state.get("emotion") or {}
+    emotion_label = emotion.get("label", "neutral")
+    emotion_intensity = float(emotion.get("intensity", 0))
+    emotion_str = f"{emotion_label} (intensity {emotion_intensity:.1f})"
+
+    try:
+        template = persona_path.read_text(encoding="utf-8")  # type: ignore[union-attr]
+        persona_prompt = template.format(
+            persona_id=resolved_persona_id,
+            emotion=emotion_str,
+            mbti=profile.get("mbti", "unknown"),
+            intimacy_level=state.get("intimacy_level", 1),
+        )
+    except Exception as exc:
+        logger.warning("Persona prompt load failed in generate node: %s", exc)
+        persona_prompt = (
+            f"Use the selected FitUs persona style: {resolved_persona_id}. "
+            "Keep the answer Korean, concise, and result-first."
+        )
+
+    guardrails = [
+        "Persona-aware generation mode:",
+        "- Apply the persona style inside the DraftResponse text fields now; there is no later persona rewrite node.",
+        "- Persona affects wording, warmth, and encouragement only. It must not change intent, domain, dates, evidence, hard profile constraints, or proposed_plan data.",
+        "- Treat proposed_plan as a neutral data layer. Do not put persona catchphrases, roleplay, emotional coaching, or character wording inside proposed_plan.name, detail, exercise_name, day, sets, duration_minutes, or calories.",
+        "- Persona style may appear only in short user-facing prose fields such as core_message and approval_question, and it must never add, remove, or rename foods/exercises/durations/sets.",
+        "- Keep the concrete result first. Do not add a greeting, catchphrase, meta setup, or long emotional preface before the result.",
+        "- For plan create/modify, keep workout and diet structurally separate and keep rationale short unless the user asks why.",
+        "- Do not add explanatory phrases such as 'allergy considered', 'restriction reflected', or 'disease considered' in plan answers unless safety requires it.",
+        "- The response must still satisfy the DraftResponse JSON schema exactly.",
+        f"- Selected persona id: {selected_persona or 'default'}; resolved persona id: {resolved_persona_id}.",
+    ]
+    return "\n".join(guardrails) + "\n\n" + persona_prompt
+
+
+def _effective_user_profile(state: GraphState) -> dict:
+    return dict(state.get("effective_user_profile") or state.get("user_profile") or {})
+
+
+def _finalize_persona_aware_response(deps: NodeDeps, state: GraphState, result: dict) -> dict:
+    payload = dict(result)
+    selected_persona, resolved_persona_id, _ = _persona_context(state)
+    original_plan_snapshot = _canonical_plan_payload(payload.get("proposed_plan"))
+    persona_marker_hits = _plan_persona_marker_hits(payload.get("proposed_plan") or [])
+    quality_flags = dict(payload.get("generation_quality_flags") or {})
+    if persona_marker_hits:
+        quality_flags["plan_persona_marker_hits"] = persona_marker_hits[:8]
+    else:
+        quality_flags.pop("plan_persona_marker_hits", None)
+    draft_components = normalize_draft_components(
+        payload.get("draft_components"),
+        fallback_text=payload.get("draft_response"),
+    )
+    draft_response = render_draft_preview(draft_components)
+    final_response = draft_response
+
+    final_response = strip_plan_flow_preamble(final_response, state)
+    final_response = normalize_plan_flow_preview(
+        final_response,
+        state,
+        draft_components,
+        resolved_persona_id,
+    )
+    if state.get("intent") in {INTENT_PLAN, INTENT_MODIFY, INTENT_APPROVAL}:
+        final_response = dedupe_repeated_sentences(final_response)
+    final_response = apply_persona_signature(final_response, resolved_persona_id, state)
+    mutation_report = _persona_mutation_report(
+        original_plan_snapshot,
+        _canonical_plan_payload(payload.get("proposed_plan")),
+        draft_response,
+        final_response,
+    )
+    mutation_report["plan_persona_marker_hit_count"] = len(persona_marker_hits)
+    mutation_report["plan_persona_marker_hits"] = persona_marker_hits[:6]
+
+    payload["draft_components"] = draft_components
+    payload["draft_response"] = draft_response
+    payload["response"] = final_response
+    payload["resolved_persona_id"] = resolved_persona_id
+    payload["generation_quality_flags"] = quality_flags or None
+    payload["force_regenerate"] = False
+
+    deps.trace.record_current_event(
+        stage="generate.persona_renderer",
+        status="ok",
+        title="Persona-aware response finalized",
+        detail={
+            "selected_persona_id": selected_persona,
+            "resolved_persona_id": resolved_persona_id,
+            "response_length": len(final_response),
+            "draft_response_length": len(draft_response),
+            "plan_data_unchanged": mutation_report["plan_data_unchanged"],
+        },
+    )
+    deps.trace.record_current_event(
+        stage="persona",
+        status="ok",
+        title="Persona style applied",
+        detail={
+            "selected_persona_id": selected_persona,
+            "resolved_persona_id": resolved_persona_id,
+            "plan_data_unchanged": mutation_report["plan_data_unchanged"],
+        },
+    )
+    deps.trace.record_current_event(
+        stage="generate.persona_mutation_check",
+        status="ok" if mutation_report["plan_data_unchanged"] else "warn",
+        title="Persona mutation guard checked",
+        detail=mutation_report,
+    )
+    return payload
+
+
+def _record_evidence_integration(
+    deps: NodeDeps,
+    state: GraphState,
+    draft_components: DraftComponents,
+    proposed_plan: list[dict],
+    proposed_plan_type: str | None,
+) -> None:
+    search_results = state.get("search_results") or []
+    retrieval_decision = state.get("retrieval_decision") or {}
+    profile_constraints = state.get("profile_constraints") or {}
+    returned_kb_ids = [
+        str(result.get("kb_id") or (result.get("metadata") or {}).get("kb_id") or "")
+        for result in search_results[:8]
+    ]
+    deps.trace.record_current_event(
+        stage="generate.evidence_integrator",
+        status="ok",
+        title="Retrieval evidence integration checked",
+        detail={
+            "requires_external": bool(retrieval_decision.get("requires_external")),
+            "search_quality": state.get("search_quality"),
+            "search_results_count": len(search_results),
+            "returned_kb_ids": [kb_id for kb_id in returned_kb_ids if kb_id],
+            "grounding_summary_present": bool(str(draft_components.get("search_grounding_summary") or "").strip()),
+            "proposed_plan_count": len(proposed_plan or []),
+            "proposed_plan_type": proposed_plan_type,
+            "retrieval_constraints": profile_constraints.get("retrieval_constraints") or [],
+            "retrieval_critical_constraints": profile_constraints.get("retrieval_critical_constraints") or [],
+        },
+    )
+
+
+def _canonical_plan_payload(plan: object) -> str:
+    try:
+        return json.dumps(plan or [], ensure_ascii=False, sort_keys=True, default=str)
+    except TypeError:
+        return str(plan or [])
+
+
+def _persona_mutation_report(
+    original_plan_snapshot: str,
+    final_plan_snapshot: str,
+    draft_response: str,
+    final_response: str,
+) -> dict[str, object]:
+    return {
+        "plan_data_unchanged": original_plan_snapshot == final_plan_snapshot,
+        "draft_response_length": len(draft_response or ""),
+        "final_response_length": len(final_response or ""),
+        "length_delta": len(final_response or "") - len(draft_response or ""),
+    }
+
+
+def _sanitize_plan_data_layer(proposed_plan: list[dict]) -> list[dict]:
+    cleaned: list[dict] = []
+    for item in proposed_plan or []:
+        if not isinstance(item, dict):
+            continue
+        next_item = dict(item)
+        for key in ("name", "detail", "day"):
+            if key in next_item:
+                next_item[key] = _compact_plan_data_text(next_item.get(key))
+        exercises: list[dict] = []
+        for exercise in next_item.get("ex_list") or []:
+            if not isinstance(exercise, dict):
+                continue
+            next_exercise = dict(exercise)
+            if "exercise_name" in next_exercise:
+                next_exercise["exercise_name"] = _compact_plan_data_text(next_exercise.get("exercise_name"))
+            for numeric_key in ("sets", "duration_minutes", "calories"):
+                if numeric_key in next_exercise:
+                    parsed_value = _safe_int(next_exercise.get(numeric_key))
+                    if parsed_value is None:
+                        if numeric_key == "calories":
+                            next_exercise[numeric_key] = 0
+                        else:
+                            next_exercise.pop(numeric_key, None)
+                    else:
+                        next_exercise[numeric_key] = parsed_value
+            exercises.append(next_exercise)
+        next_item["ex_list"] = exercises
+        cleaned.append(next_item)
+    return cleaned
+
+
+_PLAN_DATA_PERSONA_MARKERS = (
+    "cheer_sis",
+    "soft_senior",
+    "strict_trainer",
+    "science_coach",
+    "playful_buddy",
+    "daily_manager",
+    "persona",
+    "누나",
+    "언니",
+    "스파르타",
+    "화이팅",
+    "파이팅",
+    "가보자",
+    "좋아,",
+    "괜찮아",
+    "괜찮아요",
+)
+
+
+def _plan_persona_marker_hits(proposed_plan: list[dict]) -> list[dict[str, str]]:
+    hits: list[dict[str, str]] = []
+    for item_index, item in enumerate(proposed_plan or []):
+        if not isinstance(item, dict):
+            continue
+        for field in ("name", "detail", "day"):
+            marker = _first_plan_persona_marker(item.get(field))
+            if marker:
+                hits.append(
+                    {
+                        "path": f"{item_index}.{field}",
+                        "marker": marker,
+                        "text": _compact_plan_data_text(item.get(field))[:120],
+                    }
+                )
+        for exercise_index, exercise in enumerate(item.get("ex_list") or []):
+            if not isinstance(exercise, dict):
+                continue
+            marker = _first_plan_persona_marker(exercise.get("exercise_name"))
+            if marker:
+                hits.append(
+                    {
+                        "path": f"{item_index}.ex_list.{exercise_index}.exercise_name",
+                        "marker": marker,
+                        "text": _compact_plan_data_text(exercise.get("exercise_name"))[:120],
+                    }
+                )
+    return hits
+
+
+def _first_plan_persona_marker(value: object) -> str | None:
+    text = _compact_plan_data_text(value).lower()
+    if not text:
+        return None
+    for marker in _PLAN_DATA_PERSONA_MARKERS:
+        if marker.lower() in text:
+            return marker
+    return None
+
+
+def _compact_plan_data_text(value: object) -> str:
+    text = str(value or "").strip()
+    return re.sub(r"\s+", " ", text)
 
 
 async def _generate_home_recommendations(
@@ -418,7 +759,7 @@ async def _generate_home_recommendations(
             user_content=build_home_recommendation_prompt_input(
                 date=date,
                 scope=scope,
-                user_profile=state.get("user_profile") or {},
+                user_profile=_effective_user_profile(state),
                 today_plan=state.get("today_plan") or [],
                 recent_recommendations=state.get("home_recommendation_recent") or {},
             ),
@@ -429,7 +770,7 @@ async def _generate_home_recommendations(
             result,
             scope=scope,
             date=date,
-            user_profile=state.get("user_profile") or {},
+            user_profile=_effective_user_profile(state),
             today_plan=state.get("today_plan") or [],
             recent_recommendations=state.get("home_recommendation_recent") or {},
         )
@@ -443,7 +784,7 @@ async def _generate_home_recommendations(
         normalized = empty_home_recommendations(
             date=date,
             scope=scope,
-            user_profile=state.get("user_profile") or {},
+            user_profile=_effective_user_profile(state),
             today_plan=state.get("today_plan") or [],
             recent_recommendations=state.get("home_recommendation_recent") or {},
         )
@@ -481,12 +822,26 @@ async def _request_draft_with_guardrails(
     user_content: str,
     failure_reason: str | None,
 ) -> DraftResponse:
+    started_at = time.perf_counter()
     raw = await deps.router.generate(
         system_prompt=system_prompt,
         user_content=user_content,
         response_schema=DraftResponse,
     )
     draft_result = DraftResponse.model_validate_json(raw)
+    deps.trace.record_current_event(
+        stage="generate.plan_synthesizer",
+        status="ok",
+        title="Structured draft synthesized",
+        detail={
+            "intent": state.get("intent"),
+            "domain": state.get("domain"),
+            "proposed_plan_count": len(draft_result.proposed_plan or []),
+            "proposed_plan_type": draft_result.proposed_plan_type,
+            "search_results_count": len(state.get("search_results") or []),
+        },
+        duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
+    )
 
     if not _needs_generate_retry(state, draft_result):
         return draft_result
@@ -515,7 +870,19 @@ async def _request_draft_with_guardrails(
         ),
         response_schema=DraftResponse,
     )
-    return DraftResponse.model_validate_json(retry_raw)
+    retry_result = DraftResponse.model_validate_json(retry_raw)
+    deps.trace.record_current_event(
+        stage="generate.plan_synthesizer",
+        status="ok",
+        title="Structured draft resynthesized",
+        detail={
+            "intent": state.get("intent"),
+            "domain": state.get("domain"),
+            "proposed_plan_count": len(retry_result.proposed_plan or []),
+            "proposed_plan_type": retry_result.proposed_plan_type,
+        },
+    )
+    return retry_result
 
 
 def _build_draft_context(state: GraphState, *, force_short_term: bool = False) -> str:
@@ -551,11 +918,33 @@ def _build_draft_context(state: GraphState, *, force_short_term: bool = False) -
         if proposal_summary:
             parts.append(f"[Active Proposal]\n{proposal_summary[:200]}")
 
-    profile = state.get("user_profile")
+    profile = _effective_user_profile(state)
     if profile:
         profile_copy = profile.copy()
         profile_copy.pop("mbti", None)
         parts.append(f"[사용자 프로필]\n{json.dumps(profile_copy, ensure_ascii=False)}")
+
+    profile_constraints = state.get("profile_constraints")
+    if profile_constraints:
+        parts.append(
+            "[Compiled Profile Constraints]\n"
+            + json.dumps(
+                {
+                    "constraints": profile_constraints.get("constraints") or [],
+                    "hard_profile_constraints": profile_constraints.get("hard_profile_constraints") or [],
+                    "request_hard_constraints": profile_constraints.get("request_hard_constraints") or [],
+                    "retrieval_constraints": profile_constraints.get("retrieval_constraints") or [],
+                    "query_constraints": profile_constraints.get("query_constraints") or [],
+                    "critical_constraints": profile_constraints.get("critical_constraints") or [],
+                    "retrieval_critical_constraints": profile_constraints.get("retrieval_critical_constraints") or [],
+                    "goals": profile_constraints.get("goals") or [],
+                    "safety_risks": profile_constraints.get("safety_risks") or [],
+                    "profile_field_coverage": profile_constraints.get("profile_field_coverage") or {},
+                    "summary": profile_constraints.get("summary") or {},
+                },
+                ensure_ascii=False,
+            )
+        )
 
     changes = state.get("profile_changes")
     if changes:
@@ -600,7 +989,10 @@ def _build_draft_system_prompt(
     intent = state.get("intent", "")
     intent_prompt = _DRAFT_PROMPTS_BY_INTENT.get(intent, _DRAFT_DEFAULT_PROMPT)
 
-    sections = [compose_prompts(_DRAFT_COMMON_PROMPT, intent_prompt)]
+    sections = [
+        compose_prompts(_DRAFT_COMMON_PROMPT, intent_prompt),
+        _build_persona_generation_prompt(state),
+    ]
 
     emotion = state.get("emotion") or {}
     sections.append(
@@ -655,7 +1047,7 @@ def _apply_profile_quality_guardrails(
     proposed_plan_type: str | None,
     state: GraphState,
 ) -> tuple[DraftComponents, list[dict]]:
-    profile = state.get("user_profile") or {}
+    profile = _effective_user_profile(state)
     patched = normalize_draft_components(dict(components))
     plan = [dict(item) for item in (proposed_plan or [])]
 
@@ -697,7 +1089,7 @@ def _apply_profile_quality_guardrails(
 
 
 def _apply_info_profile_guardrails(components: DraftComponents, state: GraphState) -> DraftComponents:
-    profile = state.get("user_profile") or {}
+    profile = _effective_user_profile(state)
     patched = normalize_draft_components(dict(components))
     patched["approval_question"] = None
     patched["plan_preview"] = ""
@@ -1898,6 +2290,8 @@ def _build_mixed_plan_clarification_draft() -> dict:
         "proposed_plan_type": None,
         "proposed_plan_action": None,
         "awaiting_plan_confirmation": False,
+        "needs_clarification": True,
+        "force_regenerate": False,
         "self_eval_count": 0,
         "self_eval_failure_reason": None,
     }
@@ -1910,7 +2304,7 @@ def _build_starter_plan_fallback(
         "diet" if state.get("domain") == "diet" else "workout"
     )
     today = kst_today_iso()
-    profile = state.get("user_profile") or {}
+    profile = _effective_user_profile(state)
 
     if plan_type == "diet":
         proposed_plan = [
@@ -2576,8 +2970,47 @@ def _build_approval_draft_v2(state: GraphState) -> dict:
     }
 
 
+def _build_plan_delete_draft(state: GraphState) -> dict:
+    payload = state.get("profile_changes") or {}
+    target_dates = payload.get("target_dates") or []
+    plan_type = payload.get("plan_type") or state.get("domain") or "all"
+    plan_label = {
+        "workout": "운동",
+        "diet": "식단",
+        "all": "운동/식단",
+    }.get(str(plan_type), "플랜")
+    date_label = _format_delete_date_label(target_dates)
+
+    components = normalize_draft_components(
+        {
+            "core_message": f"{date_label} {plan_label} 플랜을 삭제할게.",
+            "reason_points": ["요청한 날짜와 플랜 종류만 캘린더에서 제거합니다."],
+            "suggested_action": "",
+            "approval_question": None,
+            "search_grounding_summary": "",
+        }
+    )
+    return {
+        "draft_response": render_draft_preview(components),
+        "draft_components": components,
+        "proposed_plan": [],
+        "proposed_plan_type": None,
+        "proposed_plan_action": None,
+        "self_eval_count": 0,
+        "self_eval_failure_reason": None,
+    }
+
+
+def _format_delete_date_label(target_dates: list[str]) -> str:
+    if not target_dates:
+        return "요청한 날짜의"
+    if len(target_dates) == 1:
+        return f"{target_dates[0]}의"
+    return f"{target_dates[0]}부터 {target_dates[-1]}까지"
+
+
 def _build_care_draft(state: GraphState) -> dict:
-    profile = state.get("user_profile") or {}
+    profile = _effective_user_profile(state)
     components = normalize_draft_components(
         {
             "core_message": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.",
@@ -2603,7 +3036,7 @@ def _build_care_draft(state: GraphState) -> dict:
 
 
 def _build_casual_draft(state: GraphState) -> dict:
-    profile = state.get("user_profile") or {}
+    profile = _effective_user_profile(state)
     components = normalize_draft_components(
         {
             "core_message": "알겠어요. 지금 알려준 상황과 제약을 기준으로 답할게요.",

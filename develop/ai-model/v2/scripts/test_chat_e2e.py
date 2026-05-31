@@ -30,7 +30,9 @@ if str(ROOT) not in sys.path:
 
 from app.core.checkpoint_filter import FilteringAsyncSqliteSaver
 from app.core.exceptions import ExternalServiceError
+from app.core.lifespan import _ensure_activity_table
 from app.core.trace_store import TraceStore
+from app.core.was_outbox import replay_due_was_outbox
 from app.graph.builder import build_graph
 from app.graph.deps import NodeDeps
 from app.graph.nodes.intent import INTENT_INFO, INTENT_RECORD
@@ -43,6 +45,7 @@ MSG_INFO_REASON = "\uc65c \uadf8\ub807\uac8c \uc9f0\uc5b4?"
 MSG_APPROVAL = "\uc88b\uc544 \uadf8\uac78\ub85c \uc9c4\ud589\ud574\uc918"
 MSG_RECORD_WEIGHT = "\ub0b4 \uccb4\uc911 72kg\ub85c \uae30\ub85d\ud574\uc918"
 MSG_PLAN_CHECK = "\uc624\ub298 \uc6b4\ub3d9 \uccb4\ud06c\ud588\uc5b4"
+MSG_PLAN_DELETE = "\uc624\ub298 \uc6b4\ub3d9 \ud50c\ub79c \uc0ad\uc81c\ud574\uc918"
 MSG_CARE = "\uc624\ub298 \ub108\ubb34 \uc678\ub85c\uc6cc"
 MSG_SAFETY = "\uc228\uc774 \ub108\ubb34 \ucc28\uace0 \uc5b4\uc9c0\ub7ec\uc6cc"
 
@@ -188,11 +191,22 @@ class FakeWAS:
 
     async def put_user_profile(self, user_id: str, payload: dict[str, Any]) -> None:
         self._ensure_user(user_id)
-        self.profiles[user_id].update(payload)
+        clean_payload = {
+            key: value
+            for key, value in dict(payload or {}).items()
+            if key not in {"_idempotency_key", "idempotency_key"}
+        }
+        self.profiles[user_id].update(clean_payload)
         self.profile_sync.bump(user_id)
-        self.write_log.append(("profile", user_id, dict(payload)))
+        self.write_log.append(("profile", user_id, clean_payload))
 
-    async def put_plan_check(self, user_id: str, item_id: str) -> None:
+    async def put_plan_check(
+        self,
+        user_id: str,
+        item_id: str,
+        *,
+        idempotency_key: str | None = None,
+    ) -> None:
         self._ensure_user(user_id)
         updated: list[dict[str, Any]] = []
         for item in self.today_plans[user_id]:
@@ -201,13 +215,38 @@ class FakeWAS:
                 next_item["completed"] = True
             updated.append(next_item)
         self.today_plans[user_id] = updated
-        self.write_log.append(("plan_check", user_id, item_id))
+        self.write_log.append(("plan_check", user_id, {"item_id": item_id, "idempotency_key": idempotency_key}))
 
     async def post_plan_create(self, user_id: str, payload: dict[str, Any]) -> None:
         await self._write_plan(user_id, payload, mode="create")
 
     async def put_plan_update(self, user_id: str, payload: dict[str, Any]) -> None:
         await self._write_plan(user_id, payload, mode="update")
+
+    async def delete_plan(self, user_id: str, payload: dict[str, Any]) -> None:
+        self._ensure_user(user_id)
+        plan_type = str(payload.get("plan_type") or "all")
+        target_dates = set(payload.get("target_dates") or [])
+
+        def should_keep(item: dict[str, Any]) -> bool:
+            item_day = str(item.get("day") or item.get("target_date") or "")
+            if target_dates and item_day and item_day not in target_dates:
+                return True
+            item_type = str(item.get("type") or "")
+            if plan_type == "workout":
+                return item_type != "exercise"
+            if plan_type == "diet":
+                return item_type != "meal"
+            return False
+
+        for stored_plan_type in ("workout", "diet"):
+            self.full_plans[user_id][stored_plan_type]["items"] = [
+                item
+                for item in self.full_plans[user_id][stored_plan_type]["items"]
+                if should_keep(item)
+            ]
+        self.today_plans[user_id] = [item for item in self.today_plans[user_id] if should_keep(item)]
+        self.write_log.append(("plan_delete", user_id, dict(payload)))
 
     async def _write_plan(self, user_id: str, payload: dict[str, Any], *, mode: str) -> None:
         self._ensure_user(user_id)
@@ -258,6 +297,36 @@ class FlakyWAS(FakeWAS):
         return await super().get_workout_plan_full(user_id)
 
 
+class FailingProfileWriteWAS(FakeWAS):
+    def __init__(self, profile_sync: FakeProfileSync) -> None:
+        super().__init__(profile_sync)
+        self.remaining_profile_failures = 1
+
+    async def put_user_profile(self, user_id: str, payload: dict[str, Any]) -> None:
+        if self.remaining_profile_failures > 0:
+            self.remaining_profile_failures -= 1
+            raise ExternalServiceError(service="WAS", message="HTTP 500", status_code=500)
+        await super().put_user_profile(user_id, payload)
+
+
+class FailingPlanCheckWAS(FakeWAS):
+    def __init__(self, profile_sync: FakeProfileSync) -> None:
+        super().__init__(profile_sync)
+        self.remaining_plan_check_failures = 1
+
+    async def put_plan_check(
+        self,
+        user_id: str,
+        item_id: str,
+        *,
+        idempotency_key: str | None = None,
+    ) -> None:
+        if self.remaining_plan_check_failures > 0:
+            self.remaining_plan_check_failures -= 1
+            raise ExternalServiceError(service="WAS", message="HTTP 500", status_code=500)
+        await super().put_plan_check(user_id, item_id, idempotency_key=idempotency_key)
+
+
 class FakeRouter:
     async def generate(self, *, system_prompt: str, user_content: str, response_schema):  # noqa: ANN001
         schema_name = getattr(response_schema, "__name__", "")
@@ -273,6 +342,8 @@ class FakeRouter:
             return json.dumps(self._draft_response(user_content), ensure_ascii=False)
         if schema_name == "SelfEvalResponse":
             return json.dumps({"passed": True, "reason": ""}, ensure_ascii=False)
+        if schema_name == "AnswerValidationJudgeResponse":
+            return json.dumps({"passed": True, "issues": []}, ensure_ascii=False)
         if schema_name == "PersonaResponse":
             return json.dumps({"response": self._persona_response(user_content)}, ensure_ascii=False)
         if schema_name == "MemoryManagerResponse":
@@ -310,6 +381,23 @@ class FakeRouter:
                 "profile_changes": None,
                 "is_today": True,
                 "modify_target": None,
+                "search_targets": [],
+            }
+
+        if any(token in message for token in ("\uc0ad\uc81c", "\uc9c0\uc6cc", "\uc5c6\uc560", "delete", "remove")) and any(
+            token in message for token in ("\ud50c\ub79c", "\uacc4\ud68d", "\uc6b4\ub3d9", "\uc2dd\ub2e8")
+        ):
+            return {
+                "intent": INTENT_RECORD,
+                "confidence": 0.95,
+                "emotion": {"label": emotion_label, "intensity": emotion_intensity},
+                "has_fact_change": False,
+                "requires_past_memory": False,
+                "should_save_episode": False,
+                "record_type": "plan_delete",
+                "profile_changes": None,
+                "is_today": True,
+                "modify_target": "workout" if "\uc6b4\ub3d9" in message and "\uc2dd\ub2e8" not in message else None,
                 "search_targets": [],
             }
 
@@ -524,6 +612,31 @@ class SparsePlanRouter(FakeRouter):
         return super()._draft_response(user_content)
 
 
+class SemanticFailRouter(FakeRouter):
+    async def generate(self, *, system_prompt: str, user_content: str, response_schema):  # noqa: ANN001
+        schema_name = getattr(response_schema, "__name__", "")
+        if schema_name == "AnswerValidationJudgeResponse":
+            return json.dumps(
+                {
+                    "passed": False,
+                    "issues": [
+                        {
+                            "severity": "critical",
+                            "code": "semantic_profile_conflict",
+                            "message": "semantic judge blocked an unsafe profile fit",
+                            "retry": True,
+                        }
+                    ],
+                },
+                ensure_ascii=False,
+            )
+        return await super().generate(
+            system_prompt=system_prompt,
+            user_content=user_content,
+            response_schema=response_schema,
+        )
+
+
 def _infer_external_domain(metadata_filter: dict[str, Any] | None) -> str:
     if not metadata_filter:
         return "workout"
@@ -580,6 +693,7 @@ async def build_test_stack(
     conn = await aiosqlite.connect(str(db_path))
     checkpointer = FilteringAsyncSqliteSaver(conn)
     await checkpointer.setup()
+    await _ensure_activity_table(str(db_path))
     graph = build_graph(deps, checkpointer=checkpointer)
 
     app = FastAPI()
@@ -589,6 +703,7 @@ async def build_test_stack(
     app.state.trace_store = deps.trace
     app.state._temp_dir = temp_dir
     app.state._checkpointer = checkpointer
+    app.state.checkpoint_db_path = str(db_path)
     return app, graph, deps, fake_was, checkpointer
 
 
@@ -597,12 +712,15 @@ async def run_request(
     user_id: str,
     message: str,
     session_id: str | None = None,
+    profile_override: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = {
         "user_id": user_id,
         "user_message": message,
         "session_id": session_id,
-        "user_profile_override": {"selected_ai_persona": "default", "goal": "maintain"},
+        "user_profile_override": profile_override
+        if profile_override is not None
+        else {"selected_ai_persona": "default", "goal": "maintain"},
     }
     response = await client.post(
         "/chat",
@@ -630,8 +748,10 @@ async def main() -> None:
             mixed_user = f"e2e-mixed-{uuid.uuid4().hex[:6]}"
             profile_user = f"e2e-profile-{uuid.uuid4().hex[:6]}"
             plancheck_user = f"e2e-check-{uuid.uuid4().hex[:6]}"
+            delete_user = f"e2e-delete-{uuid.uuid4().hex[:6]}"
             care_user = f"e2e-care-{uuid.uuid4().hex[:6]}"
             safety_user = f"e2e-safety-{uuid.uuid4().hex[:6]}"
+            ambiguous_user = f"e2e-ambiguous-{uuid.uuid4().hex[:6]}"
 
             create = await run_request(client, flow_user, MSG_CREATE_WORKOUT)
             session_id = create["session_id"]
@@ -698,6 +818,16 @@ async def main() -> None:
             exercise_items = [item for item in fake_was.today_plans[plancheck_user] if item.get("type") == "exercise"]
             require(exercise_items and exercise_items[0]["completed"] is True, "today exercise item should be marked completed")
 
+            plan_delete = await run_request(client, delete_user, MSG_PLAN_DELETE)
+            delete_debug = plan_delete["debug_state"]
+            require(delete_debug["action_intent"] == "record", "plan_delete action_intent mismatch")
+            require(delete_debug["record_type"] == "plan_delete", "plan_delete record_type mismatch")
+            require(bool(plan_delete.get("plan_sync_applied")), "plan_delete should trigger synchronous WAS write")
+            require(
+                not any(item.get("type") == "exercise" for item in fake_was.today_plans[delete_user]),
+                "today exercise items should be deleted",
+            )
+
             care = await run_request(client, care_user, MSG_CARE)
             care_debug = care["debug_state"]
             require(care_debug["action_intent"] == "care", "care action_intent mismatch")
@@ -708,18 +838,28 @@ async def main() -> None:
             require(safety_debug["action_intent"] == "safety", "safety action_intent mismatch")
             require(bool(safety["response"]), "safety response should not be empty")
 
-            print("[e2e] 9/9 passed")
+            ambiguous = await run_request(client, ambiguous_user, "운동이나 식단을 가볍게 잡아줘")
+            ambiguous_debug = ambiguous["debug_state"]
+            require(ambiguous_debug["needs_clarification"] is True, "ambiguous workout/diet request should clarify")
+            require(ambiguous_debug["proposed_plan_count"] == 0, "ambiguous workout/diet request should not create a plan")
+
+            print("[e2e] 11/11 passed")
             print(f"  create session_id={session_id}")
             print(f"  approval plan_sync_applied={approval.get('plan_sync_applied')}")
             print(f"  mixed plan split=workout:{len(mixed_workout_items)} diet:{len(mixed_diet_items)}")
             print(f"  profile weight={fake_was.profiles[profile_user]['weight']}")
             print(f"  plan_check completed={exercise_items[0]['completed']}")
+            print(f"  plan_delete remaining={len(fake_was.today_plans[delete_user])}")
     finally:
         await checkpointer.conn.close()
         app.state._temp_dir.cleanup()
 
     await run_resilience_smoke()
     await run_starter_plan_fallback_smoke()
+    await run_semantic_validator_smoke()
+    await run_partial_profile_override_smoke()
+    await run_profile_write_pending_smoke()
+    await run_plan_check_pending_smoke()
 
 
 async def run_resilience_smoke() -> None:
@@ -764,6 +904,157 @@ async def run_starter_plan_fallback_smoke() -> None:
             require(create_debug["proposed_plan_count"] >= 1, "starter fallback should synthesize proposed plan")
             require("스쿼트" in create["response"] or "빠른 걷기" in create["response"], "starter fallback response should expose starter workout plan")
             print("[e2e-starter-fallback] 1/1 passed")
+    finally:
+        await checkpointer.conn.close()
+        app.state._temp_dir.cleanup()
+
+
+async def run_semantic_validator_smoke() -> None:
+    semantic_user = f"e2e-semantic-{uuid.uuid4().hex[:6]}"
+    app, graph, deps, fake_was, checkpointer = await build_test_stack(fake_router=SemanticFailRouter())
+    transport = httpx.ASGITransport(app=app)
+    rich_profile = {
+        "selected_ai_persona": "default",
+        "goal": "maintain",
+        "age": 35,
+        "height": 170,
+        "weight": 70,
+        "available_time_minutes": 20,
+        "activity_level": "moderate",
+    }
+
+    try:
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            create = await run_request(client, semantic_user, MSG_CREATE_WORKOUT, profile_override=rich_profile)
+            debug = create["debug_state"]
+            report = debug["validation_report"]
+            require(report["passed"] is False, "semantic judge critical issue should block final answer")
+            require(
+                any(issue.get("code") == "semantic_profile_conflict" for issue in report.get("issues") or []),
+                "semantic judge issue should be surfaced in validation report",
+            )
+            require(debug["proposed_plan_count"] == 0, "blocked semantic answer should not leave a proposal")
+            print("[e2e-semantic-validator] 1/1 passed")
+    finally:
+        await checkpointer.conn.close()
+        app.state._temp_dir.cleanup()
+
+
+async def run_partial_profile_override_smoke() -> None:
+    profile_user = f"e2e-partial-profile-{uuid.uuid4().hex[:6]}"
+    app, graph, deps, fake_was, checkpointer = await build_test_stack()
+    fake_was.profiles[profile_user] = {
+        "selected_ai_persona": "default",
+        "goal": "muscle_gain",
+        "allergies": ["milk"],
+        "injury_history": ["knee pain"],
+        "activity_level": "beginner",
+    }
+    transport = httpx.ASGITransport(app=app)
+
+    try:
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            first = await run_request(client, profile_user, MSG_CARE, profile_override={"selected_ai_persona": "default"})
+            session_id = first["session_id"]
+            second = await run_request(
+                client,
+                profile_user,
+                MSG_CREATE_WORKOUT,
+                session_id=session_id,
+                profile_override={"selected_ai_persona": "cheer_sis"},
+            )
+            summary = second["debug_state"]["profile_signal_summary"]
+            require(summary.get("selected_ai_persona") == "cheer_sis", "partial override should update persona")
+            require(summary.get("goal") == "muscle_gain", "partial override should preserve saved goal")
+            require(summary.get("allergies") == ["milk"], "partial override should preserve allergies")
+            require(summary.get("injury_history") == ["knee pain"], "partial override should preserve injuries")
+            print("[e2e-partial-profile-override] 1/1 passed")
+    finally:
+        await checkpointer.conn.close()
+        app.state._temp_dir.cleanup()
+
+
+async def run_profile_write_pending_smoke() -> None:
+    pending_user = f"e2e-profile-pending-{uuid.uuid4().hex[:6]}"
+    profile_sync = FakeProfileSync()
+    failing_was = FailingProfileWriteWAS(profile_sync)
+    app, graph, deps, fake_was, checkpointer = await build_test_stack(fake_was=failing_was)
+    transport = httpx.ASGITransport(app=app)
+
+    try:
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            profile = await run_request(client, pending_user, MSG_RECORD_WEIGHT)
+            session_id = profile["session_id"]
+            require(profile["pending_writes_count"] == 1, "failed profile write should be visible as pending")
+            require(profile["pending_write_types"] == ["profile"], "pending write type should include profile")
+            require(
+                profile["debug_state"]["pending_profile_overlay"].get("weight") == 72.0,
+                "pending profile overlay should keep current-turn profile value",
+            )
+
+            saved = await graph.aget_state({"configurable": {"thread_id": session_id}})
+            require(
+                (saved.values.get("user_profile") or {}).get("weight") != 72.0,
+                "user_profile should not be overwritten before WAS profile write succeeds",
+            )
+
+            replayed = await run_request(client, pending_user, MSG_CARE, session_id=session_id)
+            require(replayed["pending_writes_count"] == 0, "pending profile write should replay on next turn")
+            saved_after = await graph.aget_state({"configurable": {"thread_id": session_id}})
+            require(
+                (saved_after.values.get("user_profile") or {}).get("weight") == 72.0,
+                "user_profile should update after pending profile write replay succeeds",
+            )
+            print("[e2e-profile-write-pending] 1/1 passed")
+    finally:
+        await checkpointer.conn.close()
+        app.state._temp_dir.cleanup()
+
+
+async def run_plan_check_pending_smoke() -> None:
+    pending_user = f"e2e-plancheck-pending-{uuid.uuid4().hex[:6]}"
+    profile_sync = FakeProfileSync()
+    failing_was = FailingPlanCheckWAS(profile_sync)
+    app, graph, deps, fake_was, checkpointer = await build_test_stack(fake_was=failing_was)
+    transport = httpx.ASGITransport(app=app)
+
+    try:
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            plan_check = await run_request(client, pending_user, MSG_PLAN_CHECK)
+            session_id = plan_check["session_id"]
+            require(plan_check["pending_writes_count"] == 1, "failed plan_check write should be visible as pending")
+            require(plan_check["pending_write_types"] == ["plan_check"], "pending write type should include plan_check")
+            saved = await graph.aget_state({"configurable": {"thread_id": session_id}})
+            saved_exercise_items = [
+                item for item in saved.values.get("today_plan") or [] if item.get("type") == "exercise"
+            ]
+            require(
+                saved_exercise_items and saved_exercise_items[0]["completed"] is False,
+                "today_plan should not be marked completed before plan_check WAS write succeeds",
+            )
+
+            outbox_replay = await replay_due_was_outbox(app.state.checkpoint_db_path, deps)
+            require(outbox_replay["succeeded"] == 1, "outbox should replay failed plan_check without a user turn")
+            fake_today_after_outbox = await fake_was.get_today_plan(pending_user)
+            fake_exercises_after_outbox = [
+                item for item in fake_today_after_outbox if item.get("type") == "exercise"
+            ]
+            require(
+                fake_exercises_after_outbox and fake_exercises_after_outbox[0]["completed"] is True,
+                "outbox replay should apply plan_check to WAS immediately",
+            )
+
+            replayed = await run_request(client, pending_user, MSG_CARE, session_id=session_id)
+            require(replayed["pending_writes_count"] == 0, "pending plan_check should replay on next turn")
+            saved_after = await graph.aget_state({"configurable": {"thread_id": session_id}})
+            saved_after_exercises = [
+                item for item in saved_after.values.get("today_plan") or [] if item.get("type") == "exercise"
+            ]
+            require(
+                saved_after_exercises and saved_after_exercises[0]["completed"] is True,
+                "today_plan should update after pending plan_check replay succeeds",
+            )
+            print("[e2e-plan-check-pending] 1/1 passed")
     finally:
         await checkpointer.conn.close()
         app.state._temp_dir.cleanup()

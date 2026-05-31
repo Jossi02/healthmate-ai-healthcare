@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/build
+.git
+.github
+scratch_pw
+docs
+develop/ai-model
+develop/backend-api
+v2-deploy.tar.gz

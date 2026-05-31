@@ -1,9 +1,9 @@
-import os
-import json
+import argparse
 import asyncio
+import json
 import logging
+import os
 from dotenv import load_dotenv
-from pinecone import Pinecone
 
 # Ensure we can import from app
 import sys
@@ -19,7 +19,24 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-async def ingest():
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Ingest external knowledge into Pinecone.")
+    parser.add_argument(
+        "--data",
+        default=os.path.join(os.path.dirname(__file__), "../data/external_knowledge_v2.json"),
+        help="Path to the external knowledge JSON file.",
+    )
+    parser.add_argument(
+        "--reset-external",
+        action="store_true",
+        help="Delete only the shared external namespace before ingestion.",
+    )
+    parser.add_argument("--sleep", type=float, default=0.15, help="Delay between embedding requests.")
+    return parser.parse_args()
+
+
+async def ingest(args: argparse.Namespace):
     # 1. API Keys and Clients
     gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("ROUTER_API_KEY")
     pinecone_key = os.getenv("PINECONE_API_KEY")
@@ -37,8 +54,12 @@ async def ingest():
     index = pc_core.IndexAsyncio(host=description.host)
     pc_client = PineconeClient(index=index)
 
+    if args.reset_external:
+        logger.warning("Resetting Pinecone namespace '%s' only", PineconeClient.EXTERNAL_NS)
+        await index.delete(delete_all=True, namespace=PineconeClient.EXTERNAL_NS)
+
     # 2. Load Data
-    data_path = os.path.join(os.path.dirname(__file__), '../data/external_knowledge.json')
+    data_path = os.path.abspath(args.data)
     try:
         with open(data_path, 'r', encoding='utf-8') as f:
             knowledge_items = json.load(f)
@@ -53,7 +74,7 @@ async def ingest():
     for i, item in enumerate(knowledge_items):
         try:
             text = item['text']
-            source = item['source']
+            source = item.get('source_title') or item.get('source') or item.get('url') or "external"
             category = item['category']
             tags = item.get('tags', [])
             extra_metadata = {
@@ -80,12 +101,19 @@ async def ingest():
             logger.info(f"Successfully upserted: {source}")
             
             # Small sleep to avoid rate limiting if needed
-            await asyncio.sleep(0.5)
+            if args.sleep > 0:
+                await asyncio.sleep(args.sleep)
             
         except Exception as e:
             logger.error(f"Error at item {i+1}: {e}")
 
     logger.info(f"Ingestion complete! Success: {success_count}/{len(knowledge_items)}")
+    close_index = getattr(index, "close", None)
+    if close_index:
+        maybe_awaitable = close_index()
+        if asyncio.iscoroutine(maybe_awaitable):
+            await maybe_awaitable
+    await pc_core.close()
 
 if __name__ == "__main__":
-    asyncio.run(ingest())
+    asyncio.run(ingest(_parse_args()))

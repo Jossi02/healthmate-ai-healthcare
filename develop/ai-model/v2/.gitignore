@@ -7,4 +7,5 @@ venv/
 dist/
 build/
 .pytest_cache/
-data/
+data/*
+!data/external_knowledge_v2.json

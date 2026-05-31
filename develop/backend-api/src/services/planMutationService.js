@@ -33,6 +33,155 @@ async function deleteDietPlansByIds(supabase, userId, mealIds = []) {
   if (error) throw error;
 }
 
+async function deleteWorkoutPlansForDates(supabase, userId, targetDates = []) {
+  if (targetDates.length === 0) return 0;
+
+  const exerciseIds = await loadExistingWorkoutPlanIdsForDates(supabase, userId, targetDates);
+  await deleteWorkoutPlansByIds(supabase, userId, exerciseIds);
+  return exerciseIds.length;
+}
+
+async function deleteDietPlansForDates(supabase, userId, targetDates = []) {
+  if (targetDates.length === 0) return 0;
+
+  const mealIds = await loadExistingDietPlanIdsForDates(supabase, userId, targetDates);
+  await deleteDietPlansByIds(supabase, userId, mealIds);
+  return mealIds.length;
+}
+
+async function deleteExerciseItemById(supabase, userId, itemId) {
+  const safeItemId = Number(itemId);
+  if (!Number.isFinite(safeItemId)) return null;
+
+  const { data: item, error: itemLoadError } = await supabase
+    .from('exercise_items')
+    .select('item_id, exercise_id, calories')
+    .eq('item_id', safeItemId)
+    .maybeSingle();
+
+  if (itemLoadError) throw itemLoadError;
+  if (!item) return null;
+
+  const { data: parentPlan, error: planLoadError } = await supabase
+    .from('user_exercise_plans')
+    .select('exercise_id, total_calories')
+    .eq('user_id', userId)
+    .eq('exercise_id', item.exercise_id)
+    .maybeSingle();
+
+  if (planLoadError) throw planLoadError;
+  if (!parentPlan) return null;
+
+  const { error: deleteError } = await supabase
+    .from('exercise_items')
+    .delete()
+    .eq('item_id', safeItemId);
+
+  if (deleteError) throw deleteError;
+
+  const { data: remainingItems, error: remainingError } = await supabase
+    .from('exercise_items')
+    .select('item_id, calories, is_completed')
+    .eq('exercise_id', parentPlan.exercise_id);
+
+  if (remainingError) throw remainingError;
+
+  if (!remainingItems || remainingItems.length === 0) {
+    await deleteWorkoutPlansByIds(supabase, userId, [parentPlan.exercise_id]);
+    return {
+      kind: 'exercise-item',
+      deleted_item_id: safeItemId,
+      deleted_parent: true,
+    };
+  }
+
+  const totalCalories = remainingItems.reduce(
+    (sum, row) => sum + Number(row.calories || 0),
+    0
+  );
+  const completedCount = remainingItems.filter((row) => row.is_completed).length;
+  const nextStatus = completedCount === remainingItems.length
+    ? 1
+    : completedCount > 0
+      ? 2
+      : 0;
+
+  const { error: updateError } = await supabase
+    .from('user_exercise_plans')
+    .update({
+      total_calories: totalCalories,
+      status: nextStatus,
+    })
+    .eq('user_id', userId)
+    .eq('exercise_id', parentPlan.exercise_id);
+
+  if (updateError) throw updateError;
+
+  return {
+    kind: 'exercise-item',
+    deleted_item_id: safeItemId,
+    deleted_parent: false,
+    parent_status: nextStatus,
+  };
+}
+
+async function deletePlanItemByOpaqueId(supabase, userId, itemId = '') {
+  const rawItemId = String(itemId || '').trim();
+  if (rawItemId.startsWith('exercise-item-')) {
+    return deleteExerciseItemById(
+      supabase,
+      userId,
+      Number(rawItemId.replace('exercise-item-', ''))
+    );
+  }
+
+  if (rawItemId.startsWith('exercise-')) {
+    const exerciseId = Number(rawItemId.replace('exercise-', ''));
+    if (!Number.isFinite(exerciseId)) return null;
+
+    const { data: plan, error } = await supabase
+      .from('user_exercise_plans')
+      .select('exercise_id')
+      .eq('user_id', userId)
+      .eq('exercise_id', exerciseId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!plan) return null;
+
+    await deleteWorkoutPlansByIds(supabase, userId, [exerciseId]);
+    return {
+      kind: 'exercise',
+      deleted_item_id: exerciseId,
+      deleted_parent: true,
+    };
+  }
+
+  if (rawItemId.startsWith('meal-')) {
+    const mealId = Number(rawItemId.replace('meal-', ''));
+    if (!Number.isFinite(mealId)) return null;
+
+    const { data: meal, error } = await supabase
+      .from('user_meal_plans')
+      .select('meal_id')
+      .eq('user_id', userId)
+      .eq('meal_id', mealId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!meal) return null;
+
+    await deleteDietPlansByIds(supabase, userId, [mealId]);
+    return {
+      kind: 'meal',
+      deleted_item_id: mealId,
+      deleted_parent: true,
+    };
+  }
+
+  return null;
+}
+
 async function loadExistingConflictDates(supabase, userId, planType, targetDates = []) {
   if (targetDates.length === 0) return [];
 
@@ -258,6 +407,9 @@ module.exports = {
   createDietPlans,
   createWorkoutPlans,
   deleteDietPlansByIds,
+  deleteDietPlansForDates,
+  deletePlanItemByOpaqueId,
+  deleteWorkoutPlansForDates,
   deleteWorkoutPlansByIds,
   loadExistingConflictDates,
   replaceDietPlans,

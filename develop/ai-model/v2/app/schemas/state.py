@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional
 
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 
 class EmotionState(TypedDict):
@@ -14,6 +14,8 @@ class EmotionState(TypedDict):
 class PendingWrite(TypedDict):
     write_type: str
     payload: dict[str, Any]
+    write_id: NotRequired[str]
+    idempotency_key: NotRequired[str]
 
 
 class DraftComponents(TypedDict):
@@ -57,6 +59,7 @@ StateEffect = Literal[
     "proposal_approved",
     "profile_recorded",
     "plan_checked",
+    "plan_deleted",
     "clarification_requested",
 ]
 WriteMode = Literal["create", "update"]
@@ -99,8 +102,11 @@ class GraphState(TypedDict):
     user_id: str
     user_message: str
     request_kind: RequestKind
+    checkpoint_db_path: NotRequired[str]
 
     user_profile: Optional[dict[str, Any]]
+    effective_user_profile: Optional[dict[str, Any]]
+    pending_profile_overlay: Optional[dict[str, Any]]
     profile_override_applied: bool
     today_plan: Optional[list[dict[str, Any]]]
 
@@ -112,6 +118,7 @@ class GraphState(TypedDict):
     domain: Domain
     support_mode: SupportMode
     ambiguous: bool
+    routing_diagnostics: Optional[dict[str, Any]]
     context_resolution: ContextResolution
     confidence: float
     emotion: Optional[EmotionState]
@@ -128,6 +135,8 @@ class GraphState(TypedDict):
     modify_target: Optional[str]
     search_targets: list[str]
     modify_plan_context: Optional[dict[str, Any]]
+    profile_constraints: Optional[dict[str, Any]]
+    retrieval_decision: Optional[dict[str, Any]]
 
     search_results: list[dict[str, Any]]
     search_quality: str
@@ -152,6 +161,10 @@ class GraphState(TypedDict):
     profile_sync_version: int
 
     response: Optional[str]
+    force_regenerate: bool
+    validation_report: Optional[dict[str, Any]]
+    validation_retry_count: int
+    generation_quality_flags: Optional[dict[str, Any]]
     self_eval_count: int
     self_eval_failure_reason: Optional[str]
 

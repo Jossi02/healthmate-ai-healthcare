@@ -31,6 +31,21 @@ class SelfEvalResponse(BaseModel):
     reason: str = Field(default="", description="Short failure reason when not passed")
 
 
+class AnswerValidationIssue(BaseModel):
+    severity: Literal["critical", "warning"] = Field(
+        default="warning",
+        description="Use critical only for concrete safety/profile/domain conflicts.",
+    )
+    code: str = Field(default="", description="Stable short issue code")
+    message: str = Field(default="", description="Brief issue explanation")
+    retry: bool = Field(default=False, description="Whether another generation pass can fix this")
+
+
+class AnswerValidationJudgeResponse(BaseModel):
+    passed: bool = Field(default=True, description="Whether the answer passes semantic validation")
+    issues: list[AnswerValidationIssue] = Field(default_factory=list)
+
+
 class ExerciseItem(BaseModel):
     exercise_name: str = Field(description="Detailed exercise name")
     sets: Optional[int] = Field(default=None, description="Number of sets")

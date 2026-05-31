@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, Clock, Flame, ChevronRight, Apple, Calendar as CalendarIcon, ChevronLeft, X } from 'lucide-react';
+import { Info, Clock, Flame, ChevronRight, Apple, Calendar as CalendarIcon, ChevronLeft, X, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePlan, DailyPlan, DietItem, WorkoutItem, getPlanItemKey } from '../context/PlanContext';
@@ -78,6 +78,7 @@ export default function RecommendPage() {
     completedTasks,
     completeWorkout,
     completeDiet,
+    deletePlanItem,
     getPlanByDate,
     highlightedPlanItemIds,
     dismissPlanUpdate,
@@ -92,6 +93,7 @@ export default function RecommendPage() {
   const [today] = useState<Date>(initialToday);
 
   const [confirmPopup, setConfirmPopup] = useState<{isOpen: boolean, target: {type: 'workout'|'diet', dateStr: string, name: string, index: number} | null}>({isOpen: false, target: null});
+  const [deletePopup, setDeletePopup] = useState<{isOpen: boolean, target: {type: 'workout'|'diet', dateStr: string, name: string, index: number} | null, isDeleting: boolean}>({isOpen: false, target: null, isDeleting: false});
 
   const handleWorkoutComplete = (dateStr: string, name: string, index: number) => {
     setConfirmPopup({isOpen: true, target: {type: 'workout', dateStr, name, index}});
@@ -109,6 +111,28 @@ export default function RecommendPage() {
       completeDiet(confirmPopup.target.dateStr, confirmPopup.target.index);
     }
     setConfirmPopup({isOpen: false, target: null});
+  };
+
+  const handlePlanDelete = (dateStr: string, name: string, index: number, type: 'workout' | 'diet') => {
+    setDeletePopup({isOpen: true, target: {type, dateStr, name, index}, isDeleting: false});
+  };
+
+  const executeDelete = async () => {
+    if (!deletePopup.target || deletePopup.isDeleting) return;
+
+    setDeletePopup((prev) => ({...prev, isDeleting: true}));
+    const didDelete = await deletePlanItem(
+      deletePopup.target.dateStr,
+      deletePopup.target.index,
+      deletePopup.target.type
+    );
+
+    if (didDelete) {
+      setDetailPopup(null);
+      setSelectedPlan(null);
+      setIsModalOpen(false);
+    }
+    setDeletePopup({isOpen: false, target: null, isDeleting: false});
   };
 
   const [selectedPlan, setSelectedPlan] = useState<DailyPlan | null>(null);
@@ -754,15 +778,25 @@ export default function RecommendPage() {
                           <span className="rounded-lg bg-gray-50 px-2 py-1">{item.calories}</span>
                           <span className="rounded-lg bg-gray-50 px-2 py-1">{cleanPlannerDetail(item.level)}</span>
                         </div>
-                        <button
-                          onClick={() => {
-                            if (!isCompleted) handleWorkoutComplete(detailPopup.dateStr, item.title, index);
-                          }}
-                          disabled={isCompleted}
-                          className={`w-full rounded-xl py-2 text-sm font-bold shadow-sm transition-all ${isCompleted ? 'cursor-not-allowed bg-gray-400 text-white' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
-                        >
-                          {isCompleted ? '완료!' : '완료'}
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handlePlanDelete(detailPopup.dateStr, item.title, index, 'workout')}
+                            className="inline-flex w-11 shrink-0 items-center justify-center rounded-xl border border-rose-100 bg-rose-50 text-rose-500 transition-colors hover:bg-rose-100"
+                            aria-label={`${item.title} 삭제`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (!isCompleted) handleWorkoutComplete(detailPopup.dateStr, item.title, index);
+                            }}
+                            disabled={isCompleted}
+                            className={`flex-1 rounded-xl py-2 text-sm font-bold shadow-sm transition-all ${isCompleted ? 'cursor-not-allowed bg-gray-400 text-white' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
+                          >
+                            {isCompleted ? '완료!' : '완료'}
+                          </button>
+                        </div>
                       </div>
                     ))
                   : detailPopup.items.map(({ item, index, updateId, isCompleted, isHighlighted }) => {
@@ -796,15 +830,25 @@ export default function RecommendPage() {
                             {display.detail}
                           </p>
                           <div className="mb-4 text-xs font-bold text-green-600">{display.kcal}</div>
-                          <button
-                            onClick={() => {
-                              if (!isCompleted) handleDietComplete(detailPopup.dateStr, item.name, index);
-                            }}
-                            disabled={isCompleted}
-                            className={`w-full rounded-xl py-2 text-sm font-bold shadow-sm transition-all ${isCompleted ? 'cursor-not-allowed bg-gray-400 text-white' : 'bg-green-500 text-white hover:bg-green-600'}`}
-                          >
-                            {isCompleted ? '완료!' : '완료'}
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handlePlanDelete(detailPopup.dateStr, item.name, index, 'diet')}
+                              className="inline-flex w-11 shrink-0 items-center justify-center rounded-xl border border-rose-100 bg-rose-50 text-rose-500 transition-colors hover:bg-rose-100"
+                              aria-label={`${display.title} 삭제`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (!isCompleted) handleDietComplete(detailPopup.dateStr, item.name, index);
+                              }}
+                              disabled={isCompleted}
+                              className={`flex-1 rounded-xl py-2 text-sm font-bold shadow-sm transition-all ${isCompleted ? 'cursor-not-allowed bg-gray-400 text-white' : 'bg-green-500 text-white hover:bg-green-600'}`}
+                            >
+                              {isCompleted ? '완료!' : '완료'}
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -831,6 +875,58 @@ export default function RecommendPage() {
               <div className="flex space-x-3">
                 <button onClick={() => setConfirmPopup({isOpen: false, target: null})} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">취소</button>
                 <button onClick={executeConfirm} className={`flex-1 py-3 text-white font-bold rounded-xl transition-colors shadow-md ${confirmPopup.target.type === 'workout' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600'}`}>완료하기</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Popup */}
+      <AnimatePresence>
+        {deletePopup.isOpen && deletePopup.target && (
+          <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
+              onClick={() => {
+                if (!deletePopup.isDeleting) {
+                  setDeletePopup({isOpen: false, target: null, isDeleting: false});
+                }
+              }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="z-10 w-full max-w-sm overflow-hidden rounded-3xl bg-white px-6 py-8 text-center shadow-xl"
+            >
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 text-rose-500">
+                <Trash2 className="h-7 w-7" />
+              </div>
+              <h3 className="mb-2 text-lg font-bold text-gray-900">플랜 삭제</h3>
+              <p className="mb-6 text-sm font-medium leading-relaxed text-gray-600">
+                <strong className="text-rose-600">{deletePopup.target.name}</strong> 항목을<br />
+                캘린더에서 삭제할까요?
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setDeletePopup({isOpen: false, target: null, isDeleting: false})}
+                  disabled={deletePopup.isDeleting}
+                  className="flex-1 rounded-xl bg-gray-100 py-3 font-bold text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-60"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={executeDelete}
+                  disabled={deletePopup.isDeleting}
+                  className="flex-1 rounded-xl bg-rose-500 py-3 font-bold text-white shadow-md transition-colors hover:bg-rose-600 disabled:opacity-60"
+                >
+                  {deletePopup.isDeleting ? '삭제 중' : '삭제하기'}
+                </button>
               </div>
             </motion.div>
           </div>

@@ -10,6 +10,7 @@
   PUT  /api/user/profile
   POST /api/plan/create
   PUT  /api/plan/update
+  DELETE /api/plan/delete
   PUT  /api/plan/check
 """
 from __future__ import annotations
@@ -61,8 +62,20 @@ class WASClient:
     async def put_plan_update(self, user_id: str, plan: dict[str, Any]) -> None:
         await self._put(f"/api/plan/update/{user_id}", plan)
 
-    async def put_plan_check(self, user_id: str, item_id: str) -> None:
-        await self._put(f"/api/plan/check/{user_id}", {"item_id": item_id})
+    async def delete_plan(self, user_id: str, payload: dict[str, Any]) -> None:
+        await self._delete(f"/api/plan/delete/{user_id}", payload)
+
+    async def put_plan_check(
+        self,
+        user_id: str,
+        item_id: str,
+        *,
+        idempotency_key: str | None = None,
+    ) -> None:
+        payload: dict[str, Any] = {"item_id": item_id}
+        if idempotency_key:
+            payload["_idempotency_key"] = idempotency_key
+        await self._put(f"/api/plan/check/{user_id}", payload)
 
     # ── 내부 헬퍼 ─────────────────────────────────────────────────────────────
 
@@ -229,6 +242,63 @@ class WASClient:
             self._record_trace(
                 trace_id,
                 method="PUT",
+                path=path,
+                status="request_error",
+                duration_ms=time.perf_counter() - started_at,
+                request_body=body,
+                error=str(exc),
+            )
+            raise ExternalServiceError(service="WAS", message="request error")
+
+    async def _delete(self, path: str, body: dict) -> None:
+        started_at = time.perf_counter()
+        trace_id = get_current_trace_id()
+        try:
+            resp = await self._client.request(
+                "DELETE",
+                f"{self._base_url}{path}",
+                json=body,
+                headers=self._build_headers(),
+            )
+            resp.raise_for_status()
+            self._record_trace(
+                trace_id,
+                method="DELETE",
+                path=path,
+                status="ok",
+                duration_ms=time.perf_counter() - started_at,
+                request_body=body,
+            )
+        except httpx.TimeoutException:
+            self._record_trace(
+                trace_id,
+                method="DELETE",
+                path=path,
+                status="timeout",
+                duration_ms=time.perf_counter() - started_at,
+                request_body=body,
+                error="request timeout",
+            )
+            raise ExternalServiceError(service="WAS", message="request timeout")
+        except httpx.HTTPStatusError as exc:
+            self._record_trace(
+                trace_id,
+                method="DELETE",
+                path=path,
+                status=f"http_{exc.response.status_code}",
+                duration_ms=time.perf_counter() - started_at,
+                request_body=body,
+                error=f"HTTP {exc.response.status_code}",
+            )
+            raise ExternalServiceError(
+                service="WAS",
+                message=f"HTTP {exc.response.status_code}",
+                status_code=exc.response.status_code,
+            )
+        except httpx.RequestError as exc:
+            self._record_trace(
+                trace_id,
+                method="DELETE",
                 path=path,
                 status="request_error",
                 duration_ms=time.perf_counter() - started_at,

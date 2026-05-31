@@ -7,13 +7,16 @@ from langgraph.graph import END, START, StateGraph
 from app.graph.deps import NodeDeps
 from app.graph.nodes.care import make_care_node
 from app.graph.nodes.context_resolver import make_context_resolver_node
+from app.graph.nodes.answer_validator import make_answer_validator_node
 from app.graph.nodes.fallback import make_fallback_node
+from app.graph.nodes.finalize import make_finalize_node
 from app.graph.nodes.generate import make_generate_node
 from app.graph.nodes.intent import make_intent_node
 from app.graph.nodes.modify import make_modify_node
-from app.graph.nodes.persona import make_persona_node
 from app.graph.nodes.preprocess import make_preprocess_node
+from app.graph.nodes.profile_constraints import make_profile_constraints_node
 from app.graph.nodes.record import make_record_node
+from app.graph.nodes.retrieval_decision import make_retrieval_decision_node
 from app.graph.nodes.safety import make_safety_node
 from app.graph.nodes.search import make_search_node
 from app.schemas.state import GraphState
@@ -27,9 +30,9 @@ def route_intent(state: GraphState) -> str:
         "fallback": "fallback",
         "공감_케어": "care",
         "기록": "record",
-        "계획": "search",
+        "계획": "retrieval_decision",
         "수정": "modify_load",
-        "정보": "search",
+        "정보": "retrieval_decision",
         "계획_승인": "generate",
         "home_recommendation": "generate",
     }
@@ -38,14 +41,16 @@ def route_intent(state: GraphState) -> str:
 
 def route_care(state: GraphState) -> str:
     if state.get("requires_past_memory", False):
-        return "search"
+        return "retrieval_decision"
     return "generate"
 
 
-def route_fallback(state: GraphState) -> str:
-    if state.get("needs_clarification", False):
-        return END
-    return "analyze_intent"
+def route_retrieval_decision(state: GraphState) -> str:
+    decision = state.get("retrieval_decision") or {}
+    targets = decision.get("targets") or state.get("search_targets") or []
+    if decision.get("should_search") and targets:
+        return "search"
+    return "generate"
 
 
 def route_search_retry(state: GraphState) -> str:
@@ -64,12 +69,19 @@ def route_search_retry(state: GraphState) -> str:
 
 def route_generate_self_eval(state: GraphState):
     if state.get("request_kind") == "home_recommendation":
-        return END
-    if state.get("response"):
-        return "persona"
+        return "finalize"
     if state.get("self_eval_failure_reason"):
         return "generate"
-    return "persona"
+    if state.get("response"):
+        return "answer_validator"
+    return "finalize"
+
+
+def route_answer_validation(state: GraphState) -> str:
+    report = state.get("validation_report") or {}
+    if report.get("requires_retry") and state.get("self_eval_failure_reason"):
+        return "generate"
+    return "finalize"
 
 
 def build_graph(deps: NodeDeps, checkpointer: BaseCheckpointSaver):
@@ -79,6 +91,8 @@ def build_graph(deps: NodeDeps, checkpointer: BaseCheckpointSaver):
     builder.add_node("preprocess", make_preprocess_node(deps))
     builder.add_node("context_resolver", make_context_resolver_node(deps))
     builder.add_node("analyze_intent", make_intent_node(deps))
+    builder.add_node("profile_constraints", make_profile_constraints_node(deps))
+    builder.add_node("retrieval_decision", make_retrieval_decision_node(deps))
     builder.add_node("safety", make_safety_node(deps))
     builder.add_node("care", make_care_node(deps))
     builder.add_node("record", make_record_node(deps))
@@ -86,14 +100,16 @@ def build_graph(deps: NodeDeps, checkpointer: BaseCheckpointSaver):
     builder.add_node("modify_load", make_modify_node(deps))
     builder.add_node("fallback", make_fallback_node(deps))
     builder.add_node("generate", make_generate_node(deps))
-    builder.add_node("persona", make_persona_node(deps))
+    builder.add_node("answer_validator", make_answer_validator_node(deps))
+    builder.add_node("finalize", make_finalize_node(deps))
 
     builder.add_edge(START, "preprocess")
     builder.add_edge("preprocess", "context_resolver")
     builder.add_edge("context_resolver", "analyze_intent")
+    builder.add_edge("analyze_intent", "profile_constraints")
 
     builder.add_conditional_edges(
-        "analyze_intent",
+        "profile_constraints",
         route_intent,
         {
             "generate": "generate",
@@ -101,7 +117,7 @@ def build_graph(deps: NodeDeps, checkpointer: BaseCheckpointSaver):
             "fallback": "fallback",
             "care": "care",
             "record": "record",
-            "search": "search",
+            "retrieval_decision": "retrieval_decision",
             "modify_load": "modify_load",
         },
     )
@@ -109,11 +125,17 @@ def build_graph(deps: NodeDeps, checkpointer: BaseCheckpointSaver):
     builder.add_conditional_edges(
         "care",
         route_care,
-        {"search": "search", "generate": "generate"},
+        {"retrieval_decision": "retrieval_decision", "generate": "generate"},
     )
 
     builder.add_edge("record", "generate")
-    builder.add_edge("modify_load", "search")
+    builder.add_edge("modify_load", "retrieval_decision")
+
+    builder.add_conditional_edges(
+        "retrieval_decision",
+        route_retrieval_decision,
+        {"search": "search", "generate": "generate"},
+    )
 
     builder.add_conditional_edges(
         "search",
@@ -121,19 +143,21 @@ def build_graph(deps: NodeDeps, checkpointer: BaseCheckpointSaver):
         {"search": "search", "generate": "generate"},
     )
 
-    builder.add_conditional_edges(
-        "fallback",
-        route_fallback,
-        {"analyze_intent": "analyze_intent", END: END},
-    )
+    builder.add_edge("fallback", "finalize")
 
     builder.add_conditional_edges(
         "generate",
         route_generate_self_eval,
-        {"generate": "generate", "persona": "persona", END: END},
+        {"generate": "generate", "answer_validator": "answer_validator", "finalize": "finalize", END: END},
     )
 
-    builder.add_edge("persona", END)
-    builder.add_edge("safety", END)
+    builder.add_conditional_edges(
+        "answer_validator",
+        route_answer_validation,
+        {"generate": "generate", "finalize": "finalize"},
+    )
+
+    builder.add_edge("safety", "finalize")
+    builder.add_edge("finalize", END)
 
     return builder.compile(checkpointer=checkpointer)

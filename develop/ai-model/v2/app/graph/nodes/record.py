@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import date, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from app.core.exceptions import ExternalServiceError
 from app.graph.deps import NodeDeps
@@ -30,6 +32,8 @@ _ERR_INVALID_FIELD = (
 )
 _ERR_NOT_TODAY = "오늘 계획만 기록할 수 있어요."
 _ERR_NOT_IN_PLAN = "오늘 계획에 없는 항목이에요."
+_ERR_DELETE_DATE = "삭제할 날짜를 찾지 못했어요. 예: 오늘 운동 플랜 삭제해줘"
+_KST = ZoneInfo("Asia/Seoul")
 
 
 def make_record_node(deps: NodeDeps):
@@ -40,6 +44,8 @@ def make_record_node(deps: NodeDeps):
             return await _handle_profile(state)
         if record_type == "plan_check":
             return await _handle_plan_check(deps, state)
+        if record_type == "plan_delete":
+            return await _handle_plan_delete(state)
 
         logger.warning("record_type missing; returning empty update")
         return {}
@@ -57,11 +63,16 @@ async def _handle_profile(state: GraphState) -> dict:
         logger.info("Unsupported profile fields detected: %s", sorted(invalid_fields))
         return {"response": _ERR_INVALID_FIELD}
 
-    current_profile = dict(state.get("user_profile") or {})
+    current_profile = dict(state.get("effective_user_profile") or state.get("user_profile") or {})
     updated_profile = {**current_profile, **changes}
+    pending_overlay = {
+        **(state.get("pending_profile_overlay") or {}),
+        **changes,
+    }
 
     return {
-        "user_profile": updated_profile,
+        "effective_user_profile": updated_profile,
+        "pending_profile_overlay": pending_overlay,
         "profile_changes": changes,
     }
 
@@ -86,14 +97,26 @@ async def _handle_plan_check(deps: NodeDeps, state: GraphState) -> dict:
     if item_id not in plan_ids:
         return {"response": _ERR_NOT_IN_PLAN}
 
-    updated_plan = [
-        {**item, "completed": True} if item.get("id") == item_id else item
-        for item in today_plan
-    ]
+    return {
+        "profile_changes": {"item_id": item_id},
+    }
+
+
+async def _handle_plan_delete(state: GraphState) -> dict:
+    payload = state.get("profile_changes") or _infer_plan_delete_payload(
+        str(state.get("user_message") or "")
+    )
+    target_dates = payload.get("target_dates") or []
+    plan_type = payload.get("plan_type") or "all"
+
+    if not target_dates:
+        return {"response": _ERR_DELETE_DATE}
 
     return {
-        "today_plan": updated_plan,
-        "profile_changes": {"item_id": item_id},
+        "profile_changes": {
+            "plan_type": plan_type,
+            "target_dates": target_dates,
+        },
     }
 
 
@@ -133,6 +156,91 @@ def _infer_profile_changes(message: str) -> dict[str, Any]:
             changes["goal"] = goal
 
     return changes
+
+
+def _infer_plan_delete_payload(message: str) -> dict[str, Any]:
+    return {
+        "plan_type": _infer_plan_delete_type(message),
+        "target_dates": _infer_plan_delete_dates(message),
+    }
+
+
+def _infer_plan_delete_type(message: str) -> str:
+    lowered = message.lower()
+    has_workout = any(
+        token in lowered
+        for token in ("운동", "루틴", "헬스", "근력", "유산소", "workout", "exercise")
+    )
+    has_diet = any(
+        token in lowered
+        for token in ("식단", "식사", "메뉴", "아침", "점심", "저녁", "diet", "meal")
+    )
+    if has_workout and not has_diet:
+        return "workout"
+    if has_diet and not has_workout:
+        return "diet"
+    return "all"
+
+
+def _infer_plan_delete_dates(message: str) -> list[str]:
+    normalized = " ".join(message.strip().split())
+    today = datetime.now(_KST).date()
+    explicit_dates = _extract_explicit_dates(normalized, today.year)
+    if explicit_dates:
+        return explicit_dates
+
+    lowered = normalized.lower()
+    if any(token in lowered for token in ("일주일", "1주", "7일", "이번 주", "이번주", "주간")):
+        return [(today + timedelta(days=offset)).isoformat() for offset in range(7)]
+    if any(token in lowered for token in ("한 달", "한달", "1달", "1개월", "30일", "월간")):
+        return [(today + timedelta(days=offset)).isoformat() for offset in range(30)]
+    if "내일" in lowered:
+        return [(today + timedelta(days=1)).isoformat()]
+    if "어제" in lowered:
+        return [(today - timedelta(days=1)).isoformat()]
+
+    return [today.isoformat()]
+
+
+def _extract_explicit_dates(message: str, current_year: int) -> list[str]:
+    dates: list[str] = []
+    seen: set[str] = set()
+
+    for match in re.finditer(r"(\d{4})[-./](\d{1,2})[-./](\d{1,2})", message):
+        parsed = _safe_date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+        if parsed and parsed.isoformat() not in seen:
+            seen.add(parsed.isoformat())
+            dates.append(parsed.isoformat())
+
+    for match in re.finditer(r"(\d{1,2})\s*월\s*(\d{1,2})\s*일", message):
+        parsed = _safe_date(current_year, int(match.group(1)), int(match.group(2)))
+        if parsed and parsed.isoformat() not in seen:
+            seen.add(parsed.isoformat())
+            dates.append(parsed.isoformat())
+
+    return dates
+
+
+def _safe_date(year: int, month: int, day: int) -> date | None:
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
+
+
+def _today_iso() -> str:
+    return datetime.now(_KST).date().isoformat()
+
+
+def _matches_delete_plan_type(item: dict, plan_type: str) -> bool:
+    if plan_type == "all":
+        return True
+    item_type = str(item.get("type") or "").lower()
+    if plan_type == "workout":
+        return item_type == "exercise"
+    if plan_type == "diet":
+        return item_type == "meal"
+    return False
 
 
 def _infer_plan_check_item_id(message: str, today_plan: list[dict]) -> str | None:

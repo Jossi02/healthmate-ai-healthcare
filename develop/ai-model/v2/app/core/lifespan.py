@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 import aiosqlite
 import httpx
@@ -18,7 +18,9 @@ from app.clients.was import WASClient
 from app.core.checkpoint_filter import FilteringAsyncSqliteSaver
 from app.core.config import get_settings
 from app.core.profile_sync import ProfileSyncTracker
+from app.core.session_lock import ensure_session_lock_table
 from app.core.trace_store import TraceLogHandler, TraceStore
+from app.core.was_outbox import ensure_was_outbox_table, periodic_was_outbox_replay
 from app.graph.builder import build_graph
 from app.graph.deps import NodeDeps
 from app.services.langsmith_quality import LangSmithQualityExporter
@@ -159,6 +161,7 @@ async def lifespan(app: FastAPI):
 
     db_path = settings.CHECKPOINT_DB_PATH
     os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
+    app.state.checkpoint_db_path = db_path
     checkpointer_conn = await aiosqlite.connect(db_path)
     checkpointer = FilteringAsyncSqliteSaver(checkpointer_conn)
     await checkpointer.setup()
@@ -179,14 +182,24 @@ async def lifespan(app: FastAPI):
     logger.info("LangGraph compiled and ready")
 
     await _ensure_activity_table(db_path)
+    await ensure_session_lock_table(db_path)
+    await ensure_was_outbox_table(db_path)
     cleanup_task = asyncio.create_task(
         _periodic_cleanup(db_path, settings.CHECKPOINT_TTL_HOURS)
+    )
+    outbox_task = asyncio.create_task(
+        periodic_was_outbox_replay(db_path, deps, interval_seconds=60)
     )
     await _cleanup_old_checkpoints(db_path, settings.CHECKPOINT_TTL_HOURS)
 
     yield
 
     cleanup_task.cancel()
+    outbox_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await cleanup_task
+    with suppress(asyncio.CancelledError):
+        await outbox_task
     try:
         await app.state._checkpointer.conn.close()
     except Exception as exc:

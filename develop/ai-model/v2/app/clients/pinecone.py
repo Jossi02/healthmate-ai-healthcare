@@ -112,16 +112,24 @@ class PineconeClient:
         tags: list[str] | None = None,
         extra_metadata: dict[str, Any] | None = None,
     ) -> str:
+        source_title = source
+        if extra_metadata and extra_metadata.get("source_title"):
+            source_title = str(extra_metadata["source_title"])
         metadata = {
             "text": text,
-            "source": source,
+            "source": "external",
+            "source_type": "external_kb",
+            "source_title": source_title,
             "category": category,
             "tags": tags or [],
             "timestamp": datetime.utcnow().isoformat(),
         }
         if extra_metadata:
             metadata.update(extra_metadata)
-        return await self._upsert(self.EXTERNAL_NS, vector, metadata)
+        vector_id = None
+        if extra_metadata and extra_metadata.get("kb_id"):
+            vector_id = f"external::{extra_metadata['kb_id']}"
+        return await self._upsert(self.EXTERNAL_NS, vector, metadata, vector_id=vector_id)
 
     # ── 삭제 ─────────────────────────────────────────────────────────────────
 
@@ -153,24 +161,46 @@ class PineconeClient:
         return [
             {
                 "id": m.id,
+                "kb_id": m.metadata.get("kb_id", ""),
                 "score": m.score,
                 "text": m.metadata.get("text", ""),
                 "source": m.metadata.get("source", source),
+                "source_type": m.metadata.get("source_type", ""),
+                "source_title": m.metadata.get("source_title", ""),
+                "domain": m.metadata.get("domain", ""),
+                "topic": m.metadata.get("topic", ""),
                 "category": m.metadata.get("category", ""),
                 "tags": m.metadata.get("tags", []),
                 "subtopic": m.metadata.get("subtopic", ""),
                 "chunk_title": m.metadata.get("chunk_title", ""),
                 "evidence_type": m.metadata.get("evidence_type", ""),
+                "evidence_rank": m.metadata.get("evidence_rank", ""),
                 "population": m.metadata.get("population", ""),
                 "use_case": m.metadata.get("use_case", ""),
+                "use_cases": m.metadata.get("use_cases", []),
+                "profile_targets": m.metadata.get("profile_targets", []),
+                "constraints": m.metadata.get("constraints", []),
+                "goals": m.metadata.get("goals", []),
+                "risk_level": m.metadata.get("risk_level", ""),
+                "locale": m.metadata.get("locale", ""),
+                "url": m.metadata.get("url", "") or m.metadata.get("source_url", ""),
+                "version": m.metadata.get("version", ""),
                 "year": m.metadata.get("year", ""),
                 "timestamp": m.metadata.get("timestamp", ""),
+                "metadata": dict(m.metadata or {}),
             }
             for m in result.matches
         ]
 
-    async def _upsert(self, namespace: str, vector: list[float], metadata: dict) -> str:
-        vid = str(uuid4())
+    async def _upsert(
+        self,
+        namespace: str,
+        vector: list[float],
+        metadata: dict,
+        *,
+        vector_id: str | None = None,
+    ) -> str:
+        vid = vector_id or str(uuid4())
         await self._index.upsert(
             vectors=[{"id": vid, "values": vector, "metadata": metadata}],
             namespace=namespace,
