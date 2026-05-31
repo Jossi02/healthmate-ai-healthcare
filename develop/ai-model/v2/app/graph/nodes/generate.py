@@ -354,6 +354,28 @@ def make_generate_node(deps: NodeDeps):
         if intent in {INTENT_PLAN, INTENT_MODIFY}:
             guard_started_at = time.perf_counter()
             proposed_plan = _sanitize_plan_data_layer(proposed_plan)
+            if _plan_contract_needs_fallback(proposed_plan, proposed_plan_type):
+                if intent == INTENT_PLAN:
+                    (
+                        draft_components,
+                        draft_text,
+                        proposed_plan,
+                        proposed_plan_type,
+                        proposed_plan_action,
+                    ) = _build_starter_plan_fallback(state)
+                else:
+                    (
+                        draft_components,
+                        draft_text,
+                        proposed_plan,
+                        proposed_plan_type,
+                        proposed_plan_action,
+                    ) = _build_modify_plan_fallback(state)
+                deps.trace.record_current_alert(
+                    severity="warning",
+                    message="Draft plan failed write contract; deterministic fallback applied",
+                    detail={"domain": proposed_plan_type, "count": len(proposed_plan or [])},
+                )
             draft_components, proposed_plan = _apply_profile_quality_guardrails(
                 draft_components,
                 proposed_plan,
@@ -1999,6 +2021,53 @@ def _safe_int(value: object) -> int | None:
         return int(float(value))
     except (TypeError, ValueError):
         return None
+
+
+def _plan_contract_needs_fallback(
+    proposed_plan: list[dict],
+    proposed_plan_type: str | None,
+) -> bool:
+    if proposed_plan_type not in {"workout", "diet"}:
+        return bool(proposed_plan)
+    if not proposed_plan:
+        return False
+
+    for item in proposed_plan:
+        if not isinstance(item, dict):
+            return True
+        if not str(item.get("name") or "").strip():
+            return True
+        if not _is_iso_day_string(item.get("day")):
+            return True
+
+        if proposed_plan_type == "workout":
+            exercises = item.get("ex_list") or []
+            if not isinstance(exercises, list) or not exercises:
+                return True
+            for exercise in exercises:
+                if not isinstance(exercise, dict):
+                    return True
+                if not str(exercise.get("exercise_name") or "").strip():
+                    return True
+                for numeric_key in ("sets", "duration_minutes", "calories"):
+                    value = exercise.get(numeric_key)
+                    if value in (None, ""):
+                        continue
+                    parsed = _safe_int(value)
+                    if parsed is None or parsed < 0:
+                        return True
+
+        if proposed_plan_type == "diet":
+            if item.get("ex_list"):
+                return True
+            if not str(item.get("detail") or "").strip():
+                return True
+
+    return False
+
+
+def _is_iso_day_string(value: object) -> bool:
+    return bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(value or "").strip()))
 
 
 def _render_plan_preview(draft_result: DraftResponse, state: GraphState) -> str:

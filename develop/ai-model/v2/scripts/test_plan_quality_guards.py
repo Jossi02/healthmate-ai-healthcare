@@ -19,6 +19,7 @@ from app.graph.nodes.generate import (
     _is_mixed_plan_type_request,
     _minimize_plan_exposition,
     _normalize_plan_approval_question,
+    _plan_contract_needs_fallback,
     _render_plan_preview_from_items,
     _workout_item_category,
 )
@@ -438,6 +439,34 @@ def test_demo_plan_rag_degraded_does_not_fail_closed() -> None:
     )
 
 
+def test_invalid_llm_plan_contract_triggers_fallback() -> None:
+    invalid_workout = [
+        {
+            "name": "Routine",
+            "detail": "No structured exercises",
+            "day": kst_today_iso(),
+            "ex_list": [],
+        }
+    ]
+    valid_diet = [
+        {
+            "name": "Lunch",
+            "detail": "Brown rice, tofu, vegetables",
+            "day": kst_today_iso(),
+            "ex_list": [],
+        }
+    ]
+
+    assert_true(
+        _plan_contract_needs_fallback(invalid_workout, "workout"),
+        "workout drafts without exercise entries should be replaced before validation blocks the proposal",
+    )
+    assert_true(
+        not _plan_contract_needs_fallback(valid_diet, "diet"),
+        "valid diet drafts should not be replaced",
+    )
+
+
 def main() -> None:
     tests = [
         test_stretching_beats_cardio_label,
@@ -456,6 +485,7 @@ def main() -> None:
         test_month_diet_plan_expands_by_calendar_day,
         test_month_workout_plan_expands_weekly_sessions,
         test_demo_plan_rag_degraded_does_not_fail_closed,
+        test_invalid_llm_plan_contract_triggers_fallback,
     ]
     for test in tests:
         test()
