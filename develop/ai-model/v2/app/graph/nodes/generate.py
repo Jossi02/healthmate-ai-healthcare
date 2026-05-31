@@ -382,6 +382,29 @@ def make_generate_node(deps: NodeDeps):
                 proposed_plan_type,
                 state,
             )
+            if proposed_plan_type == "diet" and _diet_plan_requires_safe_fallback(
+                proposed_plan,
+                _effective_user_profile(state),
+            ):
+                (
+                    draft_components,
+                    draft_text,
+                    proposed_plan,
+                    proposed_plan_type,
+                    proposed_plan_action,
+                ) = _build_starter_plan_fallback({**state, "domain": "diet"})
+                proposed_plan = _sanitize_plan_data_layer(proposed_plan)
+                draft_components, proposed_plan = _apply_profile_quality_guardrails(
+                    draft_components,
+                    proposed_plan,
+                    proposed_plan_type,
+                    state,
+                )
+                deps.trace.record_current_alert(
+                    severity="warning",
+                    message="Diet draft conflicted with dietary constraints; deterministic fallback applied",
+                    detail={"count": len(proposed_plan or [])},
+                )
             deps.trace.record_current_event(
                 stage="generate.profile_safety_validator",
                 status="ok",
@@ -2064,6 +2087,97 @@ def _plan_contract_needs_fallback(
                 return True
 
     return False
+
+
+def _diet_plan_requires_safe_fallback(
+    proposed_plan: list[dict],
+    profile: dict,
+) -> bool:
+    if not proposed_plan:
+        return False
+
+    profile_parts: list[str] = []
+    for key in ("diet_type", "dietary_restrictions", "allergies", "allergy"):
+        profile_parts.extend(_as_text_list(profile.get(key)))
+    profile_text = " ".join(profile_parts).lower()
+    plan_text = _plan_text_for_safety_check(proposed_plan)
+
+    vegetarian = any(token in profile_text for token in ("vegetarian", "vegan", "채식", "비건"))
+    dairy_free = any(token in profile_text for token in ("dairy", "milk", "유제품", "우유"))
+
+    if vegetarian and any(term in plan_text for term in _DIET_MEAT_CONFLICT_TERMS):
+        return True
+
+    if dairy_free:
+        scrubbed = plan_text
+        for replacement in _DIET_DAIRY_ALLOWED_REPLACEMENTS:
+            scrubbed = scrubbed.replace(replacement, "")
+        if any(term in scrubbed for term in _DIET_DAIRY_CONFLICT_TERMS):
+            return True
+
+    return False
+
+
+def _plan_text_for_safety_check(proposed_plan: list[dict]) -> str:
+    parts: list[str] = []
+    for item in proposed_plan or []:
+        if not isinstance(item, dict):
+            continue
+        parts.extend(str(item.get(key) or "") for key in ("name", "detail"))
+        for exercise in item.get("ex_list") or []:
+            if isinstance(exercise, dict):
+                parts.append(str(exercise.get("exercise_name") or ""))
+    return " ".join(parts).lower()
+
+
+_DIET_MEAT_CONFLICT_TERMS = (
+    "닭",
+    "닭가슴살",
+    "소고기",
+    "돼지고기",
+    "연어",
+    "참치",
+    "생선",
+    "새우",
+    "crab",
+    "shrimp",
+    "chicken",
+    "beef",
+    "pork",
+    "salmon",
+    "tuna",
+    "fish",
+)
+_DIET_DAIRY_CONFLICT_TERMS = (
+    "우유",
+    "치즈",
+    "요거트",
+    "요구르트",
+    "버터",
+    "크림",
+    "milk",
+    "cheese",
+    "yogurt",
+    "butter",
+    "cream",
+)
+_DIET_DAIRY_ALLOWED_REPLACEMENTS = (
+    "콩요거트",
+    "코코넛요거트",
+    "무가당 콩요거트",
+    "두유",
+    "아몬드유",
+    "오트밀크",
+    "귀리우유",
+    "비건 요거트",
+    "soy yogurt",
+    "coconut yogurt",
+    "soy milk",
+    "almond milk",
+    "oat milk",
+    "non-dairy",
+    "dairy-free",
+)
 
 
 def _is_iso_day_string(value: object) -> bool:

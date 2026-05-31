@@ -15,6 +15,7 @@ from app.graph.nodes.generate import (
     _adjust_workout_plan_for_profile,
     _build_mixed_plan_clarification_draft,
     _build_modify_plan_fallback,
+    _diet_plan_requires_safe_fallback,
     _expand_long_range_plan_if_requested,
     _is_mixed_plan_type_request,
     _minimize_plan_exposition,
@@ -555,6 +556,39 @@ def test_dairy_free_replacement_is_not_allergen_conflict() -> None:
     )
 
 
+def test_diet_constraint_conflict_triggers_safe_fallback() -> None:
+    profile = {
+        "diet_type": "vegetarian",
+        "allergies": ["dairy"],
+        "dietary_restrictions": ["vegetarian", "dairy_allergy"],
+    }
+    bad_plan = [
+        {
+            "name": "Lunch",
+            "detail": "닭가슴살 샐러드와 그릭 요거트",
+            "day": kst_today_iso(),
+            "ex_list": [],
+        }
+    ]
+    safe_plan = [
+        {
+            "name": "Lunch",
+            "detail": "두부 스테이크와 무가당 콩요거트",
+            "day": kst_today_iso(),
+            "ex_list": [],
+        }
+    ]
+
+    assert_true(
+        _diet_plan_requires_safe_fallback(bad_plan, profile),
+        "vegetarian dairy-free profile should replace meat/dairy diet drafts",
+    )
+    assert_true(
+        not _diet_plan_requires_safe_fallback(safe_plan, profile),
+        "safe plant-based dairy-free replacements should be accepted",
+    )
+
+
 def test_explicit_new_domain_ignores_active_proposal_context() -> None:
     resolution = _resolve_context(
         {
@@ -596,6 +630,7 @@ def main() -> None:
         test_modify_without_active_plan_creates_new_proposal,
         test_demo_plan_semantic_judge_does_not_block_structured_plans,
         test_dairy_free_replacement_is_not_allergen_conflict,
+        test_diet_constraint_conflict_triggers_safe_fallback,
         test_explicit_new_domain_ignores_active_proposal_context,
     ]
     for test in tests:
