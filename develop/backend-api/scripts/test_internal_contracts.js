@@ -19,6 +19,7 @@ const {
 } = require('../src/services/exercisePlanReadService');
 const userController = require('../src/controllers/userController');
 const {
+  deleteChatThread,
   listChatThreads,
   loadChatMessages,
   persistChatTurn,
@@ -754,6 +755,61 @@ async function testPersistedChatThreadRoundTrip() {
   assert.equal(messages[1].client_message_id, 'assistant-msg-1');
 }
 
+async function testDeleteChatThreadRemovesOnlyOwnedThreadData() {
+  const supabase = new FakeSupabase({
+    chat_threads: [
+      {
+        user_id: 'user-1',
+        session_id: 'thread-1',
+        title: 'delete me',
+        message_count: 2,
+        last_message_at: '2026-06-04T00:00:00.000Z',
+      },
+      {
+        user_id: 'user-2',
+        session_id: 'thread-1',
+        title: 'same session different user',
+        message_count: 2,
+        last_message_at: '2026-06-04T00:00:00.000Z',
+      },
+      {
+        user_id: 'user-1',
+        session_id: 'thread-2',
+        title: 'keep me',
+        message_count: 2,
+        last_message_at: '2026-06-04T00:00:00.000Z',
+      },
+    ],
+    chat_messages: [
+      { id: 'm1', user_id: 'user-1', session_id: 'thread-1', role: 'user', content: 'delete' },
+      { id: 'm2', user_id: 'user-2', session_id: 'thread-1', role: 'user', content: 'keep' },
+      { id: 'm3', user_id: 'user-1', session_id: 'thread-2', role: 'user', content: 'keep' },
+    ],
+    chat_feedback: [
+      { id: 'f1', user_id: 'user-1', session_id: 'thread-1', client_message_id: 'a1' },
+      { id: 'f2', user_id: 'user-2', session_id: 'thread-1', client_message_id: 'a2' },
+      { id: 'f3', user_id: 'user-1', session_id: 'thread-2', client_message_id: 'a3' },
+    ],
+  });
+
+  const deleted = await deleteChatThread(supabase, 'user-1', 'thread-1');
+
+  assert.deepEqual(deleted, { session_id: 'thread-1' });
+  assert.deepEqual(
+    supabase.tables.chat_threads.map((row) => `${row.user_id}:${row.session_id}`).sort(),
+    ['user-1:thread-2', 'user-2:thread-1']
+  );
+  assert.deepEqual(
+    supabase.tables.chat_messages.map((row) => row.id).sort(),
+    ['m2', 'm3']
+  );
+  assert.deepEqual(
+    supabase.tables.chat_feedback.map((row) => row.id).sort(),
+    ['f2', 'f3']
+  );
+  assert.equal(await deleteChatThread(supabase, 'user-1', 'missing-thread'), null);
+}
+
 async function main() {
   await testExistingProfileNormalization();
   await testMissingProfileBootstrap();
@@ -774,7 +830,8 @@ async function main() {
   await testPasswordHashValidationRejectsBadHashes();
   await testPasswordVerificationHandlesValidHashes();
   await testPersistedChatThreadRoundTrip();
-  console.log('[internal-contracts] 18/18 passed');
+  await testDeleteChatThreadRemovesOnlyOwnedThreadData();
+  console.log('[internal-contracts] 19/19 passed');
 }
 
 main().catch((error) => {

@@ -93,7 +93,7 @@
           "support_mode": "care",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "낙상 걱정 없이 할 수 있는 운동 추천해줘 [목표:mobility, 나이:72, 성별:female, 체중:68kg, 운동수준:beginner, 가능시간:20분, 운동빈도:주2회, 생활패턴:retired, morning walk, 통증:['허리']]"
+            "낙상 걱정 없이 할 수 있는 운동 추천해줘 [목표:mobility, 나이:72, 성별:female, 체중:68kg, 운동수준:beginner, 가능시간:20분, 운동빈도:주2회, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:retired, morning walk, 통증:['허리']]"
           ],
           "search_targets": [
             "vdb_external",
@@ -118,7 +118,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "지금은 의지를 더 짜내기보다 부담을 낮춰 다시 이어갈 수 있게 잡을게요.\nHere is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 건강/가동성 목표라 관절 부담을 낮춘 가동성, 균형, 저강도 유산소 중심 / 제약(허리) 고려 / Leg Press 2세트, Bridge 2세트\n- 2026-04-16 Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 건강/가동성 목표라 관절 부담을 낮춘 가동성, 균형, 저강도 유산소 중심 / 제약(허리) 고려 / Treadmill Walk 20분\nIf you want, tell me whether to proceed with this plan.\n"
+        "response_excerpt": "지금은 의지를 더 짜내기보다 부담을 낮춰 다시 이어갈 수 있게 잡을게요.\nHere is a workout plan.\n- 2026-04-16 스트레칭 루틴: 스트레칭 축 / 부상 예방과 회복을 위한 준비/마무리 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 저강도 / 제약(허리) 고려 / 고양이-소 스트레칭 2세트\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 건강/가동성 목표라 관절 부담을 낮춘 가동성, 균형, 저강도 유산소 중심 / 제약(허리) 고려 / 운동 종류: 유산소 / Treadmill Walk 20분\n- 2026-04-16 하체 - Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 2회 기준"
       }
     },
     {
@@ -165,7 +165,7 @@
           "support_mode": "normal",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "짧은 운동 루틴 짜줘 [목표:consistency, 나이:33, 성별:nonbinary, 체중:63kg, 운동수준:beginner, 가능시간:20분, 운동빈도:주2회, 운동성향:내향형, 생활패턴:office worker]"
+            "짧은 운동 루틴 짜줘 [목표:consistency, 나이:33, 성별:nonbinary, 체중:63kg, 운동수준:beginner, 가능시간:20분, 운동빈도:주2회, 운동성향:내향형, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:office worker]"
           ],
           "search_targets": [
             "vdb_external",
@@ -176,7 +176,7 @@
             "external"
           ],
           "max_sets": 2,
-          "max_duration": 20
+          "max_duration": 15
         },
         "root_cause": {
           "likely_nodes": [
@@ -190,7 +190,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 내향형 성향이라 혼자 조용히 할 수 있는 홈트, 고정 루틴, 이어폰 걷기 중심 / Leg Press 2세트, Bridge 2세트\n- 2026-04-16 Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 내향형 성향이라 혼자 조용히 할 수 있는 홈트, 고정 루틴, 이어폰 걷기 중심 / Treadmill Walk 20분\nIf you want, tell me whether to proceed with this plan."
+        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 스트레칭 루틴: 스트레칭 축 / 부상 예방과 회복을 위한 준비/마무리 / 내향형 성향에 맞춘 집에서 혼자 가능한 구성 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 저강도 / 전신 스트레칭 2세트\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 내향형 성향이라 혼자 조용히 할 수 있는 홈트, 고정 루틴, 이어폰 걷기 중심 / 운동 종류: 유산소 / 내향형 감량 목표에 맞춰 집에서 가능한 유산소로 보정 / 집에서 제자리 빠른 걷기 15분\n- 2026-04-16 상체 루틴: 상체 축 / 내향형 성향에 맞춘 집에서 혼자 가능한 구성 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 "
       }
     },
     {
@@ -238,7 +238,7 @@
           "support_mode": "care",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "무릎 부담 적은 다이어트 운동 루틴 짜줘 [목표:fat_loss, 나이:41, 성별:male, 체중:96kg, 운동수준:beginner, 가능시간:25분, 운동빈도:주2회, 생활패턴:office worker, 통증:['무릎']]"
+            "무릎 부담 적은 다이어트 운동 루틴 짜줘 [목표:fat_loss, 나이:41, 성별:male, 체중:96kg, 운동수준:beginner, 가능시간:25분, 운동빈도:주2회, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:office worker, 통증:['무릎']]"
           ],
           "search_targets": [
             "vdb_external",
@@ -263,7 +263,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "지금은 의지를 더 짜내기보다 부담을 낮춰 다시 이어갈 수 있게 잡을게요.\nHere is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 25분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 다이어트/감량 목표라 저충격 유산소와 전신 근력 조합 / 체중 부담을 고려해 점프보다 저충격 유산소와 안정적인 근력 중심 / 제약(무릎) 고려 / Leg Press 2세트, Bridge 2세트\n- 2026-04-16 Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 25분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 다이어트/감량 목표라 저충격 유산소와 전신 근력 조합 / 체중 부담을 고려해 점프보다 저충격 유산소와 안정적인 근력 중심 / 제약(무릎) 고려 / Treadmill Walk 20분\nIf"
+        "response_excerpt": "지금은 의지를 더 짜내기보다 부담을 낮춰 다시 이어갈 수 있게 잡을게요.\nHere is a workout plan.\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 25분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 다이어트/감량 목표라 저충격 유산소와 전신 근력 조합 / 체중 부담을 고려해 점프보다 저충격 유산소와 안정적인 근력 중심 / 제약(무릎) 고려 / 운동 종류: 유산소 / Treadmill Walk 20분\n- 2026-04-16 하체 - Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 25분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 다이어트/감량 목표라 저충격 유산소와 전신 근력 조합 / 체중 부담을 고려해 점프보다 저충격 유산소와 안정적인 근력 중심 / 제약(무릎) 고려 / 운동 종"
       }
     },
     {
@@ -310,7 +310,7 @@
           "support_mode": "normal",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "가볍게 할 수 있는 운동 루틴 짜줘 [목표:fat_loss, 나이:16, 성별:female, 체중:48kg, 운동수준:beginner, 가능시간:18분, 운동빈도:주2회, 생활패턴:office worker]"
+            "가볍게 할 수 있는 운동 루틴 짜줘 [목표:fat_loss, 나이:16, 성별:female, 체중:48kg, 운동수준:beginner, 가능시간:18분, 운동빈도:주2회, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:office worker]"
           ],
           "search_targets": [
             "vdb_external",
@@ -335,7 +335,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\nHere is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 18분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 다이어트/감량 목표라 저충격 유산소와 전신 근력 조합 / 낮은 체중과 감량 목표가 함께 있어 체력 유지와 근손실 방지 중심 / Leg Press 2세트, Bridge 2세트\n- 2026-04-16 Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 18분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 다이어트/감량 목표라 저충격 유산소와 전신 근력 조합 / 낮은 체중과 감량 목표가 함께 있어 체력 유지와 근손실 방지 중심 / Treadmill Walk 18분\nIf you want, tell me w"
+        "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\nHere is a workout plan.\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 18분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 다이어트/감량 목표라 저충격 유산소와 전신 근력 조합 / 낮은 체중과 감량 목표가 함께 있어 체력 유지와 근손실 방지 중심 / 운동 종류: 유산소 / Treadmill Walk 18분\n- 2026-04-16 하체 - Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 18분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 다이어트/감량 목표라 저충격 유산소와 전신 근력 조합 / 낮은 체중과 감량 목표가 함께 있어 체력 유지와 근손실 방지 중심 / 운동 종류: 하체 / Leg Press 2세"
       }
     },
     {
@@ -381,7 +381,7 @@
           "support_mode": "normal",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "오늘 운동 계획 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:15분, 운동빈도:주2회, 생활패턴:office worker]"
+            "오늘 운동 계획 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:15분, 운동빈도:주2회, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:office worker]"
           ],
           "search_targets": [
             "vdb_external",
@@ -406,7 +406,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 15분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / Leg Press 2세트, Bridge 2세트\n- 2026-04-16 Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 15분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / Treadmill Walk 15분\nIf you want, tell me whether to proceed with this plan.\nShould I proceed with this workout plan?\nI applied workout guidance and user constraints."
+        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 스트레칭 루틴: 스트레칭 축 / 부상 예방과 회복을 위한 준비/마무리 / 가능 시간 15분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 저강도 / 전신 스트레칭 2세트\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 15분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 운동 종류: 유산소 / Treadmill Walk 15분\n- 2026-04-16 상체 루틴: 상체 축 / 가능 시간 15분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 저강도 / 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-04-16 하체 - Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 15분 "
       }
     },
     {
@@ -452,7 +452,7 @@
           "support_mode": "normal",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "오늘 운동 계획 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:intermediate, 가능시간:35분, 운동빈도:주3회, 생활패턴:office worker]"
+            "오늘 운동 계획 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:intermediate, 가능시간:35분, 운동빈도:주3회, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:office worker]"
           ],
           "search_targets": [
             "vdb_external",
@@ -477,7 +477,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 중급자 기준 기본 볼륨 / 가능 시간 35분 안에서 진행 / 주 3회 루틴으로 반복 가능하게 구성 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / Leg Press 3세트, Bridge 3세트\n- 2026-04-16 Cardio: Low-intensity walking / 중급자 기준 기본 볼륨 / 가능 시간 35분 안에서 진행 / 주 3회 루틴으로 반복 가능하게 구성 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / Treadmill Walk 20분\nIf you want, tell me whether to proceed with this plan.\nShould I proceed with this workout plan?\nI applied workout guidance and user constraints."
+        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 스트레칭 루틴: 스트레칭 축 / 부상 예방과 회복을 위한 준비/마무리 / 가능 시간 35분 안에서 진행 / 주 3회 루틴으로 반복 가능하게 구성 / 전신 스트레칭 2세트\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 중급자 기준 기본 볼륨 / 가능 시간 35분 안에서 진행 / 주 3회 루틴으로 반복 가능하게 구성 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 운동 종류: 유산소 / Treadmill Walk 20분\n- 2026-04-16 상체 루틴: 상체 축 / 가능 시간 35분 안에서 진행 / 주 3회 루틴으로 반복 가능하게 구성 / 푸시업 3세트, 밴드 로우 3세트\n- 2026-04-16 하체 - Lower Body Session: Lower-impact lower body routine / 중급자 기준 기본 볼륨 / 가능 시간 35분 안에서 진행 / 주 3회"
       }
     },
     {
@@ -523,7 +523,7 @@
           "support_mode": "normal",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "근육 늘리는 운동 루틴 짜줘 [목표:muscle_gain, 나이:32, 성별:male, 체중:78kg, 운동수준:advanced, 가능시간:50분, 운동빈도:주5회, 생활패턴:office worker]"
+            "근육 늘리는 운동 루틴 짜줘 [목표:muscle_gain, 나이:32, 성별:male, 체중:78kg, 운동수준:advanced, 가능시간:50분, 운동빈도:주5회, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:office worker]"
           ],
           "search_targets": [
             "vdb_external",
@@ -548,7 +548,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 숙련자 기준으로 강도는 유지하되 회복 상태 확인 / 가능 시간 50분 안에서 진행 / 주 5회 기준이라 세션별 부담을 나눠 진행 / 근력/근육 증가 목표라 큰 근육 위주로 점진적 과부하 / Leg Press 3세트, Bridge 3세트\n- 2026-04-16 Cardio: Low-intensity walking / 숙련자 기준으로 강도는 유지하되 회복 상태 확인 / 가능 시간 50분 안에서 진행 / 주 5회 기준이라 세션별 부담을 나눠 진행 / 근력/근육 증가 목표라 큰 근육 위주로 점진적 과부하 / Treadmill Walk 20분\nIf you want, tell me whether to proceed with this plan.\nShould I proceed with this workout plan?\nI applied "
+        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 상체 루틴: 상체 축 / 가능 시간 50분 안에서 진행 / 주 5회 기준이라 세션별 부담을 나눠 진행 / 숙련자도 반복 가능한 기본 강도 / 푸시업 3세트, 덤벨 로우 3세트\n- 2026-04-16 하체 - Lower Body Session: Lower-impact lower body routine / 숙련자 기준으로 강도는 유지하되 회복 상태 확인 / 가능 시간 50분 안에서 진행 / 주 5회 기준이라 세션별 부담을 나눠 진행 / 근력/근육 증가 목표라 큰 근육 위주로 점진적 과부하 / 운동 종류: 하체 / Leg Press 3세트, Bridge 3세트\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 숙련자 기준으로 강도는 유지하되 회복 상태 확인 / 가능 시간 50분 안에서 진행 / 주 5회 기준이라 세션별 부담을 나눠 진행 / 근력/근육 증가 목표라 큰 근육 위주로 점진"
       }
     },
     {
@@ -594,7 +594,7 @@
           "support_mode": "normal",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "8분 안에 할 수 있는 운동 계획 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:8분, 운동빈도:주1회, 생활패턴:sleep-deprived parent]"
+            "8분 안에 할 수 있는 운동 계획 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:8분, 운동빈도:주1회, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:sleep-deprived parent]"
           ],
           "search_targets": [
             "vdb_external",
@@ -619,7 +619,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 8분 안에서 진행 / 주 1회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / Leg Press 2세트, Bridge 2세트\n- 2026-04-16 Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 8분 안에서 진행 / 주 1회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / Treadmill Walk 8분\nIf you want, tell me whether to proceed with this plan.\nShould I proceed with this workout plan?\nI applied workout guidance and user constraints."
+        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 스트레칭 루틴: 스트레칭 축 / 부상 예방과 회복을 위한 준비/마무리 / 가능 시간 8분 안에서 진행 / 주 1회 기준으로 회복일을 충분히 남김 / 저강도 / 전신 스트레칭 2세트\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 8분 안에서 진행 / 주 1회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 운동 종류: 유산소 / Treadmill Walk 8분\n- 2026-04-16 상체 루틴: 상체 축 / 가능 시간 8분 안에서 진행 / 주 1회 기준으로 회복일을 충분히 남김 / 저강도 / 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-04-16 하체 - Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 8분 안에서 진"
       }
     },
     {
@@ -665,7 +665,7 @@
           "support_mode": "normal",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "이번 주 운동 루틴 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:intermediate, 가능시간:30분, 운동빈도:주5회, 생활패턴:office worker]"
+            "이번 주 운동 루틴 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:intermediate, 가능시간:30분, 운동빈도:주5회, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:office worker]"
           ],
           "search_targets": [
             "vdb_external",
@@ -690,7 +690,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 중급자 기준 기본 볼륨 / 가능 시간 30분 안에서 진행 / 주 5회 기준이라 세션별 부담을 나눠 진행 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / Leg Press 3세트, Bridge 3세트\n- 2026-04-16 Cardio: Low-intensity walking / 중급자 기준 기본 볼륨 / 가능 시간 30분 안에서 진행 / 주 5회 기준이라 세션별 부담을 나눠 진행 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / Treadmill Walk 20분\nIf you want, tell me whether to proceed with this plan.\nShould I proceed with this workout plan?\nI applied workout guidance and user constr"
+        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 스트레칭 루틴: 스트레칭 축 / 부상 예방과 회복을 위한 준비/마무리 / 가능 시간 30분 안에서 진행 / 주 5회 기준이라 세션별 부담을 나눠 진행 / 전신 스트레칭 2세트\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 중급자 기준 기본 볼륨 / 가능 시간 30분 안에서 진행 / 주 5회 기준이라 세션별 부담을 나눠 진행 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 운동 종류: 유산소 / Treadmill Walk 20분\n- 2026-04-16 상체 루틴: 상체 축 / 가능 시간 30분 안에서 진행 / 주 5회 기준이라 세션별 부담을 나눠 진행 / 푸시업 3세트, 밴드 로우 3세트\n- 2026-04-16 하체 - Lower Body Session: Lower-impact lower body routine / 중급자 기준 기본 볼륨 / 가능 시간 30분 안에서 "
       }
     },
     {
@@ -736,7 +736,7 @@
           "support_mode": "normal",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "꾸준히 할 운동 계획 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:20분, 운동빈도:주1회, 생활패턴:office worker]"
+            "꾸준히 할 운동 계획 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:20분, 운동빈도:주1회, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:office worker]"
           ],
           "search_targets": [
             "vdb_external",
@@ -761,7 +761,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 1회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / Leg Press 2세트, Bridge 2세트\n- 2026-04-16 Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 1회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / Treadmill Walk 20분\nIf you want, tell me whether to proceed with this plan.\nShould I proceed with this workout plan?\nI applied workout guidance and user constraints."
+        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 스트레칭 루틴: 스트레칭 축 / 부상 예방과 회복을 위한 준비/마무리 / 가능 시간 20분 안에서 진행 / 주 1회 기준으로 회복일을 충분히 남김 / 저강도 / 전신 스트레칭 2세트\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 1회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 운동 종류: 유산소 / Treadmill Walk 20분\n- 2026-04-16 상체 루틴: 상체 축 / 가능 시간 20분 안에서 진행 / 주 1회 기준으로 회복일을 충분히 남김 / 저강도 / 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-04-16 하체 - Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 20분 "
       }
     },
     {
@@ -807,7 +807,7 @@
           "support_mode": "normal",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "교대근무 고려해서 운동 계획 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:18분, 운동빈도:주2회, 생활패턴:shift worker, fragmented sleep]"
+            "교대근무 고려해서 운동 계획 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:18분, 운동빈도:주2회, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:shift worker, fragmented sleep]"
           ],
           "search_targets": [
             "vdb_external",
@@ -832,7 +832,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 18분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / Leg Press 2세트, Bridge 2세트\n- 2026-04-16 Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 18분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / Treadmill Walk 18분\nIf you want, tell me whether to proceed with this plan.\nShould I proceed with this workout plan?\nI applied workout guidance and user constraints."
+        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 스트레칭 루틴: 스트레칭 축 / 부상 예방과 회복을 위한 준비/마무리 / 가능 시간 18분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 저강도 / 전신 스트레칭 2세트\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 18분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 운동 종류: 유산소 / Treadmill Walk 18분\n- 2026-04-16 상체 루틴: 상체 축 / 가능 시간 18분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 저강도 / 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-04-16 하체 - Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 18분 "
       }
     },
     {
@@ -879,7 +879,7 @@
           "support_mode": "normal",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "혼자 할 수 있는 운동 루틴 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:20분, 운동빈도:주3회, 운동성향:내향형, 생활패턴:office worker]"
+            "혼자 할 수 있는 운동 루틴 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:20분, 운동빈도:주3회, 운동성향:내향형, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:office worker]"
           ],
           "search_targets": [
             "vdb_external",
@@ -890,7 +890,7 @@
             "external"
           ],
           "max_sets": 2,
-          "max_duration": 20
+          "max_duration": 15
         },
         "root_cause": {
           "likely_nodes": [
@@ -904,7 +904,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 3회 루틴으로 반복 가능하게 구성 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 내향형 성향이라 혼자 조용히 할 수 있는 홈트, 고정 루틴, 이어폰 걷기 중심 / Leg Press 2세트, Bridge 2세트\n- 2026-04-16 Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 3회 루틴으로 반복 가능하게 구성 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 내향형 성향이라 혼자 조용히 할 수 있는 홈트, 고정 루틴, 이어폰 걷기 중심 / Treadmill Walk 20분\nIf you want, tell me whether to proceed with this plan.\nS"
+        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 스트레칭 루틴: 스트레칭 축 / 부상 예방과 회복을 위한 준비/마무리 / 내향형 성향에 맞춘 집에서 혼자 가능한 구성 / 가능 시간 20분 안에서 진행 / 주 3회 루틴으로 반복 가능하게 구성 / 저강도 / 전신 스트레칭 2세트\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 3회 루틴으로 반복 가능하게 구성 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 내향형 성향이라 혼자 조용히 할 수 있는 홈트, 고정 루틴, 이어폰 걷기 중심 / 운동 종류: 유산소 / 내향형 감량 목표에 맞춰 집에서 가능한 유산소로 보정 / 집에서 제자리 빠른 걷기 15분\n- 2026-04-16 상체 루틴: 상체 축 / 내향형 성향에 맞춘 집에서 혼자 가능한 구성 / 가능 시간 20분 안에서 진행 / 주 3회 루틴으로 반복 가능하게"
       }
     },
     {
@@ -951,7 +951,7 @@
           "support_mode": "normal",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "친구랑 같이 할 수 있는 운동 계획 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:20분, 운동빈도:주3회, 운동성향:외향형, 생활패턴:office worker]"
+            "친구랑 같이 할 수 있는 운동 계획 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:20분, 운동빈도:주3회, 운동성향:외향형, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:office worker]"
           ],
           "search_targets": [
             "vdb_external",
@@ -976,7 +976,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 3회 루틴으로 반복 가능하게 구성 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 외향형 성향이라 그룹 수업, 친구와 걷기, 함께 하는 챌린지 중 하나를 선택지로 둠 / Leg Press 2세트, Bridge 2세트\n- 2026-04-16 Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 3회 루틴으로 반복 가능하게 구성 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 외향형 성향이라 그룹 수업, 친구와 걷기, 함께 하는 챌린지 중 하나를 선택지로 둠 / Treadmill Walk 20분\nIf you want, tell me whether to proceed with this p"
+        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 스트레칭 루틴: 스트레칭 축 / 부상 예방과 회복을 위한 준비/마무리 / 외향형 성향에 맞춰 함께 하기 쉬운 선택지 / 가능 시간 20분 안에서 진행 / 주 3회 루틴으로 반복 가능하게 구성 / 저강도 / 전신 스트레칭 2세트\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 3회 루틴으로 반복 가능하게 구성 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 외향형 성향이라 그룹 수업, 친구와 걷기, 함께 하는 챌린지 중 하나를 선택지로 둠 / 운동 종류: 유산소 / Treadmill Walk 20분\n- 2026-04-16 상체 루틴: 상체 축 / 외향형 성향에 맞춰 함께 하기 쉬운 선택지 / 가능 시간 20분 안에서 진행 / 주 3회 루틴으로 반복 가능하게 구성 / 저강도 / 월 푸시업 2세트, 밴드 로우 2"
       }
     },
     {
@@ -1026,7 +1026,7 @@
           "support_mode": "normal",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "무릎 통증 고려해서 운동 계획 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:25분, 운동빈도:주2회, 생활패턴:office worker, 부상:['knee pain'], 통증:['무릎']]"
+            "무릎 통증 고려해서 운동 계획 짜줘 [목표:consistency, 나이:32, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:25분, 운동빈도:주2회, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:office worker, 부상:['knee pain'], 통증:['무릎']]"
           ],
           "search_targets": [
             "vdb_external",
@@ -1051,7 +1051,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 25분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 제약(knee pain, 무릎) 고려 / Leg Press 2세트, Bridge 2세트\n- 2026-04-16 Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 25분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 제약(knee pain, 무릎) 고려 / Treadmill Walk 20분\nIf you want, tell me whether to proceed with this plan.\nShould I proceed with this workout plan?\nI ap"
+        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 스트레칭 루틴: 스트레칭 축 / 부상 예방과 회복을 위한 준비/마무리 / 가능 시간 25분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 저강도 / 제약(knee pain, 무릎) 고려 / 전신 스트레칭 2세트\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 25분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 제약(knee pain, 무릎) 고려 / 운동 종류: 유산소 / Treadmill Walk 20분\n- 2026-04-16 상체 루틴: 상체 축 / 가능 시간 25분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 저강도 / 제약(knee pain, 무릎) 고려 / 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-04-16 하체 - Lower Bo"
       }
     },
     {
@@ -1101,7 +1101,7 @@
           "support_mode": "normal",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "혈압약 먹고 있는데 운동 계획 짜줘 [목표:consistency, 나이:58, 성별:male, 체중:82kg, 운동수준:beginner, 가능시간:20분, 운동빈도:주2회, 생활패턴:office worker, 질환:['hypertension']]"
+            "혈압약 먹고 있는데 운동 계획 짜줘 [목표:consistency, 나이:58, 성별:male, 체중:82kg, 운동수준:beginner, 가능시간:20분, 운동빈도:주2회, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:office worker, 질환:['hypertension']]"
           ],
           "search_targets": [
             "vdb_external",
@@ -1126,7 +1126,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 제약(hypertension) 고려 / Leg Press 2세트, Bridge 2세트\n- 2026-04-16 Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 제약(hypertension) 고려 / Treadmill Walk 20분\nIf you want, tell me whether to proceed with this plan.\nShould I proceed with this workout plan?\nI appl"
+        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 스트레칭 루틴: 스트레칭 축 / 부상 예방과 회복을 위한 준비/마무리 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 저강도 / 제약(hypertension) 고려 / 전신 스트레칭 2세트\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 지속성 목표라 실패해도 이어갈 수 있는 낮은 기준 / 제약(hypertension) 고려 / 운동 종류: 유산소 / Treadmill Walk 20분\n- 2026-04-16 상체 루틴: 상체 축 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 저강도 / 제약(hypertension) 고려 / 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-04-16 하체 - Lower Body "
       }
     },
     {
@@ -2184,7 +2184,7 @@
           "support_mode": "normal",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "오늘 운동 계획 짜줘 [목표:fat_loss, 나이:29, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:20분, 운동빈도:주2회, 운동성향:내향형, 생활패턴:office worker, 통증:['무릎'], 식이제약:['우유']]"
+            "오늘 운동 계획 짜줘 [목표:fat_loss, 나이:29, 성별:female, 체중:64kg, 운동수준:beginner, 가능시간:20분, 운동빈도:주2회, 운동성향:내향형, 운동구성:스트레칭/유산소/상체/하체, 선호운동:집에서 하는 유산소, 생활패턴:office worker, 통증:['무릎'], 식이제약:['우유']]"
           ],
           "search_targets": [
             "vdb_external",
@@ -2197,7 +2197,7 @@
             "important"
           ],
           "max_sets": 2,
-          "max_duration": 20
+          "max_duration": 15
         },
         "root_cause": {
           "likely_nodes": [
@@ -2211,7 +2211,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 다이어트/감량 목표라 저충격 유산소와 전신 근력 조합 / 내향형 성향이라 혼자 조용히 할 수 있는 홈트, 고정 루틴, 이어폰 걷기 중심 / 제약(무릎) 고려 / Leg Press 2세트, Bridge 2세트\n- 2026-04-16 Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 다이어트/감량 목표라 저충격 유산소와 전신 근력 조합 / 내향형 성향이라 혼자 조용히 할 수 있는 홈트, 고정 루틴, 이어폰 걷기 중심 / 제약(무릎) 고려 / Treadmill Walk 20분\nIf you want, tell me whethe"
+        "response_excerpt": "Here is a workout plan.\n- 2026-04-16 유산소 - Cardio: Low-intensity walking / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 다이어트/감량 목표라 저충격 유산소와 전신 근력 조합 / 내향형 성향이라 혼자 조용히 할 수 있는 홈트, 고정 루틴, 이어폰 걷기 중심 / 제약(무릎) 고려 / 운동 종류: 유산소 / 내향형 감량 목표에 맞춰 집에서 가능한 유산소로 보정 / 실내 자전거 15분\n- 2026-04-16 하체 - Lower Body Session: Lower-impact lower body routine / 초보자 기준 저강도 / 가능 시간 20분 안에서 진행 / 주 2회 기준으로 회복일을 충분히 남김 / 다이어트/감량 목표라 저충격 유산소와 전신 근력 조합 / 내향형 성향이라 혼자 조용히 할 수 있는 홈트, 고정 루틴, 이어폰 걷기 중심 / 제약(무릎) 고려 / 운동 종류"
       }
     },
     {
@@ -2334,7 +2334,7 @@
           "support_mode": "care",
           "proposed_plan_type": "workout",
           "search_queries": [
-            "방금 제안한 운동 계획을 사용자의 요청에 맞게 수정해줘: 그거 어깨 부담 줄여서 수정해줘 [목표:muscle_gain, 나이:31, 성별:male, 체중:64kg, 운동수준:advanced, 가능시간:20분, 운동빈도:주5회, 운동성향:내향형, 생활패턴:office worker, 통증:['어깨']]"
+            "방금 제안한 운동 계획을 사용자의 요청에 맞게 수정해줘: 그거 어깨 부담 줄여서 수정해줘 [목표:muscle_gain, 나이:31, 성별:male, 체중:64kg, 운동수준:advanced, 가능시간:20분, 운동빈도:주5회, 운동성향:내향형, 운동구성:스트레칭/유산소/상체/하체, 생활패턴:office worker, 통증:['어깨']]"
           ],
           "search_targets": [
             "vdb_external",
@@ -2346,7 +2346,7 @@
             "external"
           ],
           "max_sets": 2,
-          "max_duration": 20
+          "max_duration": 18
         },
         "root_cause": {
           "likely_nodes": [
@@ -2360,7 +2360,7 @@
             "safety": 0
           }
         },
-        "response_excerpt": "지금은 의지를 더 짜내기보다 부담을 낮춰 다시 이어갈 수 있게 잡을게요.\nI prepared a lower-intensity workout update.\n- 2026-04-16 Lower Body Session: Lower-impact lower body routine / 숙련자 기준으로 강도는 유지하되 회복 상태 확인 / 가능 시간 20분 안에서 진행 / 주 5회 기준이라 세션별 부담을 나눠 진행 / 근력/근육 증가 목표라 큰 근육 위주로 점진적 과부하 / 내향형 성향이라 혼자 조용히 할 수 있는 홈트, 고정 루틴, 이어폰 걷기 중심 / 제약(어깨) 고려 / Leg Press 2세트, Bridge 2세트\n- 2026-04-16 Cardio: Low-intensity walking / 숙련자 기준으로 강도는 유지하되 회복 상태 확인 / 가능 시간 20분 안에서 진행 / 주 5회 기준이라 세션별 부담을 나눠 진행 / 근력/근육 증가 목표라 큰 근육 위주로 점진적 과부하 / 내향형 성향"
+        "response_excerpt": "지금은 의지를 더 짜내기보다 부담을 낮춰 다시 이어갈 수 있게 잡을게요.\nI prepared a lower-intensity workout update.\n- 2026-04-16 상체 루틴: 상체 축 / 내향형 성향에 맞춘 집에서 혼자 가능한 구성 / 가능 시간 20분 안에서 진행 / 주 5회 기준이라 세션별 부담을 나눠 진행 / 숙련자도 반복 가능한 기본 강도 / 제약(어깨) 고려 / 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-04-16 하체 - Lower Body Session: Lower-impact lower body routine / 숙련자 기준으로 강도는 유지하되 회복 상태 확인 / 가능 시간 20분 안에서 진행 / 주 5회 기준이라 세션별 부담을 나눠 진행 / 근력/근육 증가 목표라 큰 근육 위주로 점진적 과부하 / 내향형 성향이라 혼자 조용히 할 수 있는 홈트, 고정 루틴, 이어폰 걷기 중심 / 제약(어깨) 고려 / 운동 종류: 하체 / Leg Press 2세트,"
       }
     }
   ]

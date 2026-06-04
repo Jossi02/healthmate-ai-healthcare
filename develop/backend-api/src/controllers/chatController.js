@@ -3,6 +3,7 @@ const supabase = require('../config/db');
 const logger = require('../utils/logger');
 const { buildDailySessionId } = require('../utils/kst');
 const {
+  deleteChatThread,
   listChatThreads,
   loadChatMessages,
   persistChatTurn,
@@ -146,6 +147,33 @@ exports.getThread = async (req, res) => {
   } catch (error) {
     logger.error(`Chat thread load error: ${error.message}`);
     return res.status(500).json({ error: 'Failed to load chat thread.' });
+  }
+};
+
+// @route   DELETE /api/v1/chat/threads/:session_id
+// @desc    Delete one persisted chat thread and its related messages/feedback
+// @access  Private
+exports.deleteThread = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const sessionId = normalizeText(req.params.session_id);
+    if (!sessionId) {
+      return res.status(400).json({ error: 'session_id is required.' });
+    }
+
+    const deleted = await deleteChatThread(supabase, userId, sessionId);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Chat thread not found.' });
+    }
+
+    return res.json({
+      status: 'success',
+      deleted: true,
+      session_id: sessionId,
+    });
+  } catch (error) {
+    logger.error(`Chat thread delete error: ${error.message}`);
+    return res.status(500).json({ error: 'Failed to delete chat thread.' });
   }
 };
 

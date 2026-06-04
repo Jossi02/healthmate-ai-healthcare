@@ -13,6 +13,7 @@ import {
   Settings,
   ThumbsDown,
   ThumbsUp,
+  Trash2,
   User,
   X,
 } from "lucide-react";
@@ -220,6 +221,14 @@ const CHAT_SEND_ERROR_MESSAGE = "\uBA54\uC2DC\uC9C0\uB97C \uBCF4\uB0B4\uB294 \uC
 const CHAT_SYNC_PENDING_LABEL = "\uACC4\uD68D \uBC18\uC601 \uC911";
 const CHAT_SYNC_FAILED_LABEL = "\uBC18\uC601\uC774 \uC9C0\uC5F0\uB418\uACE0 \uC788\uC5B4\uC694";
 const CHAT_FEEDBACK_SAVED_LABEL = "\uD53C\uB4DC\uBC31\uC774 \uC800\uC7A5\uB410\uC5B4\uC694.";
+const CHAT_THREAD_FALLBACK_TITLE = "\uC0C8 \uB300\uD654";
+const CHAT_THREAD_DELETE_TITLE = "\uB300\uD654 \uC0AD\uC81C";
+const CHAT_THREAD_DELETE_BODY = "\uC774 \uB300\uD654\uC640 \uC800\uC7A5\uB41C \uBA54\uC2DC\uC9C0, \uD53C\uB4DC\uBC31\uC744 \uC0AD\uC81C\uD560\uAE4C\uC694?";
+const CHAT_THREAD_DELETE_NOTE = "\uC0AD\uC81C\uD558\uBA74 \uB2E4\uC2DC \uBCF5\uAD6C\uD560 \uC218 \uC5C6\uC5B4\uC694.";
+const CHAT_THREAD_DELETE_CANCEL_LABEL = "\uCDE8\uC18C";
+const CHAT_THREAD_DELETE_CONFIRM_LABEL = "\uC0AD\uC81C";
+const CHAT_THREAD_DELETE_DELETING_LABEL = "\uC0AD\uC81C \uC911...";
+const CHAT_THREAD_DELETE_ERROR_MESSAGE = "\uB300\uD654 \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC5B4\uC694. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694.";
 
 function createWelcomeMessages(): Message[] {
   return [
@@ -240,6 +249,10 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [deleteThreadTarget, setDeleteThreadTarget] =
+    useState<ChatThread | null>(null);
+  const [deletingThreadId, setDeletingThreadId] = useState<string | null>(null);
+  const [threadDeleteError, setThreadDeleteError] = useState("");
   const [feedbackModal, setFeedbackModal] = useState<{
     messageId: string;
     selectedReasons: FeedbackReasonCode[];
@@ -289,6 +302,17 @@ export default function ChatPage() {
     });
 
     return mapped.length > 0 ? mapped : createWelcomeMessages();
+  }, []);
+
+  const resetCurrentThread = useCallback(() => {
+    const nextMessages = createWelcomeMessages();
+    setSessionId(null);
+    setMessages(nextMessages);
+    window.sessionStorage.removeItem(CHAT_SESSION_STORAGE_KEY);
+    window.sessionStorage.setItem(
+      CHAT_MESSAGES_STORAGE_KEY,
+      JSON.stringify(nextMessages)
+    );
   }, []);
 
   const loadThreadList = useCallback(async (token: string) => {
@@ -369,6 +393,8 @@ export default function ChatPage() {
 
   const startNewThread = () => {
     const nextSessionId = createThreadSessionId();
+    setDeleteThreadTarget(null);
+    setThreadDeleteError("");
     setSessionId(nextSessionId);
     setMessages(createWelcomeMessages());
     window.sessionStorage.setItem(CHAT_SESSION_STORAGE_KEY, nextSessionId);
@@ -377,6 +403,88 @@ export default function ChatPage() {
       JSON.stringify(createWelcomeMessages())
     );
   };
+
+  const requestDeleteThread = useCallback((thread: ChatThread) => {
+    if (deletingThreadId) return;
+    if (isLoading && thread.session_id === sessionId) return;
+
+    setThreadDeleteError("");
+    setDeleteThreadTarget(thread);
+  }, [deletingThreadId, isLoading, sessionId]);
+
+  const closeDeleteThreadDialog = useCallback(() => {
+    if (deletingThreadId) return;
+
+    setDeleteThreadTarget(null);
+    setThreadDeleteError("");
+  }, [deletingThreadId]);
+
+  const confirmDeleteThread = useCallback(async () => {
+    if (!deleteThreadTarget || deletingThreadId) return;
+    if (isLoading && deleteThreadTarget.session_id === sessionId) return;
+
+    const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+    if (!token) {
+      redirectToLoginForExpiredSession();
+      return;
+    }
+
+    const targetSessionId = deleteThreadTarget.session_id;
+    const remainingThreads = threads.filter(
+      (thread) => thread.session_id !== targetSessionId
+    );
+
+    setDeletingThreadId(targetSessionId);
+    setThreadDeleteError("");
+
+    try {
+      const response = await fetch(
+        buildApiUrl(`/api/v1/chat/threads/${encodeURIComponent(targetSessionId)}`),
+        {
+          method: "DELETE",
+          headers: {
+            "ngrok-skip-browser-warning": "true",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.status === 401) {
+        redirectToLoginForExpiredSession();
+        return;
+      }
+
+      if (!response.ok && response.status !== 404) {
+        throw new Error("Chat thread delete API request failed.");
+      }
+
+      setThreads(remainingThreads);
+      setFeedbackModal(null);
+      setDeleteThreadTarget(null);
+
+      if (targetSessionId === sessionId) {
+        const nextThread = remainingThreads[0];
+        if (nextThread) {
+          await loadThreadMessages(nextThread.session_id, token);
+        } else {
+          resetCurrentThread();
+        }
+      }
+    } catch (error) {
+      console.error("Failed to delete chat thread:", error);
+      setThreadDeleteError(CHAT_THREAD_DELETE_ERROR_MESSAGE);
+    } finally {
+      setDeletingThreadId(null);
+    }
+  }, [
+    deleteThreadTarget,
+    deletingThreadId,
+    isLoading,
+    loadThreadMessages,
+    resetCurrentThread,
+    sessionId,
+    threads,
+  ]);
 
   useEffect(() => {
     const storedToken = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
@@ -883,16 +991,20 @@ export default function ChatPage() {
               {threads.map((thread) => {
                 const isActive = thread.session_id === sessionId;
                 return (
-                  <button
+                  <div
                     key={thread.session_id}
-                    type="button"
-                    onClick={() => loadThreadMessages(thread.session_id)}
-                    className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left transition-colors ${
+                    className={`group flex w-full items-center rounded-xl transition-colors ${
                       isActive
                         ? "bg-blue-50 text-blue-700"
                         : "text-gray-600 hover:bg-gray-50"
                     }`}
                   >
+                    <button
+                      type="button"
+                      onClick={() => loadThreadMessages(thread.session_id)}
+                      disabled={deletingThreadId === thread.session_id}
+                      className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-left disabled:cursor-wait disabled:opacity-60"
+                    >
                     <MessageSquare className="h-4 w-4 shrink-0" />
                     <span className="min-w-0 flex-1 truncate text-sm font-bold">
                       {thread.title || "새 대화"}
@@ -901,6 +1013,23 @@ export default function ChatPage() {
                       {thread.message_count}
                     </span>
                   </button>
+                    <button
+                      type="button"
+                      aria-label={`${thread.title || CHAT_THREAD_FALLBACK_TITLE} ${CHAT_THREAD_DELETE_CONFIRM_LABEL}`}
+                      onClick={() => requestDeleteThread(thread)}
+                      disabled={
+                        deletingThreadId === thread.session_id ||
+                        (isLoading && isActive)
+                      }
+                      className="mr-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 opacity-0 transition-all hover:bg-rose-50 hover:text-rose-500 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-rose-200 disabled:cursor-not-allowed disabled:opacity-40 group-hover:opacity-100"
+                    >
+                      {deletingThreadId === thread.session_id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -962,20 +1091,44 @@ export default function ChatPage() {
             <Plus className="h-3.5 w-3.5" />
             새 대화
           </button>
-          {threads.map((thread) => (
-            <button
+          {threads.map((thread) => {
+            const isActive = thread.session_id === sessionId;
+            return (
+            <div
               key={thread.session_id}
-              type="button"
-              onClick={() => loadThreadMessages(thread.session_id)}
-              className={`max-w-40 shrink-0 truncate rounded-full border px-3 py-2 text-xs font-black ${
-                thread.session_id === sessionId
+              className={`inline-flex shrink-0 items-center overflow-hidden rounded-full border text-xs font-black ${
+                isActive
                   ? "border-blue-200 bg-blue-50 text-blue-700"
                   : "border-gray-200 bg-white text-gray-500"
               }`}
             >
+              <button
+                type="button"
+                onClick={() => loadThreadMessages(thread.session_id)}
+                disabled={deletingThreadId === thread.session_id}
+                className="max-w-36 truncate px-3 py-2 disabled:cursor-wait disabled:opacity-60"
+              >
               {thread.title || "새 대화"}
-            </button>
-          ))}
+              </button>
+              <button
+                type="button"
+                aria-label={`${thread.title || CHAT_THREAD_FALLBACK_TITLE} ${CHAT_THREAD_DELETE_CONFIRM_LABEL}`}
+                onClick={() => requestDeleteThread(thread)}
+                disabled={
+                  deletingThreadId === thread.session_id ||
+                  (isLoading && isActive)
+                }
+                className="inline-flex h-8 w-8 items-center justify-center border-l border-current/10 text-current/70 transition-colors hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {deletingThreadId === thread.session_id ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+              </button>
+            </div>
+            );
+          })}
         </div>
       </header>
 
@@ -1176,6 +1329,87 @@ export default function ChatPage() {
           <div ref={messagesEndRef} className="h-4" />
         </div>
       </div>
+
+      <AnimatePresence>
+        {deleteThreadTarget && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
+              onClick={closeDeleteThreadDialog}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 18 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 18 }}
+              transition={{ type: "spring", damping: 24, stiffness: 280 }}
+              className="relative z-10 w-full max-w-sm overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-[0_20px_60px_-12px_rgba(0,0,0,0.18)]"
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-5">
+                <div>
+                  <h2 className="text-lg font-black text-gray-950">
+                    {CHAT_THREAD_DELETE_TITLE}
+                  </h2>
+                  <p className="mt-1 text-sm font-semibold text-gray-500">
+                    {CHAT_THREAD_DELETE_BODY}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label={CHAT_THREAD_DELETE_CANCEL_LABEL}
+                  onClick={closeDeleteThreadDialog}
+                  disabled={deletingThreadId === deleteThreadTarget.session_id}
+                  className="rounded-full border border-gray-100 bg-white p-2 text-gray-400 transition-colors hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 px-6 py-5">
+                <div className="rounded-2xl bg-gray-50 px-4 py-3 text-sm font-bold text-gray-800">
+                  {deleteThreadTarget.title || CHAT_THREAD_FALLBACK_TITLE}
+                </div>
+                <p className="text-xs font-semibold text-rose-500">
+                  {CHAT_THREAD_DELETE_NOTE}
+                </p>
+                {threadDeleteError && (
+                  <p className="text-sm font-bold text-rose-600">
+                    {threadDeleteError}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-3 border-t border-gray-100 bg-white px-6 py-5">
+                <button
+                  type="button"
+                  onClick={closeDeleteThreadDialog}
+                  disabled={deletingThreadId === deleteThreadTarget.session_id}
+                  className="flex-1 rounded-2xl bg-gray-100 py-3 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {CHAT_THREAD_DELETE_CANCEL_LABEL}
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteThread}
+                  disabled={deletingThreadId === deleteThreadTarget.session_id}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-rose-500 py-3 text-sm font-bold text-white transition-colors hover:bg-rose-600 disabled:cursor-wait disabled:opacity-70"
+                >
+                  {deletingThreadId === deleteThreadTarget.session_id ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {CHAT_THREAD_DELETE_DELETING_LABEL}
+                    </>
+                  ) : (
+                    CHAT_THREAD_DELETE_CONFIRM_LABEL
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {feedbackModal && (

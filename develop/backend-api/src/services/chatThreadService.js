@@ -115,8 +115,51 @@ async function loadChatMessages(db, userId, sessionId) {
   return data || [];
 }
 
+async function deleteChatThread(db, userId, sessionId) {
+  const safeUserId = normalizeText(userId);
+  const safeSessionId = normalizeText(sessionId);
+  if (!safeUserId || !safeSessionId) return null;
+
+  const { data: thread, error: threadLoadError } = await db
+    .from('chat_threads')
+    .select('session_id')
+    .eq('user_id', safeUserId)
+    .eq('session_id', safeSessionId)
+    .maybeSingle();
+
+  if (threadLoadError) throw threadLoadError;
+  if (!thread) return null;
+
+  const { error: feedbackDeleteError } = await db
+    .from('chat_feedback')
+    .delete()
+    .eq('user_id', safeUserId)
+    .eq('session_id', safeSessionId);
+
+  if (feedbackDeleteError) throw feedbackDeleteError;
+
+  const { error: messageDeleteError } = await db
+    .from('chat_messages')
+    .delete()
+    .eq('user_id', safeUserId)
+    .eq('session_id', safeSessionId);
+
+  if (messageDeleteError) throw messageDeleteError;
+
+  const { error: threadDeleteError } = await db
+    .from('chat_threads')
+    .delete()
+    .eq('user_id', safeUserId)
+    .eq('session_id', safeSessionId);
+
+  if (threadDeleteError) throw threadDeleteError;
+
+  return { session_id: safeSessionId };
+}
+
 module.exports = {
   buildThreadTitle,
+  deleteChatThread,
   listChatThreads,
   loadChatMessages,
   persistChatTurn,

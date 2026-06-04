@@ -1,11 +1,12 @@
 # Pinecone Profile RAG v2 Report
 
 - Trigger cases: 16
-- Retrieval cases: 25
+- Retrieval cases: 25 / expected 25
 - Total cases: 41
 - Accuracy: 1.0
 - Pass/Fail: 41/0
-- Average relevant evidence: 2.12
+- Average relevant evidence: 2.2
+- Retrieval status: ok
 
 ## Trigger Cases
 - low_risk_light_plan_skips_rag: pass expected=[] actual=[] issues=none
@@ -27,10 +28,10 @@
 
 ## Retrieval Cases
 - front_condition_hypertension_workout: pass strict=3 relaxed=0 semantic=0 relevant=3 top=유산소는 빈도, 강도, 시간, 유형으로 조절 kb_id=workout_cardio_fitt_basic topic=cardio issues=none
-- front_condition_diabetes_diet: pass strict=4 relaxed=0 semantic=0 relevant=4 top=고혈압과 당뇨가 함께 있을 때의 식단 필터 kb_id=diet_hypertension_diabetes_combined topic=diabetes_nutrition issues=none
-- combined_hypertension_diabetes_diet: pass strict=6 relaxed=0 semantic=0 relevant=1 top=고혈압과 당뇨가 함께 있을 때의 식단 필터 kb_id=diet_hypertension_diabetes_combined topic=diabetes_nutrition issues=none
-- general_domain_diet_inferred_hypertension: pass strict=3 relaxed=0 semantic=0 relevant=3 top=심혈관 건강 식단 패턴 kb_id=diet_aha_heart_healthy_pattern topic=heart_health_nutrition issues=none
-- negative_hypertension_positive_diabetes_diet: pass strict=4 relaxed=0 semantic=0 relevant=2 top=혈당 관리는 끼니 구성과 규칙성이 중요 kb_id=diet_ada_2026_diabetes_nutrition topic=diabetes_nutrition issues=none
+- front_condition_diabetes_diet: pass strict=5 relaxed=0 semantic=0 relevant=4 top=고혈압과 당뇨가 함께 있을 때의 식단 필터 kb_id=diet_hypertension_diabetes_combined topic=diabetes_nutrition issues=none
+- combined_hypertension_diabetes_diet: pass strict=8 relaxed=0 semantic=0 relevant=1 top=고혈압과 당뇨가 함께 있을 때의 식단 필터 kb_id=diet_hypertension_diabetes_combined topic=diabetes_nutrition issues=none
+- general_domain_diet_inferred_hypertension: pass strict=5 relaxed=0 semantic=0 relevant=5 top=심혈관 건강 식단 패턴 kb_id=diet_aha_heart_healthy_pattern topic=heart_health_nutrition issues=none
+- negative_hypertension_positive_diabetes_diet: pass strict=5 relaxed=0 semantic=0 relevant=2 top=혈당 관리는 끼니 구성과 규칙성이 중요 kb_id=diet_ada_2026_diabetes_nutrition topic=diabetes_nutrition issues=none
 - front_condition_arthritis_workout: pass strict=2 relaxed=0 semantic=0 relevant=2 top=관절염 프로필의 관절 친화 운동 kb_id=workout_arthritis_joint_friendly topic=pain_adaptation issues=none
 - older_adult_arthritis_workout: pass strict=2 relaxed=0 semantic=0 relevant=1 top=관절염 프로필의 관절 친화 운동 kb_id=workout_arthritis_joint_friendly topic=pain_adaptation issues=none
 - front_condition_asthma_workout: pass strict=1 relaxed=20 semantic=0 relevant=1 top=천식 프로필의 호흡 안전 기준 kb_id=workout_asthma_breathing_safe_activity topic=physical_activity issues=none

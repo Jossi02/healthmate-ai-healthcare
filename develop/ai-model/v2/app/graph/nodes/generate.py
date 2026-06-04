@@ -2516,6 +2516,10 @@ def _render_plan_preview_from_items(plan_items: list[dict]) -> str:
     if not plan_items:
         return ""
 
+    grouped_diet_preview = _render_grouped_diet_plan_preview(plan_items)
+    if grouped_diet_preview:
+        return grouped_diet_preview
+
     visible_limit = _plan_preview_visible_limit(plan_items)
     lines: list[str] = []
     for item in plan_items[:visible_limit]:
@@ -2526,6 +2530,65 @@ def _render_plan_preview_from_items(plan_items: list[dict]) -> str:
     if remaining > 0:
         lines.append(f"- 외 {remaining}개 세부 항목")
     return "\n".join(lines)
+
+
+def _render_grouped_diet_plan_preview(plan_items: list[dict]) -> str:
+    if not _looks_like_multi_day_diet_plan(plan_items):
+        return ""
+
+    grouped: dict[str, list[dict]] = {}
+    for item in plan_items:
+        day = str(item.get("day") or "").strip()[:10]
+        if not _parse_iso_date(day):
+            continue
+        grouped.setdefault(day, []).append(item)
+
+    if len(grouped) < 2:
+        return ""
+
+    lines: list[str] = []
+    days = sorted(grouped)
+    visible_days = days[:7]
+    for day in visible_days:
+        meals = [_diet_meal_preview_entry(item) for item in grouped[day][:3]]
+        meals = [meal for meal in meals if meal]
+        extra_count = max(len(grouped[day]) - 3, 0)
+        if extra_count > 0:
+            meals.append(f"\uc678 {extra_count}\uc2dd")
+        lines.append(f"- {day}: {'; '.join(meals)}" if meals else f"- {day}")
+
+    remaining_days = len(days) - len(visible_days)
+    if remaining_days > 0:
+        lines.append(f"- \uc678 {remaining_days}\uc77c \uc2dd\ub2e8 \ud56d\ubaa9")
+
+    return "\n".join(lines)
+
+
+def _looks_like_multi_day_diet_plan(plan_items: list[dict]) -> bool:
+    if len(plan_items) <= 7:
+        return False
+
+    valid_items = [item for item in plan_items if isinstance(item, dict)]
+    if not valid_items:
+        return False
+
+    if any(item.get("ex_list") for item in valid_items):
+        return False
+
+    unique_days = _plan_unique_iso_days(valid_items)
+    return len(unique_days) >= 2
+
+
+def _diet_meal_preview_entry(item: dict) -> str:
+    name = re.sub(r"\s+", " ", str(item.get("name") or "").strip())
+    detail = _plan_item_detail(item)
+    if name and detail:
+        entry = f"{name}: {detail}"
+    else:
+        entry = detail or name
+    if len(entry) > 72:
+        return entry[:69].rstrip(" ,;/") + "..."
+    return entry
 
 
 def _plan_preview_visible_limit(plan_items: list[dict]) -> int:
@@ -2954,6 +3017,10 @@ def _requested_plan_days(message: str) -> int | None:
     lowered = re.sub(r"\s+", "", str(message or "").lower())
     spaced = str(message or "").lower()
 
+    explicit_days = _requested_plan_days_from_text(lowered, spaced)
+    if explicit_days:
+        return explicit_days
+
     if any(marker in lowered for marker in ("한달", "1달", "1개월", "월간", "monthly", "onemonth")):
         return 30
     if re.search(r"30\s*일", spaced):
@@ -2975,6 +3042,64 @@ def _requested_plan_days(message: str) -> int | None:
             return days
 
     month_match = re.search(r"(\d+)\s*(?:달|개월|month)", spaced)
+    if month_match and int(month_match.group(1)) >= 1:
+        return 30
+
+    return None
+
+
+def _requested_plan_days_from_text(compact_message: str, spaced_message: str) -> int | None:
+    if any(
+        marker in compact_message
+        for marker in (
+            "\ud55c\ub2ec",
+            "\ud55c\ub2ec\uce58",
+            "\ud55c\uac1c\uc6d4",
+            "\ud55c\uac1c\uc6d4\uce58",
+            "1\ub2ec",
+            "1\ub2ec\uce58",
+            "1\uac1c\uc6d4",
+            "1\uac1c\uc6d4\uce58",
+            "\uc6d4\uac04",
+            "monthly",
+            "onemonth",
+        )
+    ):
+        return 30
+    if re.search(r"30\s*(?:\uc77c|\ub0a0|days?)", spaced_message):
+        return 30
+
+    if any(
+        marker in compact_message
+        for marker in (
+            "\uc77c\uc8fc\uc77c",
+            "\uc77c\uc8fc\uc77c\uce58",
+            "\ud55c\uc8fc",
+            "\ud55c\uc8fc\uce58",
+            "\uc774\ubc88\uc8fc",
+            "\uc774\ubc88\uc8fc\uce58",
+            "7\uc77c",
+            "7\uc77c\uce58",
+            "weekly",
+            "oneweek",
+            "1week",
+        )
+    ):
+        return 7
+
+    week_match = re.search(r"(\d+)\s*(?:\uc8fc|weeks?)", spaced_message)
+    if week_match:
+        weeks = int(week_match.group(1))
+        if 1 <= weeks <= 6:
+            return min(weeks * 7, 31)
+
+    day_match = re.search(r"(\d+)\s*(?:\uc77c|\ub0a0|days?)", spaced_message)
+    if day_match:
+        days = int(day_match.group(1))
+        if 7 <= days <= 31:
+            return days
+
+    month_match = re.search(r"(\d+)\s*(?:\uac1c\uc6d4|\ub2ec|months?)", spaced_message)
     if month_match and int(month_match.group(1)) >= 1:
         return 30
 
@@ -3013,6 +3138,8 @@ def _has_explicit_plan_start_date(message: str) -> bool:
     if not normalized:
         return False
     compact = re.sub(r"\s+", "", normalized)
+    if _has_explicit_plan_start_date_from_text(normalized, compact):
+        return True
     if re.search(r"\d{4}\s*[-./]\s*\d{1,2}\s*[-./]\s*\d{1,2}", normalized):
         return True
     if re.search(r"\d{1,2}\s*월\s*\d{1,2}\s*일", normalized):
@@ -3032,6 +3159,31 @@ def _has_explicit_plan_start_date(message: str) -> bool:
             "금요일부터",
             "토요일부터",
             "일요일부터",
+        )
+    )
+
+
+def _has_explicit_plan_start_date_from_text(normalized: str, compact: str) -> bool:
+    if re.search(r"\d{1,2}\s*(?:\uc6d4)\s*\d{1,2}\s*(?:\uc77c)?", normalized):
+        return True
+    return any(
+        marker in compact
+        for marker in (
+            "\ub0b4\uc77c",
+            "\ub0b4\uc77c\ubd80\ud130",
+            "\ubaa8\ub808",
+            "\ubaa8\ub808\ubd80\ud130",
+            "\ub2e4\uc74c\uc8fc",
+            "\ub2e4\uc74c\uc8fc\ubd80\ud130",
+            "\ucc28\uc8fc",
+            "\ub2e4\uc74c\ub2ec",
+            "\uc6d4\uc694\uc77c\ubd80\ud130",
+            "\ud654\uc694\uc77c\ubd80\ud130",
+            "\uc218\uc694\uc77c\ubd80\ud130",
+            "\ubaa9\uc694\uc77c\ubd80\ud130",
+            "\uae08\uc694\uc77c\ubd80\ud130",
+            "\ud1a0\uc694\uc77c\ubd80\ud130",
+            "\uc77c\uc694\uc77c\ubd80\ud130",
         )
     )
 

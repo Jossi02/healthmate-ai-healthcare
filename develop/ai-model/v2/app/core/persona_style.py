@@ -90,8 +90,30 @@ def strip_plan_flow_preamble(text: str, state: GraphState) -> str:
 def apply_persona_signature(text: str, persona_id: str, state: GraphState) -> str:
     if not text.strip():
         return text
-    if _has_persona_marker(text, persona_id) and not looks_mostly_english(text):
+
+    text = _localize_common_english_lines(text)
+    if _has_strong_persona_signature(text, persona_id) and not looks_mostly_english(text):
         return text
+
+    intent = str(state.get("intent") or "")
+    if intent == "계획_승인":
+        confirmation = _PERSONA_APPROVAL_CONFIRMATIONS.get(persona_id)
+        if confirmation and confirmation not in text:
+            return f"{text.rstrip()}\n{confirmation}"
+        return text
+
+    if intent == "안전경고":
+        return text
+
+    if _is_plan_flow_intent(intent):
+        tail = _PERSONA_PLAN_FLOW_TAILS.get(persona_id)
+        if tail and tail not in text:
+            return f"{text.rstrip()}\n{tail}"
+        return text
+
+    closing = _PERSONA_CLOSING_LINES.get(persona_id)
+    if closing and closing not in text:
+        return f"{text.rstrip()}\n{closing}"
 
     # Keep result-first UX. Persona prompts should shape wording during generation.
     if not _should_prepend_persona_signature(state):
@@ -100,18 +122,6 @@ def apply_persona_signature(text: str, persona_id: str, state: GraphState) -> st
     opener = _PERSONA_OPENERS.get(persona_id)
     if not opener:
         return text
-
-    intent = str(state.get("intent") or "")
-    if intent == "계획_승인":
-        approval_openers = {
-            "cheer_sis": "좋아, 저장 흐름까지 챙길게요.",
-            "soft_senior": "괜찮아요, 이대로 반영할게요.",
-            "strict_trainer": "확인. 이대로 반영합니다.",
-            "science_coach": "확인했습니다. 계획대로 반영합니다.",
-            "playful_buddy": "좋아, 이대로 같이 가보자.",
-            "daily_manager": "체크했어요. 이대로 반영합니다.",
-        }
-        opener = approval_openers.get(persona_id, opener)
 
     if text.startswith(opener):
         return text
@@ -204,17 +214,41 @@ def _persona_plan_core_line(line: str, state: GraphState, persona_id: str) -> st
     scope = _plan_scope_label(state)
     intent = str(state.get("intent") or "")
     if persona_id == "strict_trainer":
-        return f"{scope}{domain} 플랜으로 고쳤어." if intent == "수정" else f"{scope}{domain} 플랜이야."
+        return (
+            f"{scope}{domain} 플랜. 군더더기 빼고 다시 고쳤어."
+            if intent == "수정"
+            else f"{scope}{domain} 플랜. 바로 이대로 가."
+        )
     if persona_id == "playful_buddy":
-        return f"{scope}{domain} 플랜으로 다시 잡았어." if intent == "수정" else f"{scope}{domain} 플랜 잡아봤어."
+        return (
+            f"{scope}{domain} 플랜 다시 잡았어. 부담 낮게 같이 가보자."
+            if intent == "수정"
+            else f"{scope}{domain} 플랜 잡아봤어. 딱 이 정도로 같이 가보자."
+        )
     if persona_id == "daily_manager":
-        return f"{scope}{domain} 플랜을 수정했습니다." if intent == "수정" else f"{scope}{domain} 플랜을 정리했습니다."
+        return (
+            f"{scope}{domain} 플랜을 캘린더 기준으로 수정했습니다."
+            if intent == "수정"
+            else f"{scope}{domain} 플랜을 캘린더 기준으로 정리했습니다."
+        )
     if persona_id == "science_coach":
-        return f"{scope}{domain} 플랜을 수정했습니다." if intent == "수정" else f"{scope}{domain} 플랜입니다."
+        return (
+            f"{scope}{domain} 플랜을 수정했습니다. 기준은 안전성과 지속 가능성입니다."
+            if intent == "수정"
+            else f"{scope}{domain} 플랜입니다. 기준은 안전성과 지속 가능성입니다."
+        )
     if persona_id == "soft_senior":
-        return f"{scope}{domain} 플랜으로 조정했습니다." if intent == "수정" else f"{scope}{domain} 플랜을 제안드립니다."
+        return (
+            f"{scope}{domain} 플랜을 무리 없게 조정했습니다. 천천히 따라가도 됩니다."
+            if intent == "수정"
+            else f"{scope}{domain} 플랜을 무리 없게 제안드립니다. 천천히 따라가도 됩니다."
+        )
     if persona_id == "cheer_sis":
-        return f"{scope}{domain} 플랜으로 맞춰봤어요." if intent == "수정" else f"{scope}{domain} 플랜을 제안해요."
+        return (
+            f"{scope}{domain} 플랜을 밝게 다시 맞춰봤어요. 이 정도면 시작하기 충분해요."
+            if intent == "수정"
+            else f"{scope}{domain} 플랜을 밝게 맞춰봤어요. 이 정도면 시작하기 충분해요."
+        )
     return line
 
 
@@ -224,17 +258,17 @@ def _persona_plan_approval_question(question: str, state: GraphState, persona_id
     domain = _plan_domain_label(state)
     intent = str(state.get("intent") or "")
     if persona_id == "strict_trainer":
-        return f"이 {domain} 플랜으로 갈까?"
+        return f"이 {domain} 플랜으로 간다. 작성할까?"
     if persona_id == "playful_buddy":
-        return f"이 {domain} 플랜으로 가볼까?"
+        return f"이 {domain} 플랜으로 가볼까? 부담 낮게 가자."
     if persona_id == "daily_manager":
-        return f"이 {domain} 플랜으로 {'수정할까요' if intent == '수정' else '작성할까요'}?"
+        return f"이 {domain} 플랜으로 캘린더에 {'수정할까요' if intent == '수정' else '작성할까요'}?"
     if persona_id == "science_coach":
-        return f"이 {domain} 플랜으로 {'수정할까요' if intent == '수정' else '작성할까요'}?"
+        return f"이 {domain} 플랜으로 {'수정할까요' if intent == '수정' else '작성할까요'}? 기준은 일정과 부담입니다."
     if persona_id == "soft_senior":
-        return f"이 {domain} 플랜으로 {'조정할까요' if intent == '수정' else '작성할까요'}?"
+        return f"이 {domain} 플랜으로 {'조정할까요' if intent == '수정' else '작성해도 괜찮을까요'}?"
     if persona_id == "cheer_sis":
-        return f"이 {domain} 플랜으로 {'수정할까요' if intent == '수정' else '작성할까요'}?"
+        return f"이 {domain} 플랜으로 {'수정할까요' if intent == '수정' else '작성할까요'}? 잘 맞춰볼게요."
     return question
 
 
@@ -277,17 +311,56 @@ def _has_persona_marker(text: str, persona_id: str) -> bool:
     return any(marker.lower() in normalized for marker in markers)
 
 
+def _has_strong_persona_signature(text: str, persona_id: str) -> bool:
+    markers = _PERSONA_STRONG_MARKERS.get(persona_id, _PERSONA_MARKERS.get(persona_id, ()))
+    normalized = text.lower()
+    return any(marker.lower() in normalized for marker in markers)
+
+
+def _localize_common_english_lines(text: str) -> str:
+    replacements = {
+        "Here is the main reason behind that recommendation.": "추천 이유를 간단히 정리했습니다.",
+        "Here is a workout plan.": "운동 내용을 정리했습니다.",
+        "Here is a diet plan.": "식단 내용을 정리했습니다.",
+        "Profile updated.": "프로필을 반영했습니다.",
+        "I combined the user context with policy evidence.": "사용자 조건과 근거를 함께 반영했습니다.",
+        "I summarized the search evidence into the answer.": "검색 근거를 요약해 답변에 반영했습니다.",
+        "I applied workout guidance and user constraints.": "운동 기준과 사용자 조건을 함께 반영했습니다.",
+        "I applied diet guidance and user constraints.": "식단 기준과 사용자 조건을 함께 반영했습니다.",
+        "I prioritized sustainability and safety.": "지속 가능성과 안전성을 우선했습니다.",
+        "The latest user-provided profile field was applied.": "사용자가 방금 말한 프로필 항목을 반영했습니다.",
+        "If you want, I can explain the reasoning in more detail.": "필요하면 이유를 더 짧게 풀어드리겠습니다.",
+        "If you want, tell me whether to proceed with this plan.": "진행 여부만 알려주시면 이어서 반영하겠습니다.",
+        "If you want, I can update another profile field too.": "다른 프로필 항목도 이어서 반영할 수 있습니다.",
+        "Should I proceed with this workout plan?": "이 운동 플랜으로 진행할까요?",
+        "Should I proceed with this diet plan?": "이 식단 플랜으로 진행할까요?",
+    }
+    localized = text
+    for source, target in replacements.items():
+        localized = localized.replace(source, target)
+    return localized
+
+
 def _should_prepend_persona_signature(state: GraphState) -> bool:
     return False
 
 
 _PERSONA_MARKERS = {
-    "cheer_sis": ("좋아", "잘하고 있어", "충분해"),
-    "soft_senior": ("괜찮아", "천천히", "부담"),
-    "strict_trainer": ("핵심", "바로", "오늘은"),
-    "science_coach": ("근거", "이유", "따라서"),
-    "playful_buddy": ("오케이", "가볍게", "같이"),
-    "daily_manager": ("정리하면", "체크", "계획"),
+    "cheer_sis": ("좋아", "잘하고 있어", "충분해", "맞춰볼게요"),
+    "soft_senior": ("괜찮아", "천천히", "부담", "무리 없게"),
+    "strict_trainer": ("핵심", "바로", "오늘은", "군더더기"),
+    "science_coach": ("근거", "이유", "따라서", "기준"),
+    "playful_buddy": ("오케이", "가볍게", "같이", "가보자"),
+    "daily_manager": ("정리하면", "체크", "계획", "캘린더", "정리했습니다", "확인할 항목"),
+}
+
+_PERSONA_STRONG_MARKERS = {
+    "cheer_sis": ("좋아요", "밝게", "맞춰볼게요"),
+    "soft_senior": ("괜찮습니다", "천천히", "무리 없게", "한 단계만"),
+    "strict_trainer": ("핵심만", "바로", "군더더기", "확인.", "잡자", "분리해"),
+    "science_coach": ("선택 기준", "안전성", "지속 가능성", "근거는", "기준은"),
+    "playful_buddy": ("오케이", "같이", "가보자", "가볍게", "잡자"),
+    "daily_manager": ("확인했습니다", "정리", "캘린더", "처리합니다", "확인할 항목"),
 }
 
 _PERSONA_OPENERS = {
@@ -297,6 +370,33 @@ _PERSONA_OPENERS = {
     "science_coach": "근거와 이유를 보면,",
     "playful_buddy": "오케이, 가볍게 같이 가보자.",
     "daily_manager": "정리하면,",
+}
+
+_PERSONA_CLOSING_LINES = {
+    "cheer_sis": "좋아요, 부담은 낮추고 밝게 이어가볼게요. 이 정도면 충분해요.",
+    "soft_senior": "괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+    "strict_trainer": "핵심만 간다. 군더더기 빼고 바로 실행 범위로 잡자.",
+    "science_coach": "선택 기준은 안전성과 지속 가능성입니다. 근거는 부담을 낮추는 쪽입니다.",
+    "playful_buddy": "오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+    "daily_manager": "확인했습니다. 정리할 항목은 이 정도입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
+}
+
+_PERSONA_PLAN_FLOW_TAILS = {
+    "cheer_sis": "좋아요, 운동과 식단은 밝게 나눠서 다시 맞춰볼게요.",
+    "soft_senior": "괜찮습니다. 무리 없게 나눠서 천천히 다시 정리하겠습니다.",
+    "strict_trainer": "핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+    "science_coach": "선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+    "playful_buddy": "오케이, 운동이랑 식단은 나눠서 같이 다시 잡자.",
+    "daily_manager": "확인했습니다. 캘린더 반영 기준에 맞게 항목을 분리해 다시 정리하겠습니다.",
+}
+
+_PERSONA_APPROVAL_CONFIRMATIONS = {
+    "cheer_sis": "좋아요, 이 흐름으로 밝게 잘 맞춰볼게요.",
+    "soft_senior": "괜찮습니다. 무리 없게 천천히 반영하겠습니다.",
+    "strict_trainer": "확인. 이대로 간다. 바로 처리하자.",
+    "science_coach": "확인했습니다. 선택 기준에 맞춰 안전성과 지속 가능성을 우선해 반영합니다.",
+    "playful_buddy": "오케이, 이대로 같이 가보자.",
+    "daily_manager": "확인했습니다. 반영 기준을 정리했고, 캘린더 흐름에 맞춰 처리합니다.",
 }
 
 _PERSONA_STYLE_LOCKS = {

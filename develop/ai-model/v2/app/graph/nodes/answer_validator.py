@@ -16,6 +16,8 @@ from app.core.diet_safety_rules import (
     COMMON_SUGAR_HEAVY_TERMS,
 )
 from app.core.intents import INTENT_APPROVAL, INTENT_MODIFY, INTENT_PLAN
+from app.core.persona_registry import resolve_persona
+from app.core.persona_style import apply_persona_signature, normalize_plan_flow_preview, selected_persona_id
 from app.core.profile_constraints import as_text_list, profile_bmi_value, profile_weight_value
 from app.graph.deps import NodeDeps
 from app.schemas.home import HomeRecommendationResponse
@@ -222,9 +224,10 @@ def make_answer_validator_node(deps: NodeDeps):
             safe_semantic_fallback = _safe_plan_fallback_for_semantic_failure(report, state)
             if safe_semantic_fallback:
                 return safe_semantic_fallback
+            blocked_response = _style_validator_response(_blocked_response(report), state)
             return {
                 "validation_report": report,
-                "response": _blocked_response(report),
+                "response": blocked_response,
                 "proposed_plan": [],
                 "proposed_plan_type": None,
                 "proposed_plan_action": None,
@@ -242,6 +245,28 @@ def make_answer_validator_node(deps: NodeDeps):
         }
 
     return answer_validator_node
+
+
+def _style_validator_response(
+    response: str,
+    state: GraphState,
+    draft_components: dict[str, Any] | None = None,
+) -> str:
+    persona_id = _resolved_persona_id_for_state(state)
+    if draft_components:
+        return normalize_plan_flow_preview(response, state, draft_components, persona_id)
+    return apply_persona_signature(response, persona_id, state)
+
+
+def _resolved_persona_id_for_state(state: GraphState) -> str:
+    resolved = state.get("resolved_persona_id")
+    if isinstance(resolved, str) and resolved.strip():
+        return resolved.strip()
+
+    profile = state.get("effective_user_profile") or state.get("user_profile") or {}
+    selected = selected_persona_id(profile) if isinstance(profile, dict) else None
+    resolved_id, _ = resolve_persona(selected)
+    return resolved_id
 
 
 def _safe_diet_fallback_for_validation_failure(
@@ -276,10 +301,20 @@ def _safe_diet_fallback_for_validation_failure(
 
     proposed_plan = _build_safe_diet_fallback_items(state)
     plan_preview = _format_simple_plan_preview(proposed_plan)
-    response = (
+    draft_components = {
+        "core_message": "식단 플랜을 제안해요.",
+        "plan_preview": plan_preview,
+        "approval_question": "이 식단 플랜으로 작성할까요?",
+        "reason_points": [],
+        "safety_notes": [],
+        "search_grounding_summary": "",
+    }
+    response = _style_validator_response(
         "식단 플랜을 제안해요.\n"
         f"{plan_preview}\n"
-        "이 식단 플랜으로 작성할까요?"
+        "이 식단 플랜으로 작성할까요?",
+        {**state, "proposed_plan_type": "diet", "domain": "diet"},
+        draft_components,
     )
     patched_report = dict(report)
     patched_report["passed"] = True
@@ -335,14 +370,7 @@ def _safe_diet_fallback_for_validation_failure(
         "validation_report": patched_report,
         "response": response,
         "draft_response": response,
-        "draft_components": {
-            "core_message": "식단 플랜을 제안해요.",
-            "plan_preview": plan_preview,
-            "approval_question": "이 식단 플랜으로 작성할까요?",
-            "reason_points": [],
-            "safety_notes": [],
-            "search_grounding_summary": "",
-        },
+        "draft_components": draft_components,
         "proposed_plan": proposed_plan,
         "proposed_plan_type": "diet",
         "proposed_plan_action": "create",
@@ -434,7 +462,19 @@ def _safe_plan_fallback_for_semantic_failure(
 
     recovered_codes = [str(issue.get("code") or "") for issue in critical]
     plan_preview = _format_simple_plan_preview(proposed_plan)
-    response = f"{core_message}\n{plan_preview}\n{approval_question}"
+    draft_components = {
+        "core_message": core_message,
+        "plan_preview": plan_preview,
+        "approval_question": approval_question,
+        "reason_points": [],
+        "safety_notes": [],
+        "search_grounding_summary": "",
+    }
+    response = _style_validator_response(
+        f"{core_message}\n{plan_preview}\n{approval_question}",
+        {**state, "proposed_plan_type": plan_type, "domain": plan_type},
+        draft_components,
+    )
     flags = dict(state.get("generation_quality_flags") or {})
     flags["semantic_fallback_applied"] = True
     flags["semantic_fallback_recovered_codes"] = sorted(set(recovered_codes))
@@ -478,14 +518,7 @@ def _safe_plan_fallback_for_semantic_failure(
         "validation_report": recovered_report,
         "response": response,
         "draft_response": response,
-        "draft_components": {
-            "core_message": core_message,
-            "plan_preview": plan_preview,
-            "approval_question": approval_question,
-            "reason_points": [],
-            "safety_notes": [],
-            "search_grounding_summary": "",
-        },
+        "draft_components": draft_components,
         "proposed_plan": proposed_plan,
         "proposed_plan_type": plan_type,
         "proposed_plan_action": "create",

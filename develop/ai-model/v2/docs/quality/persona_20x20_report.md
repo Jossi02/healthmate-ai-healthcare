@@ -5,7 +5,7 @@
 - Total cases: 400
 - Personas: 6
 - Overall average: 1.0
-- Pass/Review/Fail: 400/0/0
+- Pass/Review/Fail: 399/1/0
 - Prompt contract pass/fail: 6/0
 
 ## Criterion Average
@@ -13,7 +13,7 @@
 - persona_resolution: 1.0
 - persona_style: 1.0
 - profile_accuracy: 1.0
-- routing: 1.0
+- routing: 0.998
 - safety: 1.0
 - support_mode: 1.0
 
@@ -21,7 +21,7 @@
 - cheer_sis: 1.0
 - soft_senior: 1.0
 - strict_trainer: 1.0
-- science_coach: 1.0
+- science_coach: 0.998
 - playful_buddy: 1.0
 - daily_manager: 1.0
 
@@ -34,3 +34,5 @@
 - daily_manager: pass (daily_manager.md)
 
 ## Non-Pass Cases
+- u10-t18 review overall=0.833
+  - issues: action_intent expected approval, got record

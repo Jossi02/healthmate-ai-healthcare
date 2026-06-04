@@ -46,9 +46,16 @@
               }
             ]
           },
-          "quality_issues": []
+          "quality_issues": [
+            {
+              "severity": "warning",
+              "code": "persona_style_guard_warning",
+              "message": "Persona style guard reported response-shape warnings.",
+              "penalty": 0.06
+            }
+          ]
         },
-        "response_excerpt": "Here is a workout plan.\nIf you want, tell me whether to proceed with this plan.\nI applied workout guidance and user constraints."
+        "response_excerpt": "Here is a workout plan.\n\n근거:\n- I prioritized sustainability and safety.\n- 사용자 프로필(32세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 consistency, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 busy office worker)에 맞춰 강도...\n\n근거 요약: I applied workout guidance and user constraints.\n\n다음 행동: If you want, tell me whether to procee"
       }
     },
     {
@@ -70,7 +77,7 @@
         "signals": {
           "action_intent": "info",
           "domain": "workout",
-          "support_mode": "normal",
+          "support_mode": "care",
           "fallback_diagnosis": {
             "state_action": "info",
             "state_domain": "workout",
@@ -88,9 +95,16 @@
               }
             ]
           },
-          "quality_issues": []
+          "quality_issues": [
+            {
+              "severity": "warning",
+              "code": "persona_style_guard_warning",
+              "message": "Persona style guard reported response-shape warnings.",
+              "penalty": 0.06
+            }
+          ]
         },
-        "response_excerpt": "Here is a workout plan.\nIf you want, tell me whether to proceed with this plan.\nI applied workout guidance and user constraints."
+        "response_excerpt": "Here is a workout plan.\n\n근거:\n- I prioritized sustainability and safety.\n- 사용자 프로필(32세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 consistency, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 busy office worker)에 맞춰 강도...\n\n근거 요약: I applied workout guidance and user constraints.\n\n다음 행동: If you want, tell me whether to procee"
       }
     },
     {
@@ -132,7 +146,7 @@
           },
           "quality_issues": []
         },
-        "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요."
+        "response_excerpt": "알겠어요. 지금 알려준 상황과 제약을 기준으로 답할게요.\n\n근거:\n- 사용자 프로필(32세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 consistency, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 busy office worker)에 맞춰 강도...\n\n다음 행동: 운동, 식단, 통증, 피해야 할 것 중 궁금한 걸 바로 물어봐 주세요."
       }
     },
     {
@@ -174,7 +188,7 @@
           },
           "quality_issues": []
         },
-        "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요."
+        "response_excerpt": "알겠어요. 지금 알려준 상황과 제약을 기준으로 답할게요.\n\n근거:\n- 사용자 프로필(32세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 consistency, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 busy office worker)에 맞춰 강도...\n\n다음 행동: 운동, 식단, 통증, 피해야 할 것 중 궁금한 걸 바로 물어봐 주세요."
       }
     },
     {
@@ -216,7 +230,7 @@
           },
           "quality_issues": []
         },
-        "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요."
+        "response_excerpt": "알겠어요. 지금 알려준 상황과 제약을 기준으로 답할게요.\n\n근거:\n- 사용자 프로필(32세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 consistency, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 busy office worker)에 맞춰 강도...\n\n다음 행동: 운동, 식단, 통증, 피해야 할 것 중 궁금한 걸 바로 물어봐 주세요."
       }
     },
     {
@@ -258,7 +272,7 @@
           },
           "quality_issues": []
         },
-        "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요."
+        "response_excerpt": "알겠어요. 지금 알려준 상황과 제약을 기준으로 답할게요.\n\n근거:\n- 사용자 프로필(32세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 consistency, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 busy office worker)에 맞춰 강도...\n\n다음 행동: 운동, 식단, 통증, 피해야 할 것 중 궁금한 걸 바로 물어봐 주세요."
       }
     },
     {
@@ -298,9 +312,16 @@
               }
             ]
           },
-          "quality_issues": []
+          "quality_issues": [
+            {
+              "severity": "warning",
+              "code": "persona_style_guard_warning",
+              "message": "Persona style guard reported response-shape warnings.",
+              "penalty": 0.06
+            }
+          ]
         },
-        "response_excerpt": "Here is a workout plan.\nIf you want, tell me whether to proceed with this plan.\nI applied workout guidance and user constraints."
+        "response_excerpt": "Here is a workout plan.\n\n근거:\n- I prioritized sustainability and safety.\n- 사용자 프로필(32세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 consistency, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 busy office worker)에 맞춰 강도...\n\n근거 요약: I applied workout guidance and user constraints.\n\n다음 행동: If you want, tell me whether to procee"
       }
     },
     {
@@ -340,9 +361,16 @@
               }
             ]
           },
-          "quality_issues": []
+          "quality_issues": [
+            {
+              "severity": "warning",
+              "code": "required_evidence_missing",
+              "message": "The flow required external evidence but retained no search results.",
+              "penalty": 0.16
+            }
+          ]
         },
-        "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요."
+        "response_excerpt": "알겠어요. 지금 알려준 상황과 제약을 기준으로 답할게요.\n\n근거:\n- 사용자 프로필(32세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 consistency, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 busy office worker)에 맞춰 강도...\n\n다음 행동: 운동, 식단, 통증, 피해야 할 것 중 궁금한 걸 바로 물어봐 주세요."
       }
     },
     {
@@ -382,9 +410,16 @@
               }
             ]
           },
-          "quality_issues": []
+          "quality_issues": [
+            {
+              "severity": "warning",
+              "code": "persona_style_guard_warning",
+              "message": "Persona style guard reported response-shape warnings.",
+              "penalty": 0.06
+            }
+          ]
         },
-        "response_excerpt": "Here is a workout plan.\nIf you want, tell me whether to proceed with this plan.\nI applied workout guidance and user constraints."
+        "response_excerpt": "Here is a workout plan.\n\n근거:\n- I prioritized sustainability and safety.\n- 사용자 프로필(32세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 consistency, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 busy office worker)에 맞춰 강도...\n\n근거 요약: I applied workout guidance and user constraints.\n\n다음 행동: If you want, tell me whether to procee"
       }
     },
     {
@@ -424,9 +459,16 @@
               }
             ]
           },
-          "quality_issues": []
+          "quality_issues": [
+            {
+              "severity": "warning",
+              "code": "persona_style_guard_warning",
+              "message": "Persona style guard reported response-shape warnings.",
+              "penalty": 0.06
+            }
+          ]
         },
-        "response_excerpt": "Here is a workout plan.\nIf you want, tell me whether to proceed with this plan.\nI applied workout guidance and user constraints."
+        "response_excerpt": "Here is a workout plan.\n\n근거:\n- I prioritized sustainability and safety.\n- 사용자 프로필(32세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 consistency, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 busy office worker)에 맞춰 강도...\n\n근거 요약: I applied workout guidance and user constraints.\n\n다음 행동: If you want, tell me whether to procee"
       }
     },
     {
@@ -466,9 +508,16 @@
               }
             ]
           },
-          "quality_issues": []
+          "quality_issues": [
+            {
+              "severity": "warning",
+              "code": "persona_style_guard_warning",
+              "message": "Persona style guard reported response-shape warnings.",
+              "penalty": 0.06
+            }
+          ]
         },
-        "response_excerpt": "Here is the main reason behind that recommendation.\nIf you want, I can explain the reasoning in more detail.\nI summarized the search evidence into the answer."
+        "response_excerpt": "Here is the main reason behind that recommendation.\n\n근거:\n- I combined the user context with policy evidence.\n- 사용자 프로필(32세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 consistency, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 busy office worker)에 맞춰 강도...\n\n근거 요약: I summarized the search evidence into the answer.\n\n다음 행동: "
       }
     },
     {
@@ -508,9 +557,16 @@
               }
             ]
           },
-          "quality_issues": []
+          "quality_issues": [
+            {
+              "severity": "warning",
+              "code": "persona_style_guard_warning",
+              "message": "Persona style guard reported response-shape warnings.",
+              "penalty": 0.06
+            }
+          ]
         },
-        "response_excerpt": "Here is a workout plan.\nIf you want, tell me whether to proceed with this plan.\nI applied workout guidance and user constraints."
+        "response_excerpt": "Here is a workout plan.\n\n근거:\n- I prioritized sustainability and safety.\n- 사용자 프로필(32세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 consistency, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 busy office worker)에 맞춰 강도...\n\n근거 요약: I applied workout guidance and user constraints.\n\n다음 행동: If you want, tell me whether to procee"
       }
     },
     {
@@ -550,9 +606,16 @@
               }
             ]
           },
-          "quality_issues": []
+          "quality_issues": [
+            {
+              "severity": "warning",
+              "code": "persona_style_guard_warning",
+              "message": "Persona style guard reported response-shape warnings.",
+              "penalty": 0.06
+            }
+          ]
         },
-        "response_excerpt": "Here is a workout plan.\nIf you want, tell me whether to proceed with this plan.\nI applied workout guidance and user constraints."
+        "response_excerpt": "Here is a workout plan.\n\n근거:\n- I prioritized sustainability and safety.\n- 사용자 프로필(32세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 consistency, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 busy office worker)에 맞춰 강도...\n\n근거 요약: I applied workout guidance and user constraints.\n\n다음 행동: If you want, tell me whether to procee"
       }
     },
     {
@@ -592,9 +655,16 @@
               }
             ]
           },
-          "quality_issues": []
+          "quality_issues": [
+            {
+              "severity": "warning",
+              "code": "persona_style_guard_warning",
+              "message": "Persona style guard reported response-shape warnings.",
+              "penalty": 0.06
+            }
+          ]
         },
-        "response_excerpt": "Here is a workout plan.\nIf you want, tell me whether to proceed with this plan.\nI applied workout guidance and user constraints."
+        "response_excerpt": "Here is a workout plan.\n\n근거:\n- I prioritized sustainability and safety.\n- 사용자 프로필(32세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 consistency, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 busy office worker)에 맞춰 강도...\n\n근거 요약: I applied workout guidance and user constraints.\n\n다음 행동: If you want, tell me whether to procee"
       }
     }
   ]

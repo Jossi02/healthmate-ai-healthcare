@@ -28,6 +28,7 @@ from app.core.conversation_state import (
 )
 from app.core.draft_contract import normalize_draft_components, render_draft_preview
 from app.core.intents import INTENT_INFO, INTENT_MODIFY, INTENT_PLAN, normalize_intent
+from app.core.persona_style import apply_persona_signature, normalize_plan_flow_preview
 from app.core.profile_constraints import build_profile_constraint_set
 from app.core.was_outbox import (
     enqueue_was_outbox,
@@ -1785,6 +1786,84 @@ def test_seven_day_diet_plan_expands_by_calendar_day() -> None:
     assert_true(len(expanded) == 21, "seven-day diet plan should repeat meal slots for each day")
 
 
+def test_weekly_diet_plan_expands_for_real_korean_chi_request() -> None:
+    today = date.fromisoformat(kst_today_iso())
+    base_plan = [
+        {"name": "\uc544\uce68", "detail": "\ud604\ubbf8\uc8fd, \ube14\ub8e8\ubca0\ub9ac, \uc0b6\uc740 \ub2ed\uac00\uc2b4\uc0b4", "day": today.isoformat(), "ex_list": []},
+        {"name": "\uc810\uc2ec", "detail": "\ud604\ubbf8\ubc25, \ub450\ubd80 \uc2a4\ud14c\uc774\ud06c, \uad6c\uc6b4 \ucc44\uc18c", "day": today.isoformat(), "ex_list": []},
+        {"name": "\uc800\ub141", "detail": "\ub450\ubd80 \ucc44\uc18c\ubcf6\uc74c, \uace0\uad6c\ub9c8, \ucc44\uc18c", "day": today.isoformat(), "ex_list": []},
+    ]
+
+    expanded = _expand_long_range_plan_if_requested(
+        {"user_message": "\uc77c\uc8fc\uc77c\uce58 \uc2dd\ub2e8 \uc9dc\uc918"},
+        base_plan,
+        "diet",
+    )
+    days = sorted({item["day"] for item in expanded})
+
+    assert_true(len(days) == 7, "weekly diet request with real Korean should cover seven calendar days")
+    assert_true(len(expanded) == 21, "weekly diet request should create three meals for each day")
+    assert_true(days[0] == today.isoformat(), "weekly diet request should start today by default")
+    assert_true(days[-1] == (today + timedelta(days=6)).isoformat(), "weekly diet request should end after seven days")
+
+
+def test_weekly_diet_preview_groups_by_calendar_day() -> None:
+    today = date.fromisoformat(kst_today_iso())
+    expanded = []
+    for offset in range(7):
+        current_day = (today + timedelta(days=offset)).isoformat()
+        expanded.extend(
+            [
+                {"name": "\uc544\uce68", "detail": "\ud604\ubbf8\uc8fd, \ube14\ub8e8\ubca0\ub9ac", "day": current_day, "ex_list": []},
+                {"name": "\uc810\uc2ec", "detail": "\ud604\ubbf8\ubc25, \ub450\ubd80", "day": current_day, "ex_list": []},
+                {"name": "\uc800\ub141", "detail": "\uace0\uad6c\ub9c8, \ucc44\uc18c\ubcf6\uc74c", "day": current_day, "ex_list": []},
+            ]
+        )
+
+    preview = _render_plan_preview_from_items(expanded)
+
+    assert_true(preview.count("\n") == 6, "weekly diet preview should show one compact row per day")
+    assert_true(today.isoformat() in preview, "weekly diet preview should include the first day")
+    assert_true((today + timedelta(days=6)).isoformat() in preview, "weekly diet preview should include the seventh day")
+    assert_true("\uc678 " not in preview, "weekly diet preview should not hide seven-day plans behind a remainder line")
+
+
+def test_weekly_workout_plan_expands_for_real_korean_chi_request() -> None:
+    today = date.fromisoformat(kst_today_iso())
+    base_plan = [
+        {
+            "name": "\uac00\ubcbc\uc6b4 \uc804\uc2e0 \ub8e8\ud2f4",
+            "detail": "\uc758\uc790 \uc2a4\ucffc\ud2b8, \ubcbd \ud478\uc2dc\uc5c5, \uc804\uc2e0 \uc2a4\ud2b8\ub808\uce6d",
+            "day": today.isoformat(),
+            "ex_list": [
+                {"exercise_name": "\uc758\uc790 \uc2a4\ucffc\ud2b8", "sets": 2},
+                {"exercise_name": "\ubcbd \ud478\uc2dc\uc5c5", "sets": 2},
+                {"exercise_name": "\uc804\uc2e0 \uc2a4\ud2b8\ub808\uce6d", "sets": 2},
+            ],
+        },
+        {
+            "name": "\uac00\ubcbc\uc6b4 \uc720\uc0b0\uc18c",
+            "detail": "\ud3b8\uc548\ud55c \uac77\uae30",
+            "day": today.isoformat(),
+            "ex_list": [{"exercise_name": "\ud3b8\uc548\ud55c \uac77\uae30", "duration_minutes": 15}],
+        },
+    ]
+
+    expanded = _expand_long_range_plan_if_requested(
+        {"user_message": "\uc77c\uc8fc\uc77c\uce58 \uc6b4\ub3d9 \uc9dc\uc918"},
+        base_plan,
+        "workout",
+    )
+    days = sorted({item["day"] for item in expanded})
+    preview = _render_plan_preview_from_items(expanded)
+
+    assert_true(len(days) == 7, "weekly workout request with real Korean should cover seven calendar days")
+    assert_true(len(expanded) == 7, "weekly workout request should include workout/recovery entries for every day")
+    assert_true(days[0] == today.isoformat(), "weekly workout request should start today by default")
+    assert_true(days[-1] == (today + timedelta(days=6)).isoformat(), "weekly workout request should end after seven days")
+    assert_true(preview.count("\n") == 6, "weekly workout preview should show all seven days")
+
+
 def test_week_plan_without_start_date_aligns_to_today() -> None:
     today = date.fromisoformat(kst_today_iso())
     future_start = today + timedelta(days=3)
@@ -2811,6 +2890,112 @@ def test_persona_style_report_flags_plan_shape() -> None:
     assert_true("persona_plan_response_too_many_lines" in codes, "persona style report should flag long plan shape")
 
 
+def test_persona_plan_renderer_uses_distinct_core_and_approval() -> None:
+    state = {
+        "intent": INTENT_PLAN,
+        "domain": "workout",
+        "proposed_plan_type": "workout",
+        "proposed_plan_action": "create",
+        "user_message": "일주일치 운동 플랜 작성해줘",
+    }
+    components = normalize_draft_components(
+        {
+            "core_message": "운동 플랜을 제안해요.",
+            "plan_preview": "- 2026-06-04 가벼운 전신 루틴: 의자 스쿼트 2세트",
+            "approval_question": "이 운동 플랜으로 작성할까요?",
+        }
+    )
+    draft = render_draft_preview(components)
+    personas = [
+        "cheer_sis",
+        "soft_senior",
+        "strict_trainer",
+        "science_coach",
+        "playful_buddy",
+        "daily_manager",
+    ]
+    expected_markers = {
+        "cheer_sis": ("밝게", "충분해요", "잘 맞춰볼게요"),
+        "soft_senior": ("무리 없게", "천천히", "괜찮을까요"),
+        "strict_trainer": ("바로", "간다", "작성할까"),
+        "science_coach": ("기준", "안전성", "지속 가능성"),
+        "playful_buddy": ("같이", "가보자", "부담 낮게"),
+        "daily_manager": ("캘린더", "정리했습니다", "작성할까요"),
+    }
+
+    first_lines: dict[str, str] = {}
+    approval_lines: dict[str, str] = {}
+    for persona_id in personas:
+        rendered = normalize_plan_flow_preview(draft, state, components, persona_id)
+        lines = [line.strip() for line in rendered.splitlines() if line.strip()]
+        first_lines[persona_id] = lines[0]
+        approval_lines[persona_id] = lines[-1]
+        assert_true(lines[1] == components["plan_preview"], "persona renderer should not mutate plan preview")
+        for marker in expected_markers[persona_id]:
+            assert_true(marker in rendered, f"{persona_id} should expose marker {marker}")
+
+    assert_true(len(set(first_lines.values())) == len(personas), "persona core lines should be distinct")
+    assert_true(len(set(approval_lines.values())) == len(personas), "persona approval questions should be distinct")
+
+
+def test_persona_signature_adds_distinct_non_plan_tail() -> None:
+    base_text = "걷기는 낮은 강도로 시작하기 좋습니다."
+    personas = [
+        "cheer_sis",
+        "soft_senior",
+        "strict_trainer",
+        "science_coach",
+        "playful_buddy",
+        "daily_manager",
+    ]
+    outputs = {
+        persona_id: apply_persona_signature(base_text, persona_id, {"intent": INTENT_INFO})
+        for persona_id in personas
+    }
+    expected_markers = {
+        "cheer_sis": "좋아요",
+        "soft_senior": "천천히",
+        "strict_trainer": "핵심",
+        "science_coach": "선택 기준",
+        "playful_buddy": "같이",
+        "daily_manager": "캘린더 기준",
+    }
+
+    assert_true(len(set(outputs.values())) == len(personas), "non-plan persona tails should be distinct")
+    for persona_id, output in outputs.items():
+        assert_true(output.startswith(base_text), "persona signature should keep result-first answer")
+        assert_true(expected_markers[persona_id] in output, f"{persona_id} should expose a distinct tail")
+
+
+def test_persona_signature_styles_plan_flow_without_preview() -> None:
+    base_text = "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요."
+    personas = [
+        "cheer_sis",
+        "soft_senior",
+        "strict_trainer",
+        "science_coach",
+        "playful_buddy",
+        "daily_manager",
+    ]
+    outputs = {
+        persona_id: apply_persona_signature(base_text, persona_id, {"intent": INTENT_MODIFY})
+        for persona_id in personas
+    }
+    expected_markers = {
+        "cheer_sis": "맞춰볼게요",
+        "soft_senior": "무리 없게",
+        "strict_trainer": "핵심",
+        "science_coach": "기준",
+        "playful_buddy": "같이",
+        "daily_manager": "캘린더 반영 기준",
+    }
+
+    assert_true(len(set(outputs.values())) == len(personas), "plan-flow tails should be distinct without preview")
+    for persona_id, output in outputs.items():
+        assert_true(output.startswith(base_text), "plan-flow persona tail should keep result-first answer")
+        assert_true(expected_markers[persona_id] in output, f"{persona_id} should style no-preview plan flow")
+
+
 def test_pinecone_profile_suite_marks_external_unavailable_as_blocked() -> None:
     from scripts.test_pinecone_profile_rag_v2_suite import (
         _build_report,
@@ -2901,6 +3086,9 @@ def main() -> None:
         test_diet_payload_stores_food_only,
         test_week_workout_plan_expands_from_one_day_request,
         test_seven_day_diet_plan_expands_by_calendar_day,
+        test_weekly_diet_plan_expands_for_real_korean_chi_request,
+        test_weekly_diet_preview_groups_by_calendar_day,
+        test_weekly_workout_plan_expands_for_real_korean_chi_request,
         test_week_plan_without_start_date_aligns_to_today,
         test_weekly_workout_preview_shows_all_seven_days,
         test_modify_fallback_reuses_active_proposal,
@@ -2932,6 +3120,9 @@ def main() -> None:
         test_intent_routing_uses_canonical_aliases,
         test_strict_weak_rag_fails_closed,
         test_persona_style_report_flags_plan_shape,
+        test_persona_plan_renderer_uses_distinct_core_and_approval,
+        test_persona_signature_adds_distinct_non_plan_tail,
+        test_persona_signature_styles_plan_flow_without_preview,
         test_pinecone_profile_suite_marks_external_unavailable_as_blocked,
     ]
     for test in tests:
