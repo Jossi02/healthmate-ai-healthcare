@@ -49,8 +49,8 @@ PERSONAS = [
 ]
 
 PERSONA_STYLE_MARKERS = {
-    "cheer_sis": ["좋아", "잘하고 있어", "충분해", "밝게", "맞춰볼게요"],
-    "soft_senior": ["괜찮", "천천히", "부담", "무리 없게"],
+    "cheer_sis": ["좋아요", "잘하고 있어요", "충분해요", "밝게", "맞춰볼게요"],
+    "soft_senior": ["괜찮습니다", "천천히", "부담", "무리 없게"],
     "strict_trainer": ["핵심", "바로", "오늘은", "군더더기", "확인"],
     "science_coach": ["근거", "이유", "따라서", "기준", "안전성", "지속 가능성"],
     "playful_buddy": ["오케이", "가볍게", "같이", "가보자", "부담 낮게"],
@@ -141,17 +141,17 @@ class PersonaContractRouter(FakeRouter):
         body = "\n".join(part for part in body_parts if part)
 
         if persona_id == "cheer_sis":
-            return f"좋아, 잘하고 있어. {body}\n오늘은 이 정도만 해도 충분해."
+            return f"좋아요, 잘하고 있어요. {body}\n오늘은 이 정도만 해도 충분해요."
         if persona_id == "soft_senior":
-            return f"괜찮아, 천천히 가자. {body}\n부담이 커지면 한 단계 낮춰도 돼."
+            return f"괜찮습니다, 천천히 가도 됩니다. {body}\n부담이 커지면 한 단계 낮춰도 됩니다."
         if persona_id == "strict_trainer":
             return f"핵심부터 말할게.\n{body}\n오늘은 바로 이 순서로 가자."
         if persona_id == "science_coach":
-            return f"근거부터 보면, {body}\n따라서 지금 선택은 이 방향이 가장 합리적이야."
+            return f"근거부터 보면, {body}\n따라서 지금 선택은 이 방향이 가장 합리적입니다."
         if persona_id == "playful_buddy":
             return f"오케이, 가볍게 같이 가자. {body}\n너무 크게 잡지 말고 한 번만 해보자."
         if persona_id == "daily_manager":
-            return f"정리하면 다음 계획이야.\n{body}\n체크할 부분은 위 순서대로 보면 돼."
+            return f"정리하면 다음 계획입니다.\n{body}\n체크할 부분은 위 순서대로 확인하면 됩니다."
         return body
 
 

@@ -346,8 +346,8 @@ def _should_prepend_persona_signature(state: GraphState) -> bool:
 
 
 _PERSONA_MARKERS = {
-    "cheer_sis": ("좋아", "잘하고 있어", "충분해", "맞춰볼게요"),
-    "soft_senior": ("괜찮아", "천천히", "부담", "무리 없게"),
+    "cheer_sis": ("좋아요", "잘하고 있어요", "충분해요", "맞춰볼게요"),
+    "soft_senior": ("괜찮습니다", "천천히", "부담", "무리 없게"),
     "strict_trainer": ("핵심", "바로", "오늘은", "군더더기"),
     "science_coach": ("근거", "이유", "따라서", "기준"),
     "playful_buddy": ("오케이", "가볍게", "같이", "가보자"),
@@ -364,8 +364,8 @@ _PERSONA_STRONG_MARKERS = {
 }
 
 _PERSONA_OPENERS = {
-    "cheer_sis": "좋아, 지금 방향 잘 잡고 있어요.",
-    "soft_senior": "괜찮아요, 천천히 가도 됩니다.",
+    "cheer_sis": "좋아요, 지금 방향 잘 잡고 있어요.",
+    "soft_senior": "괜찮습니다, 천천히 가도 됩니다.",
     "strict_trainer": "핵심만 바로 갈게요. 오늘은 이 순서입니다.",
     "science_coach": "근거와 이유를 보면,",
     "playful_buddy": "오케이, 가볍게 같이 가보자.",

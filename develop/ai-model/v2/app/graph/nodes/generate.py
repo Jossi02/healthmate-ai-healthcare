@@ -24,6 +24,7 @@ from app.core.persona_style import (
     dedupe_repeated_sentences,
     looks_mostly_english,
     normalize_plan_flow_preview,
+    persona_style_guardrails,
     selected_persona_id,
     strip_plan_flow_preamble,
 )
@@ -643,7 +644,10 @@ def _build_persona_generation_prompt(state: GraphState) -> str:
         "- The response must still satisfy the DraftResponse JSON schema exactly.",
         f"- Selected persona id: {selected_persona or 'default'}; resolved persona id: {resolved_persona_id}.",
     ]
-    return "\n".join(guardrails) + "\n\n" + persona_prompt
+    style_lock = persona_style_guardrails(resolved_persona_id)
+    return "\n\n".join(
+        section for section in ("\n".join(guardrails), style_lock, persona_prompt) if section
+    )
 
 
 def _effective_user_profile(state: GraphState) -> dict:
@@ -3759,12 +3763,12 @@ _CASUAL_INTRO_MESSAGES = {
         "도와드릴 수 있어요. 편하게 말해주면 필요한 것만 짧게 정리해드릴게요."
     ),
     "cheer_sis": (
-        "나는 FitUs에서 운동이랑 식단을 밝게 같이 맞춰주는 AI 코치예요. 플랜 작성, 캘린더 반영, "
-        "수정과 삭제까지 도와줄게요. 부담 낮춰서 시작하게 잘 맞춰볼게요."
+        "저는 FitUs에서 운동이랑 식단을 밝게 같이 맞춰주는 AI 코치예요. 플랜 작성, 캘린더 반영, "
+        "수정과 삭제까지 도와드릴게요. 부담 낮춰서 시작하게 잘 맞춰볼게요."
     ),
     "soft_senior": (
         "저는 FitUs에서 운동과 식단을 무리 없게 정리해드리는 AI 코치입니다. 플랜 작성, 캘린더 반영, "
-        "수정과 삭제를 차분히 도와드릴게요."
+        "수정과 삭제를 차분히 도와드리겠습니다."
     ),
     "strict_trainer": (
         "나는 FitUs AI 코치다. 운동 플랜, 식단 플랜, 캘린더 반영, 수정과 삭제를 바로 처리한다. "
@@ -3787,7 +3791,7 @@ _CASUAL_INTRO_MESSAGES = {
 _CASUAL_ACK_MESSAGES = {
     "default": "알겠어요. 필요한 것만 짧게 이어서 도와드릴게요.",
     "cheer_sis": "좋아요. 부담은 낮추고 필요한 것만 밝게 맞춰볼게요.",
-    "soft_senior": "알겠습니다. 무리 없게 천천히 이어가볼게요.",
+    "soft_senior": "알겠습니다. 무리 없게 천천히 이어가겠습니다.",
     "strict_trainer": "확인. 필요한 것만 바로 정리하겠다.",
     "science_coach": "확인했습니다. 기준을 좁혀서 필요한 답만 드리겠습니다.",
     "playful_buddy": "좋아, 확인했어. 부담 낮게 같이 이어가보자.",
@@ -3796,7 +3800,7 @@ _CASUAL_ACK_MESSAGES = {
 
 _CASUAL_THANKS_MESSAGES = {
     "default": "천만에요. 다음 것도 편하게 말해 주세요.",
-    "cheer_sis": "좋아요, 언제든 편하게 말해줘요. 같이 맞춰볼게요.",
+    "cheer_sis": "좋아요, 언제든 편하게 말해 주세요. 같이 맞춰볼게요.",
     "soft_senior": "천만에요. 필요하실 때 편하게 말씀해 주세요.",
     "strict_trainer": "좋다. 다음 것도 바로 말해라.",
     "science_coach": "도움이 됐다면 좋습니다. 다음 질문도 기준에 맞춰 답하겠습니다.",

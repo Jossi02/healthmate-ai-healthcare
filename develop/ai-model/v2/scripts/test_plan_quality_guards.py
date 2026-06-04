@@ -3030,6 +3030,37 @@ def test_casual_context_ack_does_not_emit_profile_template() -> None:
     assert_true("유제품" not in text and "알레르기" not in text, "casual context ack should not drag unrelated profile constraints")
 
 
+def test_persona_casual_speech_levels_are_distinct() -> None:
+    def casual_intro(persona_id: str) -> str:
+        return _build_casual_draft(
+            {
+                "user_message": "네 소개를 해줘",
+                "intent": INTENT_CASUAL,
+                "effective_user_profile": {"selected_ai_persona": persona_id},
+                "context_resolution": {"resolved_reference": "none"},
+            }
+        )["draft_response"]
+
+    cheer = casual_intro("cheer_sis")
+    soft = casual_intro("soft_senior")
+    strict = casual_intro("strict_trainer")
+    science = casual_intro("science_coach")
+    buddy = casual_intro("playful_buddy")
+    manager = casual_intro("daily_manager")
+
+    banmal_markers = ("가보자", "잡자", "하자", "해라", "처리한다", "정리하겠다")
+    honorific_markers = ("요", "습니다", "드립니다", "합니다")
+
+    assert_true("요" in cheer and not any(marker in cheer for marker in banmal_markers), "cheer_sis should use bright honorific 해요체")
+    assert_true("습니다" in soft and not any(marker in soft for marker in banmal_markers), "soft_senior should use calm honorific speech")
+    assert_true("입니다" in science and not any(marker in science for marker in banmal_markers), "science_coach should use formal honorific speech")
+    assert_true("입니다" in manager and not any(marker in manager for marker in banmal_markers), "daily_manager should use formal manager speech")
+    assert_true(not any(marker in strict for marker in honorific_markers), "strict_trainer should not use honorific speech")
+    assert_true(any(marker in strict for marker in ("처리한다", "정리하겠다", "코치다")), "strict_trainer should use direct banmal declaratives")
+    assert_true(not any(marker in buddy for marker in honorific_markers), "playful_buddy should not use honorific speech")
+    assert_true(any(marker in buddy for marker in ("코치야", "가보자", "있어")), "playful_buddy should use casual mate speech")
+
+
 def test_persona_signature_styles_plan_flow_without_preview() -> None:
     base_text = "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요."
     personas = [
@@ -3187,6 +3218,7 @@ def main() -> None:
         test_persona_signature_adds_distinct_non_plan_tail,
         test_self_intro_routes_as_plain_casual_dialogue,
         test_casual_context_ack_does_not_emit_profile_template,
+        test_persona_casual_speech_levels_are_distinct,
         test_persona_signature_styles_plan_flow_without_preview,
         test_pinecone_profile_suite_marks_external_unavailable_as_blocked,
     ]
