@@ -21,7 +21,7 @@ def make_retrieval_decision_node(deps: NodeDeps):
     async def retrieval_decision_node(state: GraphState) -> dict:
         started_at = time.perf_counter()
         query = _resolved_query(state)
-        initial_targets = [target for target in (state.get("search_targets") or []) if target in _VALID_TARGETS]
+        initial_targets = _safe_targets(state.get("search_targets"))
         decision = _build_decision(state, query, initial_targets)
 
         deps.trace.record_current_event(
@@ -52,8 +52,8 @@ def _build_decision(state: GraphState, query: str, initial_targets: list[str]) -
     intent = state.get("intent", "")
     action_intent = str(state.get("action_intent") or "")
     domain = _resolved_domain(state, query)
-    profile_constraints = state.get("profile_constraints") or {}
-    targets = list(dict.fromkeys(initial_targets))
+    profile_constraints = _safe_dict(state.get("profile_constraints"))
+    targets = _safe_targets(initial_targets)
 
     requires_external = False
     requires_memory = False
@@ -112,7 +112,7 @@ def _decision(
 ) -> dict:
     return {
         "should_search": should_search,
-        "targets": list(dict.fromkeys(targets)),
+        "targets": _safe_targets(targets),
         "domain": domain,
         "reason": reason,
         "requires_external": requires_external,
@@ -122,20 +122,21 @@ def _decision(
 
 
 def _resolved_query(state: GraphState) -> str:
-    resolution = state.get("context_resolution") or {}
+    resolution = _safe_dict(state.get("context_resolution"))
     resolved_text = str(resolution.get("resolved_text") or "").strip()
     resolved_reference = resolution.get("resolved_reference")
-    confidence = float(resolution.get("confidence") or 0.0)
+    confidence = _safe_float(resolution.get("confidence"))
     if resolved_reference and resolved_reference != "none" and resolved_text and confidence >= 0.6:
         return resolved_text
     return str(state.get("user_message") or "")
 
 
 def _resolved_domain(state: GraphState, query: str) -> str:
+    resolution = _safe_dict(state.get("context_resolution"))
     for value in (
         state.get("modify_target"),
         state.get("domain"),
-        (state.get("context_resolution") or {}).get("resolved_domain"),
+        resolution.get("resolved_domain"),
         infer_domain(query),
     ):
         if value in {"workout", "diet", "profile", "general"}:
@@ -149,6 +150,7 @@ def _needs_web(query: str) -> bool:
 
 
 def _append_once(targets: list[str], target: str) -> list[str]:
+    targets = _safe_targets(targets)
     if target not in targets:
         targets.append(target)
     return targets
@@ -162,3 +164,34 @@ def _with_memory(targets: list[str]) -> list[str]:
 
 def _without_memory(targets: list[str]) -> list[str]:
     return [target for target in targets if target not in {"vdb_memory", "vdb_user_important"}]
+
+
+def _safe_targets(value: object) -> list[str]:
+    if value is None:
+        raw_values: list[object] = []
+    elif isinstance(value, str):
+        raw_values = [value]
+    elif isinstance(value, (list, tuple, set)):
+        raw_values = list(value)
+    else:
+        raw_values = []
+
+    targets: list[str] = []
+    for item in raw_values:
+        target = str(item or "").strip()
+        if target in _VALID_TARGETS and target not in targets:
+            targets.append(target)
+    return targets
+
+
+def _safe_dict(value: object) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def _safe_float(value: object, *, default: float = 0.0) -> float:
+    if value is None or isinstance(value, bool):
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default

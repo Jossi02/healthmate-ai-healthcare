@@ -70,6 +70,7 @@ export type UserData = {
 
 type CompletedTasksType = Record<string, { workouts: number[]; diets: number[] }>;
 type PlanItemKind = "workout" | "diet";
+type PlanDateDeleteKind = PlanItemKind | "all";
 type FetchPlansOptions = {
   trackChanges?: boolean;
 };
@@ -90,6 +91,10 @@ interface PlanContextType {
     dateStr: string,
     idx: number,
     kind: PlanItemKind
+  ) => Promise<boolean>;
+  deletePlanDate: (
+    dateStr: string,
+    kind: PlanDateDeleteKind
   ) => Promise<boolean>;
   completeWorkout: (dateStr: string, idx: number) => Promise<void>;
   completeDiet: (dateStr: string, idx: number) => Promise<void>;
@@ -747,6 +752,37 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     [fetchPlans, plans]
   );
 
+  const deletePlanDate = useCallback(
+    async (dateStr: string, kind: PlanDateDeleteKind) => {
+      try {
+        const response = await fetch(buildApiUrl("/api/v1/users/plans"), {
+          method: "DELETE",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            plan_type: kind,
+            target_dates: [dateStr],
+          }),
+        });
+
+        if (response.status === 401) {
+          redirectToLoginForExpiredSession();
+          return false;
+        }
+
+        if (!response.ok) {
+          throw new Error("Failed to delete plans for date.");
+        }
+
+        await fetchPlans();
+        return true;
+      } catch (error) {
+        console.error("Failed to delete plans for date", error);
+        return false;
+      }
+    },
+    [fetchPlans]
+  );
+
   const getPlanByDate = useCallback(
     (date: Date | string) => {
       const dateKey = formatDateKey(date);
@@ -765,6 +801,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
         addWorkout,
         replaceDiet,
         deletePlanItem,
+        deletePlanDate,
         completeWorkout,
         completeDiet,
         getPlanByDate,

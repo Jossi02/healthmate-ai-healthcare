@@ -46,6 +46,7 @@ MSG_APPROVAL = "\uc88b\uc544 \uadf8\uac78\ub85c \uc9c4\ud589\ud574\uc918"
 MSG_RECORD_WEIGHT = "\ub0b4 \uccb4\uc911 72kg\ub85c \uae30\ub85d\ud574\uc918"
 MSG_PLAN_CHECK = "\uc624\ub298 \uc6b4\ub3d9 \uccb4\ud06c\ud588\uc5b4"
 MSG_PLAN_DELETE = "\uc624\ub298 \uc6b4\ub3d9 \ud50c\ub79c \uc0ad\uc81c\ud574\uc918"
+MSG_PLAN_DELETE_ALL = "\ud604\uc7ac \uce98\ub9b0\ub354\uc758 \ubaa8\ub4e0 \uc6b4\ub3d9/\uc2dd\ub2e8 \ub0b4\uc5ed\uc744 \uc0ad\uc81c\ud574\uc918"
 MSG_CARE = "\uc624\ub298 \ub108\ubb34 \uc678\ub85c\uc6cc"
 MSG_SAFETY = "\uc228\uc774 \ub108\ubb34 \ucc28\uace0 \uc5b4\uc9c0\ub7ec\uc6cc"
 
@@ -749,6 +750,7 @@ async def main() -> None:
             profile_user = f"e2e-profile-{uuid.uuid4().hex[:6]}"
             plancheck_user = f"e2e-check-{uuid.uuid4().hex[:6]}"
             delete_user = f"e2e-delete-{uuid.uuid4().hex[:6]}"
+            delete_all_user = f"e2e-delete-all-{uuid.uuid4().hex[:6]}"
             care_user = f"e2e-care-{uuid.uuid4().hex[:6]}"
             safety_user = f"e2e-safety-{uuid.uuid4().hex[:6]}"
             ambiguous_user = f"e2e-ambiguous-{uuid.uuid4().hex[:6]}"
@@ -790,22 +792,55 @@ async def main() -> None:
             mixed_session_id = mixed_create["session_id"]
             mixed_create_debug = mixed_create["debug_state"]
             require(mixed_create_debug["action_intent"] == "create", "mixed create action_intent mismatch")
-            require(mixed_create_debug["proposed_plan_count"] == 4, "mixed plan should contain workout and meal items")
+            require(mixed_create_debug["needs_clarification"] is True, "mixed plan should ask the user to choose workout or diet")
+            require(mixed_create_debug["proposed_plan_count"] == 0, "mixed plan should not create merged workout/diet items")
+
+            mixed_followup = await run_request(client, mixed_user, "운동이랑 식단 둘 다 해줘", session_id=mixed_session_id)
+            mixed_followup_debug = mixed_followup["debug_state"]
+            require(mixed_followup_debug["domain"] == "workout", "mixed follow-up should start with workout first")
+            require(mixed_followup_debug["proposed_plan_count"] >= 1, "mixed follow-up should create the first sequential plan")
+            require(
+                (mixed_followup_debug.get("pending_sequential_plan") or {}).get("domain") == "diet",
+                "mixed follow-up should queue diet after the workout proposal",
+            )
 
             mixed_approval = await run_request(client, mixed_user, MSG_APPROVAL, session_id=mixed_session_id)
-            require(bool(mixed_approval.get("plan_sync_applied")), "mixed approval should trigger synchronous WAS write")
+            mixed_approval_debug = mixed_approval["debug_state"]
+            require(
+                bool(mixed_approval.get("plan_sync_applied")),
+                "approval after mixed follow-up should write the first sequential plan",
+            )
+            require(
+                (mixed_approval_debug.get("pending_sequential_plan") or {}).get("domain") == "diet",
+                "diet should remain pending after workout approval",
+            )
             mixed_workout_items = fake_was.full_plans[mixed_user]["workout"]["items"]
             mixed_diet_items = fake_was.full_plans[mixed_user]["diet"]["items"]
-            require(len(mixed_workout_items) == 1, "mixed approval should keep workout items in workout plan")
-            require(len(mixed_diet_items) == 3, "mixed approval should keep meal items in diet plan")
+            require(len(mixed_workout_items) >= 1, "mixed follow-up approval should write workout items first")
+            require(len(mixed_diet_items) == 0, "mixed follow-up approval should not write diet items in the same proposal")
+
+            mixed_diet_followup = await run_request(client, mixed_user, "식단도", session_id=mixed_session_id)
+            mixed_diet_followup_debug = mixed_diet_followup["debug_state"]
+            require(mixed_diet_followup_debug["domain"] == "diet", "pending sequential follow-up should route to diet")
+            require(mixed_diet_followup_debug["proposed_plan_type"] == "diet", "pending sequential follow-up should create diet proposal")
+            require(mixed_diet_followup_debug["proposed_plan_count"] >= 1, "pending sequential follow-up should include diet items")
             require(
-                [item["name"] for item in mixed_diet_items] == ["Breakfast", "Lunch", "Dinner"],
-                "mixed approval should preserve meal rows separately",
+                "pending_sequential_plan_followup"
+                in (mixed_diet_followup_debug["routing_diagnostics"].get("reason_codes") or []),
+                "pending sequential follow-up should expose its routing reason",
             )
             require(
-                {item["type"] for item in fake_was.today_plans[mixed_user]} == {"exercise", "meal"},
-                "mixed approval should expose both exercise and meal items in today plan",
+                mixed_diet_followup_debug.get("pending_sequential_plan") is None,
+                "pending sequential marker should clear when the queued diet proposal is generated",
             )
+
+            mixed_diet_approval = await run_request(client, mixed_user, MSG_APPROVAL, session_id=mixed_session_id)
+            require(
+                bool(mixed_diet_approval.get("plan_sync_applied")),
+                "approval after pending diet follow-up should write diet plan",
+            )
+            mixed_diet_items = fake_was.full_plans[mixed_user]["diet"]["items"]
+            require(len(mixed_diet_items) >= 1, "pending sequential diet approval should write diet items")
 
             profile = await run_request(client, profile_user, MSG_RECORD_WEIGHT)
             profile_debug = profile["debug_state"]
@@ -828,6 +863,20 @@ async def main() -> None:
                 "today exercise items should be deleted",
             )
 
+            plan_delete_all = await run_request(client, delete_all_user, MSG_PLAN_DELETE_ALL)
+            delete_all_debug = plan_delete_all["debug_state"]
+            delete_all_payload = next(
+                payload
+                for write_type, user_id, payload in reversed(fake_was.write_log)
+                if write_type == "plan_delete" and user_id == delete_all_user
+            )
+            require(delete_all_debug["action_intent"] == "record", "plan_delete_all action_intent mismatch")
+            require(delete_all_debug["record_type"] == "plan_delete", "plan_delete_all record_type mismatch")
+            require(bool(plan_delete_all.get("plan_sync_applied")), "plan_delete_all should trigger synchronous WAS write")
+            require(delete_all_payload.get("target_scope") == "all", "plan_delete_all should use full calendar scope")
+            require(delete_all_payload.get("target_dates") == [], "plan_delete_all should not send today's date")
+            require(fake_was.today_plans[delete_all_user] == [], "plan_delete_all should clear all current plan items")
+
             care = await run_request(client, care_user, MSG_CARE)
             care_debug = care["debug_state"]
             require(care_debug["action_intent"] == "care", "care action_intent mismatch")
@@ -843,13 +892,14 @@ async def main() -> None:
             require(ambiguous_debug["needs_clarification"] is True, "ambiguous workout/diet request should clarify")
             require(ambiguous_debug["proposed_plan_count"] == 0, "ambiguous workout/diet request should not create a plan")
 
-            print("[e2e] 11/11 passed")
+            print("[e2e] 12/12 passed")
             print(f"  create session_id={session_id}")
             print(f"  approval plan_sync_applied={approval.get('plan_sync_applied')}")
-            print(f"  mixed plan split=workout:{len(mixed_workout_items)} diet:{len(mixed_diet_items)}")
+            print(f"  mixed sequential first={mixed_followup_debug['domain']} items={len(mixed_workout_items)}")
             print(f"  profile weight={fake_was.profiles[profile_user]['weight']}")
             print(f"  plan_check completed={exercise_items[0]['completed']}")
             print(f"  plan_delete remaining={len(fake_was.today_plans[delete_user])}")
+            print(f"  plan_delete_all scope={delete_all_payload.get('target_scope')} remaining={len(fake_was.today_plans[delete_all_user])}")
     finally:
         await checkpointer.conn.close()
         app.state._temp_dir.cleanup()
@@ -928,23 +978,23 @@ async def run_semantic_validator_smoke() -> None:
             create = await run_request(client, semantic_user, MSG_CREATE_WORKOUT, profile_override=rich_profile)
             debug = create["debug_state"]
             report = debug["validation_report"]
-            require(report["passed"] is True, "plan semantic judge should not block deterministic-valid plan flows")
-            semantic_issue = next(
-                (issue for issue in report.get("issues") or [] if issue.get("code") == "semantic_profile_conflict"),
+            require(report["passed"] is True, "semantic-only plan failure should recover with a safe fallback")
+            fallback_issue = next(
+                (issue for issue in report.get("issues") or [] if issue.get("code") == "semantic_safe_plan_fallback_applied"),
                 None,
             )
             require(
-                semantic_issue is not None
-                and semantic_issue.get("severity") == "warning"
-                and semantic_issue.get("retry") is False
-                and (semantic_issue.get("detail") or {}).get("observe_only") is True,
-                "plan flows should downgrade semantic judge issues to observe-only warnings",
+                fallback_issue is not None
+                and fallback_issue.get("severity") == "warning"
+                and fallback_issue.get("retry") is False,
+                "semantic-only plan failures should be downgraded after safe fallback recovery",
             )
             require(
-                (report.get("semantic_judge") or {}).get("mode") == "observe",
-                "plan semantic judge should be marked as observe mode",
+                (report.get("semantic_judge") or {}).get("mode") == "blocking"
+                and (report.get("semantic_judge") or {}).get("recovered") is True,
+                "plan semantic judge should retain blocking mode and mark recovery",
             )
-            require(debug["proposed_plan_count"] >= 1, "semantic skip should preserve a valid proposal")
+            require(debug["proposed_plan_count"] >= 1, "semantic fallback should preserve a safe proposal")
             print("[e2e-semantic-validator] 1/1 passed")
     finally:
         await checkpointer.conn.close()

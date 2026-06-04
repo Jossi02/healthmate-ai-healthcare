@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import time
 import re
+from datetime import date
 from typing import Any
 
 from app.core.diet_safety_rules import (
@@ -17,9 +18,14 @@ from app.core.diet_safety_rules import (
 from app.core.intents import INTENT_APPROVAL, INTENT_MODIFY, INTENT_PLAN
 from app.core.profile_constraints import as_text_list, profile_bmi_value, profile_weight_value
 from app.graph.deps import NodeDeps
+from app.schemas.home import HomeRecommendationResponse
 from app.schemas.llm_responses import AnswerValidationJudgeResponse
 from app.schemas.state import GraphState
-from app.services.home_recommendations import kst_today_iso
+from app.services.home_recommendations import (
+    empty_home_recommendations,
+    kst_today_iso,
+    validate_home_recommendation_profile_fit,
+)
 
 _MAX_VALIDATION_RETRIES = 1
 _PLAN_RATIONALE_PHRASES = (
@@ -38,9 +44,52 @@ _ALLERGEN_TERMS = {
     "wheat_allergy": ("밀", "빵", "파스타", "wheat", "gluten"),
     "soy_allergy": ("두부", "대두", "콩", "soy"),
 }
-_HIGH_IMPACT_TERMS = ("점프", "버피", "마운틴클라이머", "전력질주", "sprint", "jump", "burpee")
+_HIGH_IMPACT_TERMS = (
+    "점프",
+    "버피",
+    "마운틴클라이머",
+    "전력질주",
+    "sprint",
+    "jump",
+    "jumping",
+    "burpee",
+    "plyo",
+    "plyometric",
+    "box jump",
+    "플라이오",
+    "점핑",
+)
 _BACK_LOAD_TERMS = ("데드리프트", "굿모닝", "무거운 스쿼트", "deadlift", "heavy squat")
-_ADVANCED_WORKOUT_TERMS = ("hiit", "인터벌", "전력질주", "고강도", "고중량", "최대", "max", "5세트", "6세트")
+_ADVANCED_WORKOUT_TERMS = (
+    "hiit",
+    "인터벌",
+    "전력질주",
+    "고강도",
+    "고중량",
+    "최대",
+    "max",
+    "5세트",
+    "6세트",
+    "tabata",
+    "amrap",
+    "emom",
+    "agility",
+    "metcon",
+    "high intensity",
+    "power circuit",
+    "circuit",
+    "fast tempo",
+    "fast-paced",
+    "quick repeat",
+    "rapid repeat",
+    "민첩성",
+    "타바타",
+    "서킷",
+    "순환운동",
+    "빠르게 반복",
+    "빠른 반복",
+    "고강도",
+)
 _LONG_WORKOUT_TERMS = ("60분", "70분", "80분", "90분", "1시간")
 _SODIUM_HEAVY_TERMS = ("라면", "햄", "소시지", "베이컨", "짠", "나트륨", "젓갈", "국물", *COMMON_SODIUM_HEAVY_TERMS)
 _SUGAR_HEAVY_TERMS = ("설탕", "시럽", "탄산", "주스", "디저트", "케이크", "과자", "달콤", *COMMON_SUGAR_HEAVY_TERMS)
@@ -143,6 +192,17 @@ def make_answer_validator_node(deps: NodeDeps):
             duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
         )
 
+        if state.get("request_kind") == "home_recommendation" and not report["passed"]:
+            flags = dict(state.get("generation_quality_flags") or {})
+            flags["home_validator_blocked"] = True
+            return {
+                "validation_report": report,
+                "home_recommendations": _empty_home_recommendations_for_state(state),
+                "generation_quality_flags": flags,
+                "force_regenerate": False,
+                "self_eval_failure_reason": None,
+            }
+
         if can_retry:
             reason = "; ".join(issue["message"] for issue in report["issues"][:3])
             return {
@@ -159,6 +219,9 @@ def make_answer_validator_node(deps: NodeDeps):
             safe_diet_fallback = _safe_diet_fallback_for_validation_failure(report, state)
             if safe_diet_fallback:
                 return safe_diet_fallback
+            safe_semantic_fallback = _safe_plan_fallback_for_semantic_failure(report, state)
+            if safe_semantic_fallback:
+                return safe_semantic_fallback
             return {
                 "validation_report": report,
                 "response": _blocked_response(report),
@@ -235,6 +298,39 @@ def _safe_diet_fallback_for_validation_failure(
             "detail": {"recovered_codes": sorted(critical_codes)},
         }
     )
+    flags = dict(state.get("generation_quality_flags") or {})
+    flags["safe_diet_fallback_applied"] = True
+    flags["safe_diet_fallback_recovered_codes"] = sorted(critical_codes)
+    flags["safe_diet_fallback_revalidated"] = False
+    fallback_state: GraphState = {
+        **state,
+        "response": response,
+        "draft_response": response,
+        "proposed_plan": proposed_plan,
+        "proposed_plan_type": "diet",
+        "proposed_plan_action": "create",
+        "action_intent": "create",
+        "domain": "diet",
+        "needs_clarification": False,
+        "generation_quality_flags": flags,
+    }
+    fallback_report = _validate_state(fallback_state)
+    if not fallback_report.get("passed"):
+        return None
+    flags["safe_diet_fallback_revalidated"] = True
+    flags["safe_diet_fallback_revalidation_issue_count"] = len(fallback_report.get("issues") or [])
+    patched_report["issues"].append(
+        {
+            "severity": "warning",
+            "code": "safe_diet_fallback_revalidated",
+            "message": "Deterministic diet fallback passed profile and contract validation before returning.",
+            "retry": False,
+            "detail": {
+                "fallback_issue_count": len(fallback_report.get("issues") or []),
+                "quality_dimensions": fallback_report.get("quality_dimensions") or {},
+            },
+        }
+    )
     return {
         "validation_report": patched_report,
         "response": response,
@@ -251,6 +347,7 @@ def _safe_diet_fallback_for_validation_failure(
         "proposed_plan_type": "diet",
         "proposed_plan_action": "create",
         "awaiting_plan_confirmation": True,
+        "generation_quality_flags": flags,
         "force_regenerate": False,
         "needs_clarification": False,
         "self_eval_failure_reason": None,
@@ -305,6 +402,159 @@ def _build_safe_diet_fallback_items(state: GraphState) -> list[dict[str, Any]]:
     ]
 
 
+def _safe_plan_fallback_for_semantic_failure(
+    report: dict[str, Any],
+    state: GraphState,
+) -> dict[str, Any] | None:
+    if state.get("action_intent") not in {"create", "modify"}:
+        return None
+    critical = [
+        issue
+        for issue in report.get("issues") or []
+        if isinstance(issue, dict) and issue.get("severity") == "critical"
+    ]
+    if not critical:
+        return None
+    if not all(str(issue.get("code") or "").startswith("semantic_") for issue in critical):
+        return None
+    if not all((issue.get("detail") or {}).get("source") == "semantic_judge" for issue in critical):
+        return None
+
+    plan_type = state.get("proposed_plan_type") or state.get("domain")
+    if plan_type == "diet":
+        proposed_plan = _build_safe_diet_fallback_items(state)
+        core_message = "?앸떒 ?뚮옖???쒖븞?댁슂."
+        approval_question = "???앸떒 ?뚮옖?쇰줈 ?묒꽦?좉퉴??"
+    elif plan_type == "workout":
+        proposed_plan = _build_safe_workout_fallback_items(state)
+        core_message = "?대룞 ?뚮옖???쒖븞?댁슂."
+        approval_question = "???대룞 ?뚮옖?쇰줈 ?묒꽦?좉퉴??"
+    else:
+        return None
+
+    recovered_codes = [str(issue.get("code") or "") for issue in critical]
+    plan_preview = _format_simple_plan_preview(proposed_plan)
+    response = f"{core_message}\n{plan_preview}\n{approval_question}"
+    flags = dict(state.get("generation_quality_flags") or {})
+    flags["semantic_fallback_applied"] = True
+    flags["semantic_fallback_recovered_codes"] = sorted(set(recovered_codes))
+    flags["semantic_fallback_revalidated"] = False
+    fallback_state: GraphState = {
+        **state,
+        "response": response,
+        "draft_response": response,
+        "proposed_plan": proposed_plan,
+        "proposed_plan_type": plan_type,
+        "proposed_plan_action": "create",
+        "action_intent": "create",
+        "domain": plan_type,
+        "needs_clarification": False,
+        "generation_quality_flags": flags,
+    }
+    fallback_report = _validate_state(fallback_state)
+    if not fallback_report.get("passed"):
+        return None
+    flags["semantic_fallback_revalidated"] = True
+    flags["semantic_fallback_revalidation_issue_count"] = len(fallback_report.get("issues") or [])
+    recovered_report = _recovered_validation_report(
+        report,
+        recovered_codes=recovered_codes,
+        recovery_code="semantic_safe_plan_fallback_applied",
+        recovery_message="Semantic judge failure was recovered with a deterministic safe fallback.",
+    )
+    recovered_report["issues"].append(
+        {
+            "severity": "warning",
+            "code": "semantic_safe_plan_fallback_revalidated",
+            "message": "Deterministic fallback passed profile and contract validation before returning.",
+            "retry": False,
+            "detail": {
+                "fallback_issue_count": len(fallback_report.get("issues") or []),
+                "quality_dimensions": fallback_report.get("quality_dimensions") or {},
+            },
+        }
+    )
+    return {
+        "validation_report": recovered_report,
+        "response": response,
+        "draft_response": response,
+        "draft_components": {
+            "core_message": core_message,
+            "plan_preview": plan_preview,
+            "approval_question": approval_question,
+            "reason_points": [],
+            "safety_notes": [],
+            "search_grounding_summary": "",
+        },
+        "proposed_plan": proposed_plan,
+        "proposed_plan_type": plan_type,
+        "proposed_plan_action": "create",
+        "awaiting_plan_confirmation": True,
+        "generation_quality_flags": flags,
+        "force_regenerate": False,
+        "needs_clarification": False,
+        "self_eval_failure_reason": None,
+    }
+
+
+def _build_safe_workout_fallback_items(state: GraphState) -> list[dict[str, Any]]:
+    today = kst_today_iso()
+    profile = _effective_user_profile(state)
+    available = _safe_int(profile.get("available_time_minutes"))
+    cardio_minutes = max(5, min(available or 15, 15))
+    return [
+        {
+            "name": "가벼운 전신 루틴",
+            "detail": "낮은 강도의 전신 준비 운동",
+            "day": today,
+            "ex_list": [
+                {"exercise_name": "의자 스쿼트", "sets": 2, "calories": 40},
+                {"exercise_name": "벽 푸시업", "sets": 2, "calories": 35},
+                {"exercise_name": "전신 스트레칭", "sets": 2, "calories": 20},
+            ],
+        },
+        {
+            "name": "가벼운 유산소",
+            "detail": "무리 없는 걷기 중심 루틴",
+            "day": today,
+            "ex_list": [
+                {"exercise_name": "편안한 걷기", "duration_minutes": cardio_minutes, "calories": 60},
+            ],
+        },
+    ]
+
+
+def _recovered_validation_report(
+    report: dict[str, Any],
+    *,
+    recovered_codes: list[str],
+    recovery_code: str,
+    recovery_message: str,
+) -> dict[str, Any]:
+    patched_report = dict(report)
+    patched_report["passed"] = True
+    patched_report["requires_retry"] = False
+    patched_report["issues"] = [
+        issue
+        for issue in report.get("issues") or []
+        if not (isinstance(issue, dict) and issue.get("severity") == "critical")
+    ]
+    patched_report["issues"].append(
+        {
+            "severity": "warning",
+            "code": recovery_code,
+            "message": recovery_message,
+            "retry": False,
+            "detail": {"recovered_codes": sorted(set(recovered_codes))},
+        }
+    )
+    semantic_judge = dict(patched_report.get("semantic_judge") or {})
+    if semantic_judge:
+        semantic_judge["recovered"] = True
+        patched_report["semantic_judge"] = semantic_judge
+    return patched_report
+
+
 def _profile_request_constraint_text(state: GraphState) -> str:
     profile = _effective_user_profile(state)
     constraints = state.get("profile_constraints") or {}
@@ -336,13 +586,13 @@ def _validate_state(state: GraphState) -> dict[str, Any]:
     response = str(state.get("response") or "").strip()
     intent = str(state.get("intent") or "")
     action_intent = str(state.get("action_intent") or "")
-    proposed_plan = list(state.get("proposed_plan") or [])
+    proposed_plan = _safe_list(state.get("proposed_plan"))
     proposed_plan_type = state.get("proposed_plan_type")
-    profile_constraints = state.get("profile_constraints") or {}
-    retrieval_decision = state.get("retrieval_decision") or {}
+    profile_constraints = _safe_dict(state.get("profile_constraints"))
+    retrieval_decision = _safe_dict(state.get("retrieval_decision"))
 
     if state.get("request_kind") == "home_recommendation":
-        return _report(True, issues, False)
+        return _validate_home_recommendation_state(state)
 
     if not response:
         _issue(issues, "critical", "missing_response", "최종 응답이 비어 있습니다.", retry=True)
@@ -391,6 +641,63 @@ def _validate_state(state: GraphState) -> dict[str, Any]:
     requires_retry = any(issue.get("retry") for issue in issues)
     passed = not any(issue["severity"] == "critical" for issue in issues)
     return _report(passed, issues, requires_retry)
+
+
+def _validate_home_recommendation_state(state: GraphState) -> dict[str, Any]:
+    issues: list[dict[str, Any]] = []
+    raw = state.get("home_recommendations")
+    if not raw:
+        _issue(
+            issues,
+            "critical",
+            "missing_home_recommendations",
+            "Home recommendation payload is missing.",
+            retry=False,
+        )
+        return _report(False, issues, False)
+
+    try:
+        response = HomeRecommendationResponse.model_validate(raw)
+    except Exception as exc:
+        _issue(
+            issues,
+            "critical",
+            "invalid_home_recommendations",
+            "Home recommendation payload does not match the response contract.",
+            retry=False,
+            detail={"error": str(exc)},
+        )
+        return _report(False, issues, False)
+
+    for issue in validate_home_recommendation_profile_fit(
+        response,
+        user_profile=_effective_user_profile(state),
+    ):
+        _issue(
+            issues,
+            str(issue.get("severity") or "warning"),
+            str(issue.get("code") or "home_profile_conflict"),
+            "Home recommendation conflicts with the user profile.",
+            retry=False,
+            detail={key: value for key, value in issue.items() if key not in {"severity", "code"}},
+        )
+
+    passed = not any(issue["severity"] == "critical" for issue in issues)
+    return _report(passed, issues, False)
+
+
+def _empty_home_recommendations_for_state(state: GraphState) -> dict[str, Any]:
+    scope = state.get("home_recommendation_scope") or "all"
+    if scope not in {"all", "workout", "diet"}:
+        scope = "all"
+    home_date = str(state.get("home_recommendation_date") or kst_today_iso())
+    return empty_home_recommendations(
+        date=home_date,
+        scope=scope,
+        user_profile=_effective_user_profile(state),
+        today_plan=state.get("today_plan") or [],
+        recent_recommendations=state.get("home_recommendation_recent") or {},
+    ).model_dump()
 
 
 def _has_deterministic_critical_issue(report: dict[str, Any]) -> bool:
@@ -514,12 +821,12 @@ def _semantic_validation_mode(state: GraphState) -> str:
         return "skip"
     if not str(state.get("response") or "").strip():
         return "skip"
-    proposed_plan = state.get("proposed_plan") or []
+    proposed_plan = _safe_list(state.get("proposed_plan"))
     action_intent = state.get("action_intent")
-    retrieval_decision = state.get("retrieval_decision") or {}
-    profile_constraints = state.get("profile_constraints") or {}
-    field_coverage = profile_constraints.get("profile_field_coverage") or {}
-    rich_profile = int(field_coverage.get("present_count") or 0) >= 4
+    retrieval_decision = _safe_dict(state.get("retrieval_decision"))
+    profile_constraints = _safe_dict(state.get("profile_constraints"))
+    field_coverage = _safe_dict(profile_constraints.get("profile_field_coverage"))
+    rich_profile = (_safe_int(field_coverage.get("present_count")) or 0) >= 4
     high_risk_or_constrained = bool(
         profile_constraints.get("safety_risks")
         or profile_constraints.get("critical_constraints")
@@ -533,15 +840,20 @@ def _semantic_validation_mode(state: GraphState) -> str:
     )
     if not should_run:
         return "skip"
-    if action_intent in {"create", "modify"} and _plan_requires_strict_semantic_validation(profile_constraints):
-        return "blocking"
     if action_intent in {"create", "modify"}:
+        if (
+            _plan_requires_strict_semantic_validation(profile_constraints)
+            or high_risk_or_constrained
+            or rich_profile
+            or retrieval_decision.get("requires_external")
+        ):
+            return "blocking"
         return "observe"
     return "blocking"
 
 
 def _semantic_validation_strict_required(state: GraphState) -> bool:
-    profile_constraints = state.get("profile_constraints") or {}
+    profile_constraints = _safe_dict(state.get("profile_constraints"))
     return bool(
         _semantic_validation_mode(state) == "blocking"
         and (
@@ -555,34 +867,37 @@ def _semantic_validation_strict_required(state: GraphState) -> bool:
 def _plan_requires_strict_semantic_validation(profile_constraints: dict[str, Any]) -> bool:
     constraints = set(
         [
-            *(profile_constraints.get("critical_constraints") or []),
-            *(profile_constraints.get("retrieval_critical_constraints") or []),
-            *(profile_constraints.get("hard_profile_constraints") or []),
-            *(profile_constraints.get("request_hard_constraints") or []),
-            *(profile_constraints.get("safety_risks") or []),
+            *_safe_text_list(profile_constraints.get("critical_constraints")),
+            *_safe_text_list(profile_constraints.get("retrieval_critical_constraints")),
+            *_safe_text_list(profile_constraints.get("hard_profile_constraints")),
+            *_safe_text_list(profile_constraints.get("request_hard_constraints")),
+            *_safe_text_list(profile_constraints.get("safety_risks")),
         ]
     )
     return bool(constraints & _STRICT_PLAN_RAG_CONSTRAINTS)
 
 
 def _semantic_validation_payload(state: GraphState) -> str:
+    profile_constraints = _safe_dict(state.get("profile_constraints"))
+    search_results = _safe_list(state.get("search_results"))
+    proposed_plan = _safe_list(state.get("proposed_plan"))
     payload = {
         "user_message": state.get("user_message"),
         "intent": state.get("intent"),
         "action_intent": state.get("action_intent"),
         "domain": state.get("domain"),
-        "profile_summary": (state.get("profile_constraints") or {}).get("summary") or {},
-        "hard_profile_constraints": (state.get("profile_constraints") or {}).get("hard_profile_constraints") or [],
-        "request_hard_constraints": (state.get("profile_constraints") or {}).get("request_hard_constraints") or [],
-        "goals": (state.get("profile_constraints") or {}).get("goals") or [],
-        "retrieval_decision": state.get("retrieval_decision") or {},
+        "profile_summary": _safe_dict(profile_constraints.get("summary")),
+        "hard_profile_constraints": _safe_text_list(profile_constraints.get("hard_profile_constraints")),
+        "request_hard_constraints": _safe_text_list(profile_constraints.get("request_hard_constraints")),
+        "goals": _safe_text_list(profile_constraints.get("goals")),
+        "retrieval_decision": _safe_dict(state.get("retrieval_decision")),
         "search_quality": state.get("search_quality"),
-        "search_result_count": len(state.get("search_results") or []),
-        "search_results_preview": _search_results_for_judge(state.get("search_results") or []),
+        "search_result_count": len(search_results),
+        "search_results_preview": _search_results_for_judge(search_results),
         "retrieval_evidence_contract": _retrieval_evidence_contract(state),
         "proposed_plan_type": state.get("proposed_plan_type"),
-        "proposed_plan": _plan_for_judge(state.get("proposed_plan") or []),
-        "generation_quality_flags": state.get("generation_quality_flags") or {},
+        "proposed_plan": _plan_for_judge(proposed_plan),
+        "generation_quality_flags": _safe_dict(state.get("generation_quality_flags")),
         "response": _truncate_text(state.get("response") or "", 2500),
     }
 
@@ -638,7 +953,9 @@ def _plan_for_judge(plan: list[dict]) -> list[dict[str, Any]]:
 def _search_results_for_judge(results: list[dict]) -> list[dict[str, Any]]:
     preview: list[dict[str, Any]] = []
     for result in results[:5]:
-        metadata = result.get("metadata") or {}
+        if not isinstance(result, dict):
+            continue
+        metadata = _safe_dict(result.get("metadata"))
         preview.append(
             {
                 "source": result.get("source"),
@@ -654,12 +971,16 @@ def _search_results_for_judge(results: list[dict]) -> list[dict[str, Any]]:
 
 
 def _retrieval_evidence_contract(state: GraphState) -> dict[str, Any]:
-    results = state.get("search_results") or []
-    profile_constraints = state.get("profile_constraints") or {}
+    results = _safe_list(state.get("search_results"))
+    profile_constraints = _safe_dict(state.get("profile_constraints"))
+    retrieval_decision = _safe_dict(state.get("retrieval_decision"))
+    draft_components = _safe_dict(state.get("draft_components"))
     kb_ids: list[str] = []
     returned_constraints: set[str] = set()
     for result in results[:8]:
-        metadata = result.get("metadata") or {}
+        if not isinstance(result, dict):
+            continue
+        metadata = _safe_dict(result.get("metadata"))
         kb_id = str(result.get("kb_id") or metadata.get("kb_id") or "").strip()
         if kb_id:
             kb_ids.append(kb_id)
@@ -669,11 +990,11 @@ def _retrieval_evidence_contract(state: GraphState) -> dict[str, Any]:
         elif isinstance(values, list):
             returned_constraints.update(str(value) for value in values if value)
     return {
-        "requires_external": bool((state.get("retrieval_decision") or {}).get("requires_external")),
+        "requires_external": bool(retrieval_decision.get("requires_external")),
         "returned_kb_ids": kb_ids,
-        "expected_critical_constraints": profile_constraints.get("retrieval_critical_constraints") or [],
+        "expected_critical_constraints": _safe_text_list(profile_constraints.get("retrieval_critical_constraints")),
         "returned_constraints": sorted(returned_constraints),
-        "grounding_summary": (state.get("draft_components") or {}).get("search_grounding_summary") or "",
+        "grounding_summary": draft_components.get("search_grounding_summary") or "",
     }
 
 
@@ -760,7 +1081,13 @@ def _is_iso_date(value: str) -> bool:
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
         return False
     year, month, day = [int(part) for part in text.split("-")]
-    return 1900 <= year <= 2100 and 1 <= month <= 12 and 1 <= day <= 31
+    if not 1900 <= year <= 2100:
+        return False
+    try:
+        date(year, month, day)
+    except ValueError:
+        return False
+    return True
 
 
 def _is_weak_diet_detail(detail: str) -> bool:
@@ -798,13 +1125,6 @@ def _validate_plan_domain(
     expected = proposed_plan_type
     if expected not in {"workout", "diet"}:
         return
-    if _has_mixed_workout_diet_plan(proposed_plan) and (
-        state.get("domain") == "general"
-        or state.get("action_intent") == "approval"
-        or ((state.get("context_resolution") or {}).get("resolved_reference") == "active_proposal")
-    ):
-        return
-
     mixed = []
     for item in proposed_plan:
         inferred = _infer_plan_item_domain(item)
@@ -888,7 +1208,8 @@ def _validate_rag_reflection(
     state: GraphState,
     profile_constraints: dict[str, Any],
 ) -> None:
-    retrieval_decision = state.get("retrieval_decision") or {}
+    retrieval_decision = _safe_dict(state.get("retrieval_decision"))
+    profile_constraints = _safe_dict(profile_constraints)
     if not retrieval_decision.get("requires_external") and not profile_constraints.get("should_use_rag"):
         return
     if state.get("search_quality") == "degraded":
@@ -912,8 +1233,8 @@ def _validate_rag_reflection(
             )
         return
 
-    search_results = state.get("search_results") or []
-    draft_components = state.get("draft_components") or {}
+    search_results = _safe_list(state.get("search_results"))
+    draft_components = _safe_dict(state.get("draft_components"))
     has_grounding_summary = bool(str(draft_components.get("search_grounding_summary") or "").strip())
     if not search_results:
         _issue(
@@ -929,16 +1250,19 @@ def _validate_rag_reflection(
     returned_constraints = set()
     returned_kb_ids = []
     for result in search_results:
-        kb_id = str(result.get("kb_id") or (result.get("metadata") or {}).get("kb_id") or "").strip()
+        if not isinstance(result, dict):
+            continue
+        metadata = _safe_dict(result.get("metadata"))
+        kb_id = str(result.get("kb_id") or metadata.get("kb_id") or "").strip()
         if kb_id:
             returned_kb_ids.append(kb_id)
-        values = result.get("constraints") or (result.get("metadata") or {}).get("constraints") or []
+        values = result.get("constraints") or metadata.get("constraints") or []
         if isinstance(values, str):
             returned_constraints.add(values)
         elif isinstance(values, list):
             returned_constraints.update(str(value) for value in values if value)
 
-    expected_constraints = set(profile_constraints.get("retrieval_critical_constraints") or [])
+    expected_constraints = set(_safe_text_list(profile_constraints.get("retrieval_critical_constraints")))
     reflected_constraints = bool(expected_constraints & returned_constraints) if expected_constraints else True
     if not reflected_constraints:
         _issue(
@@ -1163,12 +1487,53 @@ def _validate_profile_fit_details(
             "근육 증가 목표인데 근력 운동 신호가 약합니다.",
             retry=False,
         )
+    if proposed_plan_type == "workout" and "fat_loss" in goals and not _contains_cardio_or_fat_loss_signal(proposed_plan):
+        _issue(
+            issues,
+            "warning",
+            "fat_loss_goal_without_cardio_signal",
+            "Fat-loss workout goal is present but cardio or energy-expenditure signals are weak.",
+            retry=False,
+        )
+    if proposed_plan_type == "workout" and "mobility" in goals and not _contains_mobility_signal(proposed_plan):
+        _issue(
+            issues,
+            "warning",
+            "mobility_goal_without_mobility_signal",
+            "Mobility workout goal is present but stretching or mobility signals are weak.",
+            retry=False,
+        )
     if proposed_plan_type == "diet" and {"weight_loss", "fat_loss"} & goals and not _contains_diet_structure(proposed_plan):
         _issue(
             issues,
             "warning",
             "weight_loss_goal_without_meal_structure",
             "감량 목표인데 식사 구성/칼로리 신호가 약합니다.",
+            retry=False,
+        )
+
+    if proposed_plan_type == "diet" and "muscle_gain" in goals and not _contains_diet_protein_signal(proposed_plan):
+        _issue(
+            issues,
+            "warning",
+            "muscle_gain_diet_without_protein_signal",
+            "Muscle-gain diet goal is present but concrete protein signals are weak.",
+            retry=False,
+        )
+    if proposed_plan_type == "diet" and "glucose_control" in goals and not _contains_glucose_control_signal(proposed_plan):
+        _issue(
+            issues,
+            "warning",
+            "glucose_goal_without_stable_carb_signal",
+            "Glucose-control diet goal is present but stable carbohydrate or fiber signals are weak.",
+            retry=False,
+        )
+    if proposed_plan_type == "diet" and "heart_health" in goals and not _contains_heart_health_signal(proposed_plan):
+        _issue(
+            issues,
+            "warning",
+            "heart_health_goal_without_low_sodium_signal",
+            "Heart-health diet goal is present but low-sodium or vegetable-forward signals are weak.",
             retry=False,
         )
 
@@ -1292,13 +1657,39 @@ def _contains_strength_signal(plan: list[dict]) -> bool:
     return any(keyword in text for keyword in ("근력", "웨이트", "스쿼트", "런지", "푸시업", "로우", "덤벨", "세트", "strength", "resistance"))
 
 
+def _contains_cardio_or_fat_loss_signal(plan: list[dict]) -> bool:
+    text = _plan_text(plan).lower()
+    return any(keyword in text for keyword in ("cardio", "walk", "walking", "run", "bike", "cycle", "aerobic", "fat loss", "calorie", "칼로리", "유산소", "걷기", "자전거", "인터벌"))
+
+
+def _contains_mobility_signal(plan: list[dict]) -> bool:
+    text = _plan_text(plan).lower()
+    return any(keyword in text for keyword in ("mobility", "stretch", "stretching", "warm-up", "cooldown", "가동성", "스트레칭", "유연성", "관절", "이완"))
+
+
 def _contains_diet_structure(plan: list[dict]) -> bool:
     text = _plan_text(plan).lower()
     return any(keyword in text for keyword in ("kcal", "칼로리", "단백질", "채소", "현미", "닭가슴살", "두부", "식사", "아침", "점심", "저녁"))
 
 
+def _contains_diet_protein_signal(plan: list[dict]) -> bool:
+    text = _plan_text(plan).lower()
+    return any(keyword in text for keyword in ("protein", "단백질", "닭가슴살", "두부", "렌틸콩", "병아리콩", "달걀", "생선", "콩", "그릭", "요거트"))
+
+
+def _contains_glucose_control_signal(plan: list[dict]) -> bool:
+    text = _plan_text(plan).lower()
+    return any(keyword in text for keyword in ("혈당", "당뇨", "저당", "통곡물", "현미", "귀리", "섬유", "채소", "고구마", "whole grain", "fiber", "low sugar"))
+
+
+def _contains_heart_health_signal(plan: list[dict]) -> bool:
+    text = _plan_text(plan).lower()
+    return any(keyword in text for keyword in ("저염", "나트륨", "채소", "과일", "통곡물", "현미", "dash", "혈압", "고혈압", "low sodium", "vegetable"))
+
+
 def _requires_external_fail_closed(state: GraphState, profile_constraints: dict[str, Any]) -> bool:
-    retrieval_decision = state.get("retrieval_decision") or {}
+    retrieval_decision = _safe_dict(state.get("retrieval_decision"))
+    profile_constraints = _safe_dict(profile_constraints)
     if not retrieval_decision.get("requires_external") and not profile_constraints.get("should_use_rag"):
         return False
     action_intent = state.get("action_intent")
@@ -1320,7 +1711,7 @@ def _requires_external_fail_closed(state: GraphState, profile_constraints: dict[
 
 
 def _effective_user_profile(state: GraphState) -> dict[str, Any]:
-    return dict(state.get("effective_user_profile") or state.get("user_profile") or {})
+    return _safe_dict(state.get("effective_user_profile")) or _safe_dict(state.get("user_profile"))
 
 
 _PROFILE_FIT_CODES = {
@@ -1340,6 +1731,22 @@ _PROFILE_FIT_CODES = {
     "eating_disorder_extreme_plan_conflict",
     "vegetarian_conflict",
     "vegan_conflict",
+    "muscle_goal_without_strength_signal",
+    "fat_loss_goal_without_cardio_signal",
+    "mobility_goal_without_mobility_signal",
+    "weight_loss_goal_without_meal_structure",
+    "muscle_gain_diet_without_protein_signal",
+    "glucose_goal_without_stable_carb_signal",
+    "heart_health_goal_without_low_sodium_signal",
+}
+_GOAL_FIT_WARNING_CODES = {
+    "muscle_goal_without_strength_signal",
+    "fat_loss_goal_without_cardio_signal",
+    "mobility_goal_without_mobility_signal",
+    "weight_loss_goal_without_meal_structure",
+    "muscle_gain_diet_without_protein_signal",
+    "glucose_goal_without_stable_carb_signal",
+    "heart_health_goal_without_low_sodium_signal",
 }
 _PLAN_CONTRACT_CODES = {
     "missing_proposed_plan",
@@ -1357,16 +1764,25 @@ _PLAN_CONTRACT_CODES = {
 
 
 def _validation_quality_dimensions(state: GraphState, report: dict[str, Any]) -> dict[str, Any]:
-    issues = report.get("issues") or []
+    issues = _safe_list(report.get("issues"))
     critical_codes = {
         str(issue.get("code"))
         for issue in issues
         if isinstance(issue, dict) and issue.get("severity") == "critical"
     }
-    retrieval_decision = state.get("retrieval_decision") or {}
-    profile_constraints = state.get("profile_constraints") or {}
-    search_results = state.get("search_results") or []
-    grounding_summary = str((state.get("draft_components") or {}).get("search_grounding_summary") or "").strip()
+    warning_codes = {
+        str(issue.get("code"))
+        for issue in issues
+        if isinstance(issue, dict) and issue.get("severity") == "warning"
+    }
+    profile_fit_warning_codes = sorted(warning_codes & _PROFILE_FIT_CODES)
+    goal_fit_warning_codes = sorted(warning_codes & _GOAL_FIT_WARNING_CODES)
+    critical_profile_fit_codes = sorted(critical_codes & _PROFILE_FIT_CODES)
+    retrieval_decision = _safe_dict(state.get("retrieval_decision"))
+    profile_constraints = _safe_dict(state.get("profile_constraints"))
+    search_results = _safe_list(state.get("search_results"))
+    draft_components = _safe_dict(state.get("draft_components"))
+    grounding_summary = str(draft_components.get("search_grounding_summary") or "").strip()
     requires_external = bool(retrieval_decision.get("requires_external") or profile_constraints.get("should_use_rag"))
     search_quality = state.get("search_quality")
     retrieval_hit = (not requires_external) or bool(search_results)
@@ -1387,16 +1803,40 @@ def _validation_quality_dimensions(state: GraphState, report: dict[str, Any]) ->
         evidence_status = "weak"
     return {
         "profile_fit_passed": not bool(critical_codes & _PROFILE_FIT_CODES),
+        "critical_profile_fit_codes": critical_profile_fit_codes,
+        "profile_fit_warning_codes": profile_fit_warning_codes,
+        "profile_fit_warning_count": len(profile_fit_warning_codes),
+        "goal_fit_warning_codes": goal_fit_warning_codes,
+        "goal_fit_warning_count": len(goal_fit_warning_codes),
         "plan_write_contract_passed": not bool(critical_codes & _PLAN_CONTRACT_CODES),
         "retrieval_hit": retrieval_hit,
         "evidence_used": evidence_used,
         "evidence_status": evidence_status,
         "rag_fail_open": evidence_status == "degraded_fail_open",
-        "semantic_judge": report.get("semantic_judge") or {"passed": None, "issue_count": 0},
+        "semantic_judge": _safe_dict(report.get("semantic_judge")) or {"passed": None, "issue_count": 0},
         "requires_external": requires_external,
         "search_quality": search_quality,
-        "profile_field_coverage": profile_constraints.get("profile_field_coverage") or {},
+        "profile_field_coverage": _safe_dict(profile_constraints.get("profile_field_coverage")),
     }
+
+
+def _safe_dict(value: object) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _safe_list(value: object) -> list[Any]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    return []
+
+
+def _safe_text_list(value: object) -> list[str]:
+    if isinstance(value, (list, tuple, set)):
+        return [text for item in value if (text := str(item or "").strip())]
+    text = str(value or "").strip()
+    return [text] if text else []
 
 
 def _safe_int(value: object) -> int | None:

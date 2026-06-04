@@ -18,6 +18,10 @@ import {
 import { usePlan, UserData } from '../context/PlanContext';
 
 type EditProfileForm = Partial<UserData> & { otherAllergy?: string };
+type ProfileNotice = {
+  title: string;
+  message: string;
+} | null;
 
 function getApiBaseUrl() {
   const raw =
@@ -45,6 +49,8 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isPersonaSaving, setIsPersonaSaving] = useState(false);
   const [personaError, setPersonaError] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [profileNotice, setProfileNotice] = useState<ProfileNotice>(null);
 
   const handleLogout = () => {
     clearClientAuthState();
@@ -68,6 +74,7 @@ export default function ProfilePage() {
 
   const saveProfileToAPI = async (data: EditProfileForm) => {
     setIsSaving(true);
+    setProfileError('');
     const finalData = { ...data };
     let shouldApplyLocalUpdate = false;
 
@@ -117,6 +124,7 @@ export default function ProfilePage() {
       shouldApplyLocalUpdate = true;
     } catch (error) {
       console.error('API Error:', error);
+      setProfileError('프로필 저장에 실패했어요. 잠시 뒤 다시 시도해주세요.');
     } finally {
       if (shouldApplyLocalUpdate) {
         updateUserData(finalData);
@@ -228,8 +236,28 @@ export default function ProfilePage() {
   const menuItems = [
     { title: '내 정보 수정', icon: Edit3, color: 'text-blue-500', bg: 'bg-blue-50', onClick: handleOpenEdit },
     { title: '운동 목표 설정', icon: Target, color: 'text-purple-500', bg: 'bg-purple-50', onClick: handleOpenGoal },
-    { title: '알림 설정', icon: Bell, color: 'text-orange-500', bg: 'bg-orange-50', onClick: () => {} },
-    { title: '고객 문의', icon: HeadphonesIcon, color: 'text-green-500', bg: 'bg-green-50', onClick: () => {} },
+    {
+      title: '알림 설정',
+      icon: Bell,
+      color: 'text-orange-500',
+      bg: 'bg-orange-50',
+      onClick: () =>
+        setProfileNotice({
+          title: '알림 설정',
+          message: '데모 버전에서는 알림 채널 연결 전이에요. 플랜 변경 표시는 하단 건강 추천 탭 배지로 확인할 수 있어요.',
+        }),
+    },
+    {
+      title: '고객 문의',
+      icon: HeadphonesIcon,
+      color: 'text-green-500',
+      bg: 'bg-green-50',
+      onClick: () =>
+        setProfileNotice({
+          title: '고객 문의',
+          message: '데모 문의는 팀 운영 채널로 전달해주세요. 정식 문의 폼은 다음 버전에서 연결할 예정이에요.',
+        }),
+    },
     { title: '현재 버전 1.0.0', icon: Info, color: 'text-gray-500', bg: 'bg-gray-50', onClick: () => {}, disabled: true },
   ];
 
@@ -438,7 +466,7 @@ export default function ProfilePage() {
           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50/50">
               <h3 className="text-xl font-bold text-gray-900 tracking-tight">내 정보 수정</h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="p-2 bg-white rounded-full text-gray-400 hover:text-gray-600 shadow-sm border border-gray-100 transition-colors">
+              <button aria-label="내 정보 수정 닫기" onClick={() => setIsEditModalOpen(false)} className="p-2 bg-white rounded-full text-gray-400 hover:text-gray-600 shadow-sm border border-gray-100 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -580,6 +608,11 @@ export default function ProfilePage() {
             </div>
 
             <div className="p-5 border-t border-gray-100 bg-white">
+              {profileError && (
+                <p className="mb-3 rounded-xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-500">
+                  {profileError}
+                </p>
+              )}
               <button 
                 onClick={() => saveProfileToAPI(editForm)} 
                 disabled={isSaving}
@@ -598,7 +631,7 @@ export default function ProfilePage() {
           <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50/50">
               <h3 className="text-xl font-bold text-gray-900 tracking-tight">운동 목표 설정</h3>
-              <button onClick={() => setIsGoalModalOpen(false)} className="p-2 bg-white rounded-full text-gray-400 hover:text-gray-600 shadow-sm border border-gray-100 transition-colors">
+              <button aria-label="운동 목표 설정 닫기" onClick={() => setIsGoalModalOpen(false)} className="p-2 bg-white rounded-full text-gray-400 hover:text-gray-600 shadow-sm border border-gray-100 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -617,6 +650,11 @@ export default function ProfilePage() {
             </div>
 
             <div className="p-5 border-t border-gray-100 bg-white">
+              {profileError && (
+                <p className="mb-3 rounded-xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-500">
+                  {profileError}
+                </p>
+              )}
               <button 
                 onClick={() => saveProfileToAPI({ ...userData, goal: editGoal })} 
                 disabled={isSaving || !editGoal.trim()}
@@ -625,6 +663,27 @@ export default function ProfilePage() {
                 {isSaving ? '저장 중...' : '목표 저장하기'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {profileNotice && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-500">
+              <Info className="h-6 w-6" />
+            </div>
+            <h3 className="text-lg font-black text-gray-900">{profileNotice.title}</h3>
+            <p className="mt-3 text-sm font-semibold leading-relaxed text-gray-600">
+              {profileNotice.message}
+            </p>
+            <button
+              type="button"
+              onClick={() => setProfileNotice(null)}
+              className="mt-6 w-full rounded-xl bg-[#2563eb] py-3.5 font-bold text-white shadow-md transition-colors hover:bg-blue-700"
+            >
+              확인
+            </button>
           </div>
         </div>
       )}

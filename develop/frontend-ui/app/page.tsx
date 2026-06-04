@@ -363,15 +363,6 @@ export default function Home() {
   // Calculated Fallback
   const [recommendedCalories, setRecommendedCalories] = useState(2000);
 
-  const closeAllModals = () => {
-    setIsPlannerOpen(false);
-    setIsCalorieModalOpen(false);
-    setIsNutrientModalOpen(false);
-    setIsDietModalOpen(false);
-    setWorkoutPopup({ isOpen: false, target: null });
-    setDietPopup({ isOpen: false, target: null, mealType: null });
-  };
-
   const handleCalorieSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setGoalErrorMsg('');
@@ -479,6 +470,16 @@ export default function Home() {
   const [workoutPopup, setWorkoutPopup] = useState<WorkoutPopupState>({ isOpen: false, target: null });
   const [dietPopup, setDietPopup] = useState<DietPopupState>({ isOpen: false, target: null, mealType: null });
   const [alertPopup, setAlertPopup] = useState<{ isOpen: boolean, message: string }>({ isOpen: false, message: '' });
+
+  const closeAllModals = () => {
+    setIsPlannerOpen(false);
+    setIsCalorieModalOpen(false);
+    setIsNutrientModalOpen(false);
+    setIsDietModalOpen(false);
+    setWorkoutPopup({ isOpen: false, target: null });
+    setDietPopup({ isOpen: false, target: null, mealType: null });
+  };
+
   const homeRecommendationsRawRef = useRef(homeRecommendationsRaw);
   const recommendationAddedRef = useRef(recommendationAdded);
   const recommendationHistoryRef = useRef(recommendationHistory);
@@ -486,6 +487,26 @@ export default function Home() {
   const isLeavingHomeRef = useRef(false);
   const recommendationAbortControllersRef = useRef<Set<AbortController>>(new Set());
   const planSyncToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const homeRecommendationQualityFlags = homeRecommendationsRaw.quality_flags ?? {};
+  const homeRecommendationAdjustedDomains = Array.isArray(homeRecommendationQualityFlags.home_profile_fit_original_domains)
+    ? homeRecommendationQualityFlags.home_profile_fit_original_domains
+        .map((domain) => String(domain))
+        .filter((domain) => domain === 'workout' || domain === 'diet')
+    : [];
+  const homeRecommendationsWereAdjusted =
+    Boolean(homeRecommendationQualityFlags.home_validator_blocked) ||
+    Boolean(homeRecommendationQualityFlags.home_profile_fit_repaired) ||
+    Number(homeRecommendationQualityFlags.home_profile_fit_original_issue_count ?? 0) > 0;
+  const showWorkoutRecommendationAdjusted =
+    homeRecommendationsWereAdjusted &&
+    (Boolean(homeRecommendationQualityFlags.home_validator_blocked) ||
+      homeRecommendationAdjustedDomains.length === 0 ||
+      homeRecommendationAdjustedDomains.includes('workout'));
+  const showDietRecommendationAdjusted =
+    homeRecommendationsWereAdjusted &&
+    (Boolean(homeRecommendationQualityFlags.home_validator_blocked) ||
+      homeRecommendationAdjustedDomains.length === 0 ||
+      homeRecommendationAdjustedDomains.includes('diet'));
 
   const persistNutritionSnapshot = (
     nextTargets = targets,
@@ -1476,10 +1497,10 @@ return (
                 <span className="text-sm font-semibold text-gray-400">/ {maxWaterGlasses} {"\uCEF5"}</span>
               </div>
               <div className="flex items-center space-x-2">
-                <button onClick={removeWater} className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center text-sky-500 hover:bg-sky-500 hover:text-white transition-colors cursor-pointer disabled:opacity-50" disabled={waterGlasses === 0}>
+                <button aria-label="물 섭취량 줄이기" onClick={removeWater} className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center text-sky-500 hover:bg-sky-500 hover:text-white transition-colors cursor-pointer disabled:opacity-50" disabled={waterGlasses === 0}>
                   <span className="text-xl font-bold leading-none mb-0.5">-</span>
                 </button>
-                <button onClick={addWater} className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center text-sky-500 hover:bg-sky-500 hover:text-white transition-colors cursor-pointer disabled:opacity-50" disabled={waterGlasses === maxWaterGlasses}>
+                <button aria-label="물 섭취량 늘리기" onClick={addWater} className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center text-sky-500 hover:bg-sky-500 hover:text-white transition-colors cursor-pointer disabled:opacity-50" disabled={waterGlasses === maxWaterGlasses}>
                   <Plus className="w-4 h-4 text-inherit" />
                 </button>
               </div>
@@ -1528,10 +1549,22 @@ return (
         {/* Workout Recommendation Grid */}
         <div className="bg-white p-6 md:p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/60">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-bold text-gray-900 tracking-wide flex items-center">
-              <span className="bg-gradient-to-r from-[#2563eb] to-indigo-500 text-transparent bg-clip-text mr-2">{"AI \uC6B4\uB3D9 \uCD94\uCC9C"}</span>
-            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-bold text-gray-900 tracking-wide flex items-center">
+                <span className="bg-gradient-to-r from-[#2563eb] to-indigo-500 text-transparent bg-clip-text mr-2">{"AI \uC6B4\uB3D9 \uCD94\uCC9C"}</span>
+              </h2>
+              {showWorkoutRecommendationAdjusted && (
+                <span
+                  role="status"
+                  aria-label={"\uC6B4\uB3D9 \uCD94\uCC9C\uC774 \uD504\uB85C\uD544\uC5D0 \uB9DE\uAC8C \uC870\uC815\uB428"}
+                  className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-600"
+                >
+                  {"\uD504\uB85C\uD544 \uB9DE\uCDA4 \uC870\uC815\uB428"}
+                </span>
+              )}
+            </div>
             <button
+              aria-label="운동 추천 새로고침"
               onClick={() => void fetchHomeRecommendations('workout')}
               disabled={recommendationRefresh.workout || isRecommendationLoading}
               className="text-gray-400 hover:text-[#2563eb] hover:bg-blue-50 transition-all p-2 rounded-full cursor-pointer group focus:outline-none disabled:opacity-50"
@@ -1685,10 +1718,22 @@ return (
         {/* Diet Recommendation Grid */}
         <div className="bg-white p-6 md:p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/60">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-bold text-gray-900 tracking-wide flex items-center">
-              <span className="bg-gradient-to-r from-[#f59e0b] to-orange-500 text-transparent bg-clip-text mr-2">{"AI \uC2DD\uB2E8 \uCD94\uCC9C"}</span>
-            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-bold text-gray-900 tracking-wide flex items-center">
+                <span className="bg-gradient-to-r from-[#f59e0b] to-orange-500 text-transparent bg-clip-text mr-2">{"AI \uC2DD\uB2E8 \uCD94\uCC9C"}</span>
+              </h2>
+              {showDietRecommendationAdjusted && (
+                <span
+                  role="status"
+                  aria-label={"\uC2DD\uB2E8 \uCD94\uCC9C\uC774 \uD504\uB85C\uD544\uC5D0 \uB9DE\uAC8C \uC870\uC815\uB428"}
+                  className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-600"
+                >
+                  {"\uD504\uB85C\uD544 \uB9DE\uCDA4 \uC870\uC815\uB428"}
+                </span>
+              )}
+            </div>
             <button
+              aria-label="식단 추천 새로고침"
               onClick={() => void fetchHomeRecommendations('diet')}
               disabled={recommendationRefresh.diet || isRecommendationLoading}
               className="text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-all p-2 rounded-full cursor-pointer group focus:outline-none disabled:opacity-50"

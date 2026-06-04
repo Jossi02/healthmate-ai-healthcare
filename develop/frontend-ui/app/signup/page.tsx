@@ -222,7 +222,7 @@ export default function SignupPage() {
               <span className="text-gray-500">이미 계정이 있으신가요? </span>
               <button
                 onClick={() => router.push('/login')}
-                className="text-blue-600 font-bold hover:underline transition-all"
+                className="inline-flex min-h-10 items-center rounded-lg px-1 text-blue-600 font-bold hover:underline transition-all"
               >
                 로그인 하기
               </button>

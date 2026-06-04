@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import date
 from datetime import datetime, timedelta
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
@@ -232,6 +233,7 @@ def _build_plan_payload_batches(extracted: dict[str, Any], *, update_mode: bool)
     request_type = WASPlanUpdateRequest if update_mode else WASPlanCreateRequest
     payloads: list[dict[str, Any]] = []
     for grouped_plan_type, items in grouped_items:
+        items = _align_plan_items_to_today(items)
         req = request_type(plan_type=grouped_plan_type, items=items)
         payloads.append(
             req.model_dump(
@@ -426,28 +428,65 @@ def _normalize_workout_category_name(
     ex_list: list[dict[str, Any]],
 ) -> str:
     current = str(name or "운동 계획").strip() or "운동 계획"
+    exercise_text = " ".join(
+        str(item.get("exercise_name") or "") for item in ex_list if isinstance(item, dict)
+    ).lower()
     text = " ".join(
         [
             current,
             str(detail or ""),
-            " ".join(str(item.get("exercise_name") or "") for item in ex_list if isinstance(item, dict)),
+            exercise_text,
         ]
     ).lower()
 
-    strong_stretching = any(
-        marker in text
+    return (
+        _workout_category_from_text(exercise_text)
+        or _workout_category_from_text(text)
+        or current
+    )
+
+
+def _workout_category_from_text(text: str) -> str | None:
+    normalized = str(text or "").lower()
+    if not normalized:
+        return None
+
+    has_upper = any(
+        marker in normalized
+        for marker in ("upper_body", "상체", "푸시업", "푸쉬업", "로우", "프레스", "덤벨", "밴드", "가슴", "등", "어깨", "팔")
+    )
+    has_lower = any(
+        marker in normalized
+        for marker in ("lower_body", "하체", "스쿼트", "런지", "브릿지", "둔근", "엉덩", "햄스트링", "종아리", "레그")
+    )
+    has_cardio = any(
+        marker in normalized
+        for marker in ("cardio", "유산소", "걷기", "러닝", "달리기", "자전거", "사이클", "트레드밀", "인터벌")
+    )
+    has_stretching = any(
+        marker in normalized
         for marker in ("스트레칭", "stretch", "요가", "이완", "mobility", "가동성", "폼롤")
     )
-    if strong_stretching:
-        return "스트레칭 루틴"
+    has_full_body = any(
+        marker in normalized
+        for marker in ("full_body", "전신", "서킷", "circuit", "버드독", "플랭크", "근력")
+    )
 
-    if any(marker in text for marker in ("upper_body", "상체", "푸시업", "푸쉬업", "로우", "가슴", "등", "어깨")):
+    if has_stretching and not (has_upper or has_lower or has_cardio or "근력" in normalized or "strength" in normalized):
+        return "스트레칭 루틴"
+    if (has_upper and has_lower) or (has_full_body and (has_upper or has_lower)):
+        return "전신 루틴"
+    if has_upper:
         return "상체 루틴"
-    if any(marker in text for marker in ("lower_body", "하체", "스쿼트", "런지", "브릿지", "둔근")):
+    if has_lower:
         return "하체 루틴"
-    if any(marker in text for marker in ("cardio", "유산소", "걷기", "러닝", "달리기", "자전거", "사이클")):
+    if has_cardio:
         return "유산소 루틴"
-    return current
+    if has_stretching:
+        return "스트레칭 루틴"
+    if has_full_body:
+        return "전신 루틴"
+    return None
 
 
 def _infer_item_plan_type(item: Any, default_plan_type: str) -> str:
@@ -568,6 +607,42 @@ def _normalize_day(
     return _infer_day_from_text(name, detail) or text
 
 
+def _align_plan_items_to_today(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    parsed_days: list[date] = []
+    for item in items:
+        parsed = _parse_iso_day(item.get("day"))
+        if parsed is not None:
+            parsed_days.append(parsed)
+
+    if not parsed_days:
+        return items
+
+    today = datetime.now(_KST).date()
+    start_day = min(parsed_days)
+    if start_day >= today:
+        return items
+
+    delta = today - start_day
+    aligned: list[dict[str, Any]] = []
+    for item in items:
+        copied = dict(item)
+        parsed = _parse_iso_day(copied.get("day"))
+        if parsed is not None:
+            copied["day"] = (parsed + delta).isoformat()
+        aligned.append(copied)
+    return aligned
+
+
+def _parse_iso_day(value: Any) -> Optional[date]:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.strptime(text[:10], "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
 def _infer_day_from_text(name: str | None, detail: str | None) -> Optional[str]:
     combined = " ".join(part for part in (name, detail) if part).strip()
     if not combined:
@@ -581,7 +656,10 @@ def _infer_day_from_text(name: str | None, detail: str | None) -> Optional[str]:
 
     for keyword, weekday_index in _WEEKDAY_KEYWORDS.items():
         if keyword in combined:
-            return (base_week + timedelta(days=weekday_index)).isoformat()
+            inferred = base_week + timedelta(days=weekday_index)
+            if inferred < today and not use_next_week:
+                inferred += timedelta(days=7)
+            return inferred.isoformat()
 
     if "오늘" in combined:
         return today.isoformat()

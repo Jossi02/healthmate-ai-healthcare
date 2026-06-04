@@ -8,7 +8,8 @@
     "dev": "nodemon src/server.js",
     "logs": "mkdir -p logs",
     "test:contracts": "node scripts/test_internal_contracts.js",
-    "check:demo": "node scripts/check_demo_readiness.js"
+    "check:demo": "node scripts/check_demo_readiness.js",
+    "check:demo:strict": "node -e \"process.env.REQUIRE_IDEMPOTENCY_TABLE='true'; require('./scripts/check_demo_readiness')\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

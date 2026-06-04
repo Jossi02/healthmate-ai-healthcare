@@ -75,9 +75,11 @@ def _resolve_context(state: GraphState) -> ContextResolution:
         )
         return resolution
 
-    active_proposal = state.get("active_proposal")
+    active_proposal = _safe_dict(state.get("active_proposal"))
     if active_proposal and _looks_like_active_proposal_followup(normalized):
-        domain = active_proposal["domain"]
+        domain = str(active_proposal.get("domain") or "")
+        if domain not in {"workout", "diet"}:
+            domain = ""
         explicit_domain = infer_domain(message)
         if explicit_domain in {"workout", "diet"} and explicit_domain != domain:
             resolution.update(
@@ -86,6 +88,15 @@ def _resolve_context(state: GraphState) -> ContextResolution:
                     "resolved_domain": explicit_domain,
                     "resolved_text": message,
                     "confidence": 0.82,
+                }
+            )
+            return resolution
+        if not domain:
+            resolution.update(
+                {
+                    "resolved_text": message,
+                    "confidence": 0.2,
+                    "ambiguous": True,
                 }
             )
             return resolution
@@ -99,13 +110,16 @@ def _resolve_context(state: GraphState) -> ContextResolution:
         )
         return resolution
 
-    recent_turns = (state.get("recent_dialogue") or {}).get("recent_turns") or []
+    recent_turns = _safe_list(_safe_dict(state.get("recent_dialogue")).get("recent_turns"))
     if recent_turns and any(marker in normalized for marker in _QUESTION_MARKERS):
-        last_turn = recent_turns[-1]
+        last_turn = _last_recent_turn(recent_turns)
+        if not last_turn:
+            resolution.update({"resolved_text": message, "confidence": 0.2, "ambiguous": True})
+            return resolution
         resolution.update(
             {
                 "resolved_reference": "previous_answer",
-                "resolved_domain": last_turn.get("domain", "general"),
+                "resolved_domain": _safe_domain(last_turn.get("domain")),
                 "resolved_text": f"방금 응답에 대해 설명해줘: {message}",
                 "confidence": 0.74,
             }
@@ -113,11 +127,14 @@ def _resolve_context(state: GraphState) -> ContextResolution:
         return resolution
 
     if recent_turns and any(marker in normalized for marker in _REFERENCE_MARKERS):
-        last_turn = recent_turns[-1]
+        last_turn = _last_recent_turn(recent_turns)
+        if not last_turn:
+            resolution.update({"resolved_text": message, "confidence": 0.2, "ambiguous": True})
+            return resolution
         resolution.update(
             {
                 "resolved_reference": "recent_chat",
-                "resolved_domain": last_turn.get("domain", "general"),
+                "resolved_domain": _safe_domain(last_turn.get("domain")),
                 "resolved_text": f"최근 대화 맥락을 이어서 처리해줘: {message}",
                 "confidence": 0.62,
             }
@@ -146,6 +163,30 @@ def _looks_like_active_proposal_followup(message: str) -> bool:
     if any(marker in message for marker in _MODIFY_MARKERS):
         return True
     return False
+
+
+def _last_recent_turn(recent_turns: list[object]) -> dict | None:
+    for turn in reversed(recent_turns):
+        if isinstance(turn, dict):
+            return turn
+    return None
+
+
+def _safe_dict(value: object) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def _safe_list(value: object) -> list[object]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    return []
+
+
+def _safe_domain(value: object) -> str:
+    domain = str(value or "")
+    return domain if domain in {"workout", "diet", "profile", "general"} else "general"
 
 
 def _rewrite_for_active_proposal(message: str, domain: str) -> str:

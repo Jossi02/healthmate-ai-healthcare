@@ -15,7 +15,7 @@ from app.schemas.state import (
 
 RECENT_TURN_LIMIT = 4
 ACTIVE_PROPOSAL_STALE_TURNS = 2
-_PLAN_CONTEXT_PROFILE_FIELDS = {
+PLAN_CONTEXT_PROFILE_FIELDS = {
     "age",
     "gender",
     "sex",
@@ -26,6 +26,7 @@ _PLAN_CONTEXT_PROFILE_FIELDS = {
     "current_weight",
     "bmi",
     "activity_level",
+    "activityLevel",
     "exercise_level",
     "fitness_level",
     "goal",
@@ -39,6 +40,8 @@ _PLAN_CONTEXT_PROFILE_FIELDS = {
     "foods_to_avoid",
     "allergies",
     "allergy",
+    "otherAllergy",
+    "other_allergy",
     "injury_history",
     "pain_points",
     "medical_history",
@@ -63,6 +66,139 @@ _PLAN_CONTEXT_PROFILE_FIELDS = {
     "emotional_context",
     "context_notes",
 }
+_PLAN_CONTEXT_PROFILE_FIELDS = PLAN_CONTEXT_PROFILE_FIELDS
+PROFILE_CONTEXT_FIELD_ALIASES = {
+    "activityLevel": "activity_level",
+    "height_cm": "height",
+    "body_weight": "weight",
+    "current_weight": "weight",
+    "fitness_level": "exercise_level",
+    "workout_frequency": "exercise_frequency",
+    "frequency_per_week": "exercise_frequency",
+    "weekly_workouts": "exercise_frequency",
+    "target_workouts_per_week": "exercise_frequency",
+    "primary_goal": "goal",
+    "exercise_goal": "goal",
+    "training_goal": "goal",
+    "diet_goal": "goal",
+    "dietary_restrictions": "dietary_preferences",
+    "foods_to_avoid": "dietary_preferences",
+    "allergy": "allergies",
+    "otherAllergy": "allergies",
+    "other_allergy": "allergies",
+    "pain_points": "injury_history",
+    "medical_history": "medical_conditions",
+    "conditions": "medical_conditions",
+    "personality_axis": "social_orientation",
+    "personality_type": "social_orientation",
+    "personality": "social_orientation",
+    "exercise_style": "social_orientation",
+    "introversion_extroversion": "social_orientation",
+}
+PLAN_CONTEXT_CANONICAL_FIELDS = {
+    PROFILE_CONTEXT_FIELD_ALIASES.get(field, field)
+    for field in PLAN_CONTEXT_PROFILE_FIELDS
+}
+PLAN_CONTEXT_FIELDS_BY_CANONICAL: dict[str, set[str]] = {
+    canonical: {
+        field
+        for field in PLAN_CONTEXT_PROFILE_FIELDS
+        if PROFILE_CONTEXT_FIELD_ALIASES.get(field, field) == canonical
+    }
+    for canonical in PLAN_CONTEXT_CANONICAL_FIELDS
+}
+
+
+def canonical_profile_field(field: str) -> str:
+    return PROFILE_CONTEXT_FIELD_ALIASES.get(field, field)
+
+
+def canonical_profile_context(profile: dict[str, Any] | None) -> dict[str, Any]:
+    profile = _safe_profile_dict(profile)
+    grouped: dict[str, list[Any]] = {field: [] for field in PLAN_CONTEXT_CANONICAL_FIELDS}
+    for raw_key, raw_value in profile.items():
+        if raw_value in (None, "", [], {}, "[]"):
+            continue
+        key = canonical_profile_field(str(raw_key))
+        if key in grouped:
+            grouped[key].append(_canonical_profile_value(raw_value))
+
+    canonical: dict[str, Any] = {}
+    for key, values in grouped.items():
+        flattened = _flatten_canonical_values(values)
+        canonical[key] = flattened[0] if len(flattened) == 1 else tuple(flattened)
+    return canonical
+
+
+def profile_context_changed_fields(previous_profile: dict | None, next_profile: dict | None) -> list[str]:
+    previous = canonical_profile_context(previous_profile)
+    next_value = canonical_profile_context(next_profile)
+    changed: list[str] = []
+    for key in sorted(PLAN_CONTEXT_CANONICAL_FIELDS):
+        if previous.get(key, "") != next_value.get(key, ""):
+            changed.append(key)
+    return changed
+
+
+def profile_context_changed(previous_profile: dict | None, next_profile: dict | None) -> bool:
+    return bool(profile_context_changed_fields(previous_profile, next_profile))
+
+
+def profile_override_changes_plan_context(saved_profile: dict[str, Any], override: dict[str, Any]) -> bool:
+    saved_profile = _safe_profile_dict(saved_profile)
+    override = _safe_profile_dict(override)
+    if not override:
+        return False
+    if not any(canonical_profile_field(str(key)) in PLAN_CONTEXT_CANONICAL_FIELDS for key in override):
+        return False
+    merged = merge_profile_override_for_plan_context(saved_profile, override)
+    return profile_context_changed(saved_profile, merged)
+
+
+def merge_profile_override_for_plan_context(saved_profile: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(_safe_profile_dict(saved_profile))
+    for raw_key, value in _safe_profile_dict(override).items():
+        canonical = canonical_profile_field(str(raw_key))
+        if canonical in PLAN_CONTEXT_FIELDS_BY_CANONICAL:
+            for sibling_key in PLAN_CONTEXT_FIELDS_BY_CANONICAL[canonical]:
+                merged.pop(sibling_key, None)
+        merged[raw_key] = value
+    return merged
+
+
+def _safe_profile_dict(value: object) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _canonical_profile_value(value: Any) -> Any:
+    if value in (None, "", [], {}, "[]"):
+        return ""
+    if isinstance(value, dict):
+        return tuple(
+            sorted(
+                f"{key}:{_canonical_profile_value(item)}"
+                for key, item in value.items()
+                if _canonical_profile_value(item) not in (None, "", (), [])
+            )
+        )
+    if isinstance(value, (list, tuple, set)):
+        flattened = _flatten_canonical_values(value)
+        return flattened[0] if len(flattened) == 1 else tuple(flattened)
+    return " ".join(str(value).strip().lower().split())
+
+
+def _flatten_canonical_values(values: object) -> list[Any]:
+    flattened: list[Any] = []
+    source = values if isinstance(values, (list, tuple, set)) else [values]
+    for value in source:
+        normalized = _canonical_profile_value(value)
+        if normalized in (None, "", (), []):
+            continue
+        if isinstance(normalized, tuple):
+            flattened.extend(item for item in normalized if item not in (None, "", (), []))
+        else:
+            flattened.append(normalized)
+    return sorted({item for item in flattened}, key=lambda item: repr(item))
 
 _WORKOUT_KEYWORDS = (
     "운동",
@@ -181,8 +317,10 @@ def infer_domain(text: str | None) -> Domain:
 
 
 def build_active_proposal(state: GraphState) -> ActiveProposal | None:
-    proposed_plan = list(state.get("proposed_plan") or [])
+    proposed_plan = _safe_plan_items(state.get("proposed_plan"))
     if not proposed_plan:
+        return None
+    if plan_items_are_mixed_domain(proposed_plan):
         return None
 
     proposed_plan_type = state.get("proposed_plan_type")
@@ -199,12 +337,12 @@ def build_active_proposal(state: GraphState) -> ActiveProposal | None:
         "write_mode": write_mode,
         "items": proposed_plan,
         "summary": summary,
-        "last_used_turn": int(state.get("turn_count", 0) or 0),
+        "last_used_turn": _safe_int(state.get("turn_count")),
     }
 
 
 def sync_proposal_fields(active_proposal: ActiveProposal | None) -> dict[str, Any]:
-    if not active_proposal:
+    if not active_proposal or active_proposal_is_mixed_domain(active_proposal):
         return {
             "active_proposal": None,
             "awaiting_plan_confirmation": False,
@@ -230,25 +368,73 @@ def evolve_active_proposal(previous: ActiveProposal | None, state: GraphState) -
     if _should_clear_active_proposal(state):
         return None
 
-    if not previous:
+    if not previous or active_proposal_is_mixed_domain(previous):
         return None
 
     if _is_explicit_cancel(str(state.get("user_message") or "")):
         return None
 
-    current_turn = int(state.get("turn_count", 0) or 0)
+    current_turn = _safe_int(state.get("turn_count"))
     action_intent = state.get("action_intent")
-    resolved_reference = (state.get("context_resolution") or {}).get("resolved_reference")
+    resolved_reference = _safe_dict(state.get("context_resolution")).get("resolved_reference")
 
     if action_intent == "approval":
         return {**previous, "last_used_turn": current_turn}
     if resolved_reference == "active_proposal":
         return {**previous, "last_used_turn": current_turn}
 
-    if current_turn - int(previous.get("last_used_turn", current_turn)) >= ACTIVE_PROPOSAL_STALE_TURNS:
+    previous_turn = _safe_int(previous.get("last_used_turn"), default=current_turn)
+    previous_clean = {**previous, "last_used_turn": previous_turn}
+    if current_turn - previous_turn >= ACTIVE_PROPOSAL_STALE_TURNS:
         return None
 
-    return previous
+    return previous_clean
+
+
+def active_proposal_is_mixed_domain(active_proposal: object) -> bool:
+    if not isinstance(active_proposal, dict):
+        return False
+    return plan_items_are_mixed_domain(active_proposal.get("items") or [])
+
+
+def plan_items_are_mixed_domain(items: object) -> bool:
+    if not isinstance(items, list):
+        return False
+    domains = {_infer_plan_item_domain(item) for item in items if isinstance(item, dict)}
+    domains.discard(None)
+    return "workout" in domains and "diet" in domains
+
+
+def _infer_plan_item_domain(item: dict[str, Any]) -> str | None:
+    if item.get("ex_list") or item.get("exercises") or item.get("exercise_name"):
+        return "workout"
+    if item.get("food_name") or item.get("meal_name") or item.get("foods"):
+        return "diet"
+    item_type = str(item.get("type") or item.get("plan_type") or item.get("category") or "").strip().lower()
+    if item_type in {"exercise", "workout", "training", "routine"}:
+        return "workout"
+    if item_type in {"meal", "diet", "food", "menu", "nutrition"}:
+        return "diet"
+    text = " ".join(
+        str(value)
+        for value in (
+            item.get("name"),
+            item.get("detail"),
+            item.get("summary"),
+            item.get("category"),
+            item.get("slot"),
+            item.get("meal_type"),
+        )
+        if value
+    ).lower()
+    if any(marker in text for marker in ("breakfast", "lunch", "dinner", "snack", "meal", "food", "diet", "menu", "oat", "yogurt", "rice", "salad", "chicken", "salmon")):
+        return "diet"
+    if any(marker in text for marker in ("workout", "exercise", "routine", "sets", "reps", "cardio", "stretch", "strength", "squat", "press", "walk", "run")):
+        return "workout"
+    inferred = infer_domain(text)
+    if inferred in {"workout", "diet"}:
+        return inferred
+    return None
 
 
 def _should_clear_active_proposal(state: GraphState) -> bool:
@@ -269,7 +455,7 @@ def _should_clear_active_proposal(state: GraphState) -> bool:
 
 
 def _profile_changes_affect_active_proposal(changes: object) -> bool:
-    return bool(_profile_change_fields(changes) & _PLAN_CONTEXT_PROFILE_FIELDS)
+    return bool(_profile_change_fields(changes) & PLAN_CONTEXT_CANONICAL_FIELDS)
 
 
 def profile_changes_affect_plan_context(changes: object) -> bool:
@@ -285,16 +471,16 @@ def _profile_change_fields(changes: object) -> set[str]:
     if isinstance(changes, dict):
         field = changes.get("field") or changes.get("key") or changes.get("name")
         if isinstance(field, str):
-            fields.add(field)
+            fields.add(canonical_profile_field(field))
         for key, value in changes.items():
-            if isinstance(key, str) and key in _PLAN_CONTEXT_PROFILE_FIELDS:
-                fields.add(key)
+            if isinstance(key, str) and canonical_profile_field(key) in PLAN_CONTEXT_CANONICAL_FIELDS:
+                fields.add(canonical_profile_field(key))
             fields.update(_profile_change_fields(value))
     elif isinstance(changes, list):
         for item in changes:
             fields.update(_profile_change_fields(item))
-    elif isinstance(changes, str) and changes in _PLAN_CONTEXT_PROFILE_FIELDS:
-        fields.add(changes)
+    elif isinstance(changes, str) and canonical_profile_field(changes) in PLAN_CONTEXT_CANONICAL_FIELDS:
+        fields.add(canonical_profile_field(changes))
     return fields
 
 
@@ -318,13 +504,14 @@ def derive_state_effect(state: GraphState) -> StateEffect:
 
 
 def append_recent_turn(dialogue: RecentDialogue | None, turn: RecentTurn) -> RecentDialogue:
-    recent_turns = list((dialogue or empty_recent_dialogue()).get("recent_turns") or [])
-    recent_turns.append(turn)
+    recent_turns = _safe_list(_safe_dict(dialogue).get("recent_turns"))
+    if isinstance(turn, dict):
+        recent_turns.append(turn)
     return {"recent_turns": recent_turns[-RECENT_TURN_LIMIT:]}
 
 
 def build_recent_turn(state: GraphState, response_text: str) -> RecentTurn:
-    resolution = state.get("context_resolution") or empty_context_resolution()
+    resolution = _safe_dict(state.get("context_resolution")) or empty_context_resolution()
     action_intent = state.get("action_intent") or "fallback"
     domain = state.get("domain") or "general"
     support_mode = state.get("support_mode") or "normal"
@@ -334,7 +521,7 @@ def build_recent_turn(state: GraphState, response_text: str) -> RecentTurn:
         referenced_object = "active_proposal"
 
     return {
-        "turn_id": int(state.get("turn_count", 0) or 0),
+        "turn_id": _safe_int(state.get("turn_count")),
         "user_text": _truncate(str(state.get("user_message") or ""), 320),
         "assistant_text": _truncate(response_text, 320),
         "user_summary": _user_summary(state),
@@ -353,7 +540,7 @@ def _proposal_summary(
     write_mode: str,
     proposed_plan: list[dict[str, Any]],
 ) -> str:
-    draft_components = state.get("draft_components") or {}
+    draft_components = _safe_dict(state.get("draft_components"))
     core_message = str(draft_components.get("core_message") or "").strip()
     if core_message:
         return _truncate(core_message, 120)
@@ -365,7 +552,7 @@ def _proposal_summary(
 
 
 def _user_summary(state: GraphState) -> str:
-    resolution = state.get("context_resolution") or empty_context_resolution()
+    resolution = _safe_dict(state.get("context_resolution")) or empty_context_resolution()
     resolved_text = str(resolution.get("resolved_text") or "").strip()
     if resolved_text:
         return _truncate(resolved_text, 100)
@@ -409,6 +596,29 @@ def _domain_label(domain: str) -> str:
     if domain == "profile":
         return "프로필"
     return "일반"
+
+
+def _safe_dict(value: object) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _safe_list(value: object) -> list[Any]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    return []
+
+
+def _safe_plan_items(value: object) -> list[dict[str, Any]]:
+    return [dict(item) for item in _safe_list(value) if isinstance(item, dict)][:80]
+
+
+def _safe_int(value: object, *, default: int = 0) -> int:
+    try:
+        return max(0, int(value))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
 
 
 def _is_explicit_cancel(message: str) -> bool:

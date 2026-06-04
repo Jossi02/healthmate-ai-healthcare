@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "smoke:home-recommendation-ux": "node scripts/smoke-home-recommendation-ux.cjs"
+    "audit:ui": "node scripts/audit-ui-playwright-opencv.cjs",
+    "test:profile-20x20-ui": "node scripts/test-profile-20x20-ui-opencv.cjs",
+    "smoke:home-recommendation-ux": "node scripts/smoke-home-recommendation-ux.cjs",
+    "test:display-contract": "node scripts/test-plan-display-contract.cjs"
   },
   "dependencies": {
     "@swc/helpers": "^0.5.20",

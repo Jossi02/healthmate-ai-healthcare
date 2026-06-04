@@ -1,11 +1,18 @@
 """Preprocess node for session hydration and profile refresh."""
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import time
 from typing import Any
 
-from app.core.conversation_state import empty_context_resolution
+from app.core.conversation_state import (
+    empty_context_resolution,
+    merge_profile_override_for_plan_context,
+    profile_context_changed,
+    profile_context_changed_fields,
+)
 from app.core.exceptions import ExternalServiceError
 from app.core.was_outbox import execute_outbox_write, mark_was_outbox_succeeded
 from app.graph.deps import NodeDeps
@@ -26,7 +33,7 @@ def make_preprocess_node(deps: NodeDeps):
             title="Preprocess started",
             detail={
                 "is_session_start": bool(state.get("is_session_start", True)),
-                "pending_writes": len(state.get("pending_writes", [])),
+                "pending_writes": len(_safe_list(state.get("pending_writes"))),
             },
         )
         updates: dict = {
@@ -55,7 +62,7 @@ def make_preprocess_node(deps: NodeDeps):
             "needs_clarification": False,
         }
 
-        current_turn = int(state.get("turn_count", 0) or 0) + 1
+        current_turn = _safe_pending_int(state.get("turn_count"), default=0, minimum=0) + 1
         pending = _normalize_pending_writes(state.get("pending_writes", []), current_turn=current_turn)
         still_pending = []
         replayed_profile_changes: dict = {}
@@ -137,12 +144,12 @@ def make_preprocess_node(deps: NodeDeps):
 
         user_id = state["user_id"]
         current_profile_version = await deps.profile_sync.get_profile_version(user_id)
-        state_profile_version = int(state.get("profile_sync_version", 0) or 0)
+        state_profile_version = _safe_pending_int(state.get("profile_sync_version"), default=0, minimum=0)
         is_session_start = bool(state.get("is_session_start", True))
         should_refresh_profile = current_profile_version > state_profile_version
 
         if is_session_start:
-            profile_override = state.get("user_profile") if state.get("profile_override_applied") else None
+            profile_override = _safe_dict(state.get("user_profile")) if state.get("profile_override_applied") else None
             profile, profile_loaded = await _load_user_profile_with_fallback(
                 deps=deps,
                 user_id=user_id,
@@ -150,9 +157,9 @@ def make_preprocess_node(deps: NodeDeps):
                 context="initial",
             )
             if profile_override:
-                profile = _normalize_user_profile({**profile, **profile_override})
+                profile = _normalize_user_profile(merge_profile_override_for_plan_context(profile, profile_override))
             if replayed_profile_changes:
-                profile = _normalize_user_profile({**profile, **replayed_profile_changes})
+                profile = _normalize_user_profile(merge_profile_override_for_plan_context(profile, replayed_profile_changes))
             today_plan, today_plan_loaded = await _load_today_plan_with_fallback(
                 deps=deps,
                 user_id=user_id,
@@ -165,6 +172,14 @@ def make_preprocess_node(deps: NodeDeps):
             updates["profile_sync_version"] = (
                 current_profile_version if profile_loaded or replayed_profile_changes else state_profile_version
             )
+            if _should_clear_active_proposal_for_profile_change(state, profile):
+                updates.update(_clear_active_proposal_updates())
+                deps.trace.record_current_event(
+                    stage="state.active_proposal",
+                    status="ok",
+                    title="Active proposal invalidated by initial profile hydration",
+                    detail={"source": "initial_hydration", "changed_fields": _profile_context_changed_fields(state.get("user_profile"), profile)},
+                )
 
             deps.trace.record_current_event(
                 stage="preprocess",
@@ -186,11 +201,19 @@ def make_preprocess_node(deps: NodeDeps):
                 context="refresh",
             )
             if replayed_profile_changes:
-                profile = _normalize_user_profile({**profile, **replayed_profile_changes})
+                profile = _normalize_user_profile(merge_profile_override_for_plan_context(profile, replayed_profile_changes))
             updates["user_profile"] = profile
             updates["profile_sync_version"] = (
                 current_profile_version if profile_loaded or replayed_profile_changes else state_profile_version
             )
+            if _should_clear_active_proposal_for_profile_change(state, profile):
+                updates.update(_clear_active_proposal_updates())
+                deps.trace.record_current_event(
+                    stage="state.active_proposal",
+                    status="ok",
+                    title="Active proposal invalidated by refreshed profile",
+                    detail={"source": "was_refresh", "changed_fields": _profile_context_changed_fields(state.get("user_profile"), profile)},
+                )
             deps.trace.record_current_event(
                 stage="preprocess",
                 status="ok" if profile_loaded else "warn",
@@ -203,10 +226,18 @@ def make_preprocess_node(deps: NodeDeps):
 
         elif replayed_profile_changes:
             profile = _normalize_user_profile(
-                {**(state.get("user_profile") or {}), **replayed_profile_changes}
+                merge_profile_override_for_plan_context(_safe_dict(state.get("user_profile")), replayed_profile_changes)
             )
             updates["user_profile"] = profile
             updates["profile_sync_version"] = current_profile_version or state_profile_version
+            if _should_clear_active_proposal_for_profile_change(state, profile):
+                updates.update(_clear_active_proposal_updates())
+                deps.trace.record_current_event(
+                    stage="state.active_proposal",
+                    status="ok",
+                    title="Active proposal invalidated by replayed profile changes",
+                    detail={"source": "pending_profile_replay", "changed_fields": _profile_context_changed_fields(state.get("user_profile"), profile)},
+                )
 
         if replayed_plan_write and not is_session_start:
             today_plan, today_plan_loaded = await _load_today_plan_with_fallback(
@@ -230,7 +261,7 @@ def make_preprocess_node(deps: NodeDeps):
         if pending_profile_overlay:
             updates["pending_profile_overlay"] = pending_profile_overlay
             updates["effective_user_profile"] = _normalize_user_profile(
-                {**base_profile, **pending_profile_overlay}
+                merge_profile_override_for_plan_context(base_profile, pending_profile_overlay)
             )
         elif not any(write.get("write_type") == "profile" for write in still_pending):
             updates["pending_profile_overlay"] = None
@@ -267,18 +298,46 @@ def _normalize_pending_writes(writes: object, *, current_turn: int) -> list[dict
     for write in writes:
         if not isinstance(write, dict):
             continue
-        key = str(write.get("write_id") or write.get("idempotency_key") or f"{write.get('write_type')}:{repr(write.get('payload'))}")
+        key = _pending_write_key(write)
         if not key or key in seen:
             continue
         seen.add(key)
         next_write = dict(write)
+        if not isinstance(next_write.get("payload"), dict):
+            continue
         next_write.setdefault("write_id", key)
         next_write.setdefault("idempotency_key", key)
-        next_write.setdefault("attempt_count", 0)
-        next_write.setdefault("created_turn", current_turn)
-        next_write.setdefault("next_retry_turn", current_turn)
+        next_write["attempt_count"] = _safe_pending_int(next_write.get("attempt_count"), default=0, minimum=0)
+        next_write["created_turn"] = _safe_pending_int(next_write.get("created_turn"), default=current_turn, minimum=0)
+        next_write["next_retry_turn"] = _safe_pending_int(next_write.get("next_retry_turn"), default=current_turn, minimum=current_turn)
+        if "last_error" in next_write:
+            next_write["last_error"] = str(next_write.get("last_error") or "")[:500]
         normalized.append(next_write)
     return _cap_pending_writes(normalized)
+
+
+def _pending_write_key(write: dict[str, Any]) -> str:
+    write_type = str(write.get("write_type") or "").strip()
+    if not write_type:
+        return ""
+    explicit = str(write.get("write_id") or write.get("idempotency_key") or "").strip()
+    if explicit:
+        key = explicit
+    else:
+        payload = write.get("payload") if isinstance(write.get("payload"), dict) else {}
+        serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
+        key = f"{write_type}:{hashlib.sha256(serialized.encode('utf-8')).hexdigest()}"
+    if len(key) > 160:
+        key = f"{write_type}:{hashlib.sha256(key.encode('utf-8')).hexdigest()}"
+    return key
+
+
+def _safe_pending_int(value: object, *, default: int, minimum: int) -> int:
+    try:
+        parsed = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        parsed = default
+    return max(minimum, parsed)
 
 
 def _cap_pending_writes(writes: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -288,29 +347,20 @@ def _cap_pending_writes(writes: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _pending_write_waiting_for_retry(write: dict[str, Any], current_turn: int) -> bool:
-    try:
-        next_retry_turn = int(write.get("next_retry_turn") or current_turn)
-    except (TypeError, ValueError):
-        next_retry_turn = current_turn
+    next_retry_turn = _safe_pending_int(write.get("next_retry_turn"), default=current_turn, minimum=0)
     return next_retry_turn > current_turn
 
 
 def _pending_write_exhausted(write: dict[str, Any]) -> bool:
-    try:
-        attempt_count = int(write.get("attempt_count") or 0)
-    except (TypeError, ValueError):
-        attempt_count = 0
+    attempt_count = _safe_pending_int(write.get("attempt_count"), default=0, minimum=0)
     return attempt_count >= _MAX_SESSION_REPLAY_ATTEMPTS
 
 
 def _mark_pending_write_failed(write: dict[str, Any], current_turn: int, exc: Exception) -> dict[str, Any]:
     failed = dict(write)
-    try:
-        attempt_count = int(failed.get("attempt_count") or 0) + 1
-    except (TypeError, ValueError):
-        attempt_count = 1
+    attempt_count = _safe_pending_int(failed.get("attempt_count"), default=0, minimum=0) + 1
     failed["attempt_count"] = attempt_count
-    failed["last_error"] = str(exc)
+    failed["last_error"] = str(exc)[:500]
     failed["next_retry_turn"] = current_turn + min(8, 2 ** max(0, attempt_count - 1))
     return failed
 
@@ -320,6 +370,35 @@ def _strip_write_metadata(payload: dict) -> dict:
         key: value
         for key, value in dict(payload or {}).items()
         if key not in {"_idempotency_key", "idempotency_key"}
+    }
+
+
+def _profile_context_changed(previous_profile: dict | None, next_profile: dict | None) -> bool:
+    return profile_context_changed(previous_profile, next_profile)
+
+
+def _should_clear_active_proposal_for_profile_change(state: GraphState, next_profile: dict | None) -> bool:
+    has_active_context = bool(
+        state.get("active_proposal")
+        or state.get("proposed_plan")
+        or state.get("awaiting_plan_confirmation")
+        or state.get("pending_sequential_plan")
+    )
+    return has_active_context and _profile_context_changed(state.get("user_profile"), next_profile)
+
+
+def _profile_context_changed_fields(previous_profile: dict | None, next_profile: dict | None) -> list[str]:
+    return profile_context_changed_fields(previous_profile, next_profile)
+
+
+def _clear_active_proposal_updates() -> dict[str, Any]:
+    return {
+        "active_proposal": None,
+        "awaiting_plan_confirmation": False,
+        "proposed_plan": [],
+        "proposed_plan_type": None,
+        "proposed_plan_action": None,
+        "pending_sequential_plan": None,
     }
 
 
@@ -383,12 +462,54 @@ async def _load_today_plan_with_fallback(
         return _normalize_today_plan(fallback), False
 
 
-def _normalize_user_profile(profile: dict | None) -> dict:
-    normalized = dict(profile or {})
+def _normalize_user_profile(profile: object) -> dict:
+    normalized = dict(_safe_dict(profile))
     normalized.setdefault("allergies", [])
     normalized.setdefault("injury_history", [])
     return normalized
 
 
-def _normalize_today_plan(today_plan: list[dict] | None) -> list[dict]:
-    return [dict(item) for item in (today_plan or [])]
+def _normalize_today_plan(today_plan: object) -> list[dict]:
+    if not isinstance(today_plan, list):
+        return []
+    normalized: list[dict] = []
+    for item in today_plan[:80]:
+        if not isinstance(item, dict):
+            continue
+        next_item = dict(item)
+        for key in ("id", "type", "name", "detail", "day", "plan_type"):
+            if key in next_item:
+                next_item[key] = _bounded_state_text(next_item.get(key), limit=160)
+        if "ex_list" in next_item:
+            next_item["ex_list"] = _normalize_today_exercises(next_item.get("ex_list"))
+        normalized.append(next_item)
+    return normalized
+
+
+def _normalize_today_exercises(exercises: object) -> list[dict]:
+    if not isinstance(exercises, list):
+        return []
+    normalized: list[dict] = []
+    for exercise in exercises[:20]:
+        if not isinstance(exercise, dict):
+            continue
+        next_exercise = dict(exercise)
+        if "exercise_name" in next_exercise:
+            next_exercise["exercise_name"] = _bounded_state_text(next_exercise.get("exercise_name"), limit=120)
+        normalized.append(next_exercise)
+    return normalized
+
+
+def _bounded_state_text(value: object, *, limit: int) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip()
+
+
+def _safe_dict(value: object) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _safe_list(value: object) -> list[Any]:
+    return value if isinstance(value, list) else []

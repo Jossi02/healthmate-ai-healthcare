@@ -13,7 +13,14 @@ const {
   ensureUserHealthProfileRow,
 } = require('../services/profileService');
 const { loadExercisePlansWithItems } = require('../services/exercisePlanReadService');
-const { deletePlanItemByOpaqueId } = require('../services/planMutationService');
+const {
+  deleteDietPlansForDates,
+  deleteDietPlansForUser,
+  deletePlanItemByOpaqueId,
+  deleteWorkoutPlansForDates,
+  deleteWorkoutPlansForUser,
+} = require('../services/planMutationService');
+const { normalizeIsoDate } = require('../utils/kst');
 
 const DEFAULT_WORKOUT_COLORS = [
   'from-sky-400 to-blue-500',
@@ -69,6 +76,31 @@ function parseCalories(value) {
   if (value === undefined || value === null || value === '') return 0;
   const matched = String(value).match(/\d+/);
   return matched ? Number(matched[0]) : 0;
+}
+
+function normalizePlanDeleteType(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (text === 'all' || text === 'both') return 'all';
+  if (text === 'workout' || text === 'exercise') return 'workout';
+  if (text === 'diet' || text === 'meal') return 'diet';
+  return null;
+}
+
+function normalizeTargetDates(value) {
+  if (!Array.isArray(value)) return [];
+  return [
+    ...new Set(
+      value
+        .map((item) => normalizeIsoDate(item))
+        .filter(Boolean)
+    ),
+  ];
+}
+
+function normalizePlanDeleteScope(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (text === 'all' || text === 'current_calendar') return 'all';
+  return 'dates';
 }
 
 function normalizeRecommendationName(value) {
@@ -464,6 +496,54 @@ exports.deletePlanItem = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Failed to delete plan item.' });
+  }
+};
+
+// @route   DELETE /api/v1/users/plans
+// @desc    Delete workout/diet plans by date for the current user
+// @access  Private
+exports.deletePlansForDates = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const planType = normalizePlanDeleteType(req.body.plan_type);
+    const targetScope = normalizePlanDeleteScope(req.body.target_scope || req.body.scope);
+    const targetDates = targetScope === 'all' ? [] : normalizeTargetDates(req.body.target_dates);
+
+    if (!planType) {
+      return res.status(400).json({ error: 'plan_type is required.' });
+    }
+
+    if (targetScope !== 'all' && targetDates.length === 0) {
+      return res.status(400).json({ error: 'target_dates is required.' });
+    }
+
+    let deletedWorkoutCount = 0;
+    let deletedDietCount = 0;
+
+    if (planType === 'workout' || planType === 'all') {
+      deletedWorkoutCount = targetScope === 'all'
+        ? await deleteWorkoutPlansForUser(supabase, userId)
+        : await deleteWorkoutPlansForDates(supabase, userId, targetDates);
+    }
+
+    if (planType === 'diet' || planType === 'all') {
+      deletedDietCount = targetScope === 'all'
+        ? await deleteDietPlansForUser(supabase, userId)
+        : await deleteDietPlansForDates(supabase, userId, targetDates);
+    }
+
+    return res.json({
+      status: 'success',
+      plan_type: planType,
+      target_scope: targetScope,
+      target_dates: targetDates,
+      deleted_workout_count: deletedWorkoutCount,
+      deleted_diet_count: deletedDietCount,
+      deleted_count: deletedWorkoutCount + deletedDietCount,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Failed to delete plans.' });
   }
 };
 

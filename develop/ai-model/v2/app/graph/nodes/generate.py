@@ -33,7 +33,9 @@ from app.schemas.home import HomeRecommendationResponse
 from app.schemas.llm_responses import DraftResponse, SelfEvalResponse
 from app.schemas.state import DraftComponents, GraphState
 from app.services.home_recommendations import (
+    DIET_SLOTS,
     PROMPT_PATH as _HOME_RECOMMENDATION_PROMPT,
+    WORKOUT_SLOTS,
     build_home_recommendation_prompt_input,
     empty_home_recommendations,
     kst_today_iso,
@@ -263,6 +265,79 @@ def make_generate_node(deps: NodeDeps):
                 duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
             )
             return _finalize_persona_aware_response(deps, state, direct_past_memory_draft)
+
+        if intent == INTENT_PLAN and _should_start_workout_for_mixed_followup(state):
+            (
+                draft_components,
+                draft_text,
+                proposed_plan,
+                proposed_plan_type,
+                proposed_plan_action,
+            ) = _build_starter_plan_fallback({**state, "domain": "workout"})
+            draft_components["suggested_action"] = "식단 플랜은 이 운동 플랜을 확정한 뒤 이어서 작성할 수 있어요."
+            draft_text = render_draft_preview(draft_components)
+            deps.trace.record_current_event(
+                stage="generate",
+                status="ok",
+                title="Mixed plan follow-up started with workout plan",
+                duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
+            )
+            return _finalize_persona_aware_response(
+                deps,
+                state,
+                {
+                    "draft_response": draft_text,
+                    "draft_components": draft_components,
+                    "proposed_plan": proposed_plan,
+                    "proposed_plan_type": proposed_plan_type,
+                    "proposed_plan_action": proposed_plan_action,
+                    "pending_sequential_plan": {
+                        "domain": "diet",
+                        "reason": "mixed_workout_diet_sequence",
+                        "created_turn": int(state.get("turn_count", 0) or 0),
+                    },
+                    "awaiting_plan_confirmation": True,
+                    "needs_clarification": False,
+                    "force_regenerate": False,
+                    "self_eval_count": 0,
+                    "self_eval_failure_reason": None,
+                },
+            )
+
+        if intent == INTENT_PLAN and _should_continue_pending_sequential_plan(state):
+            pending = state.get("pending_sequential_plan") or {}
+            pending_domain = str(pending.get("domain") or "diet")
+            (
+                draft_components,
+                draft_text,
+                proposed_plan,
+                proposed_plan_type,
+                proposed_plan_action,
+            ) = _build_starter_plan_fallback({**state, "domain": pending_domain})
+            deps.trace.record_current_event(
+                stage="generate",
+                status="ok",
+                title="Pending sequential plan continued",
+                detail={"domain": pending_domain, "reason": pending.get("reason")},
+                duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
+            )
+            return _finalize_persona_aware_response(
+                deps,
+                state,
+                {
+                    "draft_response": draft_text,
+                    "draft_components": draft_components,
+                    "proposed_plan": proposed_plan,
+                    "proposed_plan_type": proposed_plan_type,
+                    "proposed_plan_action": proposed_plan_action,
+                    "pending_sequential_plan": None,
+                    "awaiting_plan_confirmation": True,
+                    "needs_clarification": False,
+                    "force_regenerate": False,
+                    "self_eval_count": 0,
+                    "self_eval_failure_reason": None,
+                },
+            )
 
         if intent in {INTENT_PLAN, INTENT_MODIFY} and _is_mixed_plan_type_request(_resolved_user_message(state)):
             deps.trace.record_current_event(
@@ -538,7 +613,7 @@ def _build_persona_generation_prompt(state: GraphState) -> str:
     profile = _effective_user_profile(state)
     emotion = state.get("emotion") or {}
     emotion_label = emotion.get("label", "neutral")
-    emotion_intensity = float(emotion.get("intensity", 0))
+    emotion_intensity = _safe_float(emotion.get("intensity"))
     emotion_str = f"{emotion_label} (intensity {emotion_intensity:.1f})"
 
     try:
@@ -887,6 +962,10 @@ async def _generate_home_recommendations(
             response_schema=HomeRecommendationResponse,
         )
         result = HomeRecommendationResponse.model_validate_json(raw)
+        raw_profile_fit_issues = validate_home_recommendation_profile_fit(
+            result,
+            user_profile=effective_profile,
+        )
         normalized = normalize_home_recommendations(
             result,
             scope=scope,
@@ -909,11 +988,15 @@ async def _generate_home_recommendations(
             today_plan=state.get("today_plan") or [],
             recent_recommendations=state.get("home_recommendation_recent") or {},
         )
+        raw_profile_fit_issues = []
 
     profile_fit_issues = validate_home_recommendation_profile_fit(
         normalized,
         user_profile=effective_profile,
     )
+    original_profile_fit_issues = list(raw_profile_fit_issues or profile_fit_issues)
+    original_profile_fit_domains = _home_profile_issue_domains(original_profile_fit_issues)
+    remaining_profile_fit_domains = _home_profile_issue_domains(profile_fit_issues)
     deps.trace.record_current_event(
         stage="home_recommendation.profile_guard",
         status="warn" if profile_fit_issues else "ok",
@@ -926,7 +1009,11 @@ async def _generate_home_recommendations(
                 if value not in (None, "", [], {}, "[]")
             ),
             "issue_count": len(profile_fit_issues),
+            "raw_issue_count": len(raw_profile_fit_issues),
+            "raw_issue_domains": _home_profile_issue_domains(raw_profile_fit_issues),
+            "remaining_issue_domains": remaining_profile_fit_domains,
             "issues": profile_fit_issues[:8],
+            "raw_issues": raw_profile_fit_issues[:8],
         },
     )
     if profile_fit_issues:
@@ -974,6 +1061,10 @@ async def _generate_home_recommendations(
                 if item is not None
             ),
             "profile_fit_issue_count": len(profile_fit_issues),
+            "raw_profile_fit_issue_count": len(raw_profile_fit_issues),
+            "profile_fit_original_issue_count": len(original_profile_fit_issues),
+            "profile_fit_original_domains": original_profile_fit_domains,
+            "profile_fit_remaining_domains": remaining_profile_fit_domains,
         },
         duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
     )
@@ -982,10 +1073,35 @@ async def _generate_home_recommendations(
         "generation_quality_flags": {
             "home_profile_fit_issue_count": len(profile_fit_issues),
             "home_profile_fit_issues": profile_fit_issues[:8],
+            "home_recommendation_scope": scope,
+            "home_profile_fit_raw_issue_count": len(raw_profile_fit_issues),
+            "home_profile_fit_raw_issues": raw_profile_fit_issues[:8],
+            "home_profile_fit_raw_domains": _home_profile_issue_domains(raw_profile_fit_issues),
+            "home_profile_fit_original_issue_count": len(original_profile_fit_issues),
+            "home_profile_fit_repaired": bool(original_profile_fit_issues),
+            "home_profile_fit_original_domains": original_profile_fit_domains,
+            "home_profile_fit_remaining_domains": remaining_profile_fit_domains,
+            "home_profile_fit_original_issues": original_profile_fit_issues[:8],
         },
         "self_eval_count": 0,
         "self_eval_failure_reason": None,
     }
+
+
+def _home_profile_issue_domains(issues: list[dict]) -> list[str]:
+    domains: set[str] = set()
+    for issue in issues:
+        slot = str(issue.get("slot") or "")
+        code = str(issue.get("code") or "")
+        if slot in WORKOUT_SLOTS:
+            domains.add("workout")
+        elif slot in DIET_SLOTS:
+            domains.add("diet")
+        elif "workout" in code:
+            domains.add("workout")
+        elif "diet" in code:
+            domains.add("diet")
+    return sorted(domains)
 
 
 async def _request_draft_with_guardrails(
@@ -2182,6 +2298,15 @@ def _safe_int(value: object) -> int | None:
         return None
 
 
+def _safe_float(value: object, *, default: float = 0.0) -> float:
+    if value is None or value == "" or isinstance(value, bool):
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _plan_contract_needs_fallback(
     proposed_plan: list[dict],
     proposed_plan_type: str | None,
@@ -2640,9 +2765,17 @@ def _is_mixed_plan_type_request(message: str) -> bool:
     has_plan_request = any(keyword in lowered for keyword in ("플랜", "계획", "작성", "추천", "짜줘", "세워", "잡아", "만들어", "루틴"))
     if not (has_plan_request and _has_explicit_workout_domain(lowered) and _has_explicit_diet_domain(lowered)):
         return False
-    if any(marker in lowered for marker in ("같이", "함께", "둘 다", "둘다", "both", "운동과 식단", "운동 및 식단", "운동 계획과 식단")):
-        return False
     return True
+
+
+def _should_start_workout_for_mixed_followup(state: GraphState) -> bool:
+    diagnostics = state.get("routing_diagnostics") or {}
+    return "mixed_plan_followup_start_workout_first" in (diagnostics.get("reason_codes") or [])
+
+
+def _should_continue_pending_sequential_plan(state: GraphState) -> bool:
+    diagnostics = state.get("routing_diagnostics") or {}
+    return "pending_sequential_plan_followup" in (diagnostics.get("reason_codes") or [])
 
 
 def _build_mixed_plan_clarification_draft() -> dict:
@@ -2801,11 +2934,11 @@ def _expand_long_range_plan_if_requested(
     if proposed_plan_type not in {"workout", "diet"} or not proposed_plan:
         return proposed_plan
 
+    proposed_plan = _align_plan_start_to_today_if_implicit(state, proposed_plan)
+
     target_days = _requested_plan_days(_resolved_user_message(state))
     if not target_days:
         return proposed_plan
-
-    proposed_plan = _align_plan_start_to_today_if_implicit(state, proposed_plan)
 
     unique_dates = _plan_unique_iso_days(proposed_plan)
     if len(unique_dates) >= min(target_days, 21):
@@ -3222,7 +3355,7 @@ def _resolved_user_message(state: GraphState) -> str:
     resolution = state.get("context_resolution") or {}
     resolved_text = str(resolution.get("resolved_text") or "").strip()
     resolved_reference = resolution.get("resolved_reference")
-    confidence = float(resolution.get("confidence") or 0.0)
+    confidence = _safe_float(resolution.get("confidence"))
     if resolved_reference and resolved_reference != "none" and resolved_text and confidence >= 0.6:
         return resolved_text
     return str(state.get("user_message") or "")
@@ -3349,13 +3482,25 @@ def _build_approval_draft_v2(state: GraphState) -> dict:
 def _build_plan_delete_draft(state: GraphState) -> dict:
     payload = state.get("profile_changes") or {}
     target_dates = payload.get("target_dates") or []
+    target_scope = payload.get("target_scope") or "dates"
     plan_type = payload.get("plan_type") or state.get("domain") or "all"
     plan_label = {
         "workout": "운동",
         "diet": "식단",
         "all": "운동/식단",
     }.get(str(plan_type), "플랜")
-    date_label = _format_delete_date_label(target_dates)
+    date_label = _format_delete_date_label(target_dates, target_scope)
+    if plan_type == "workout":
+        plan_label = "\uc6b4\ub3d9"
+    elif plan_type == "diet":
+        plan_label = "\uc2dd\ub2e8"
+    else:
+        plan_label = "\uc6b4\ub3d9/\uc2dd\ub2e8"
+    reason = (
+        "\uce98\ub9b0\ub354\uc5d0 \uc800\uc7a5\ub41c \ud574\ub2f9 \ud50c\ub79c \ubc94\uc704\ub97c \ubaa8\ub450 \uc81c\uac70\ud569\ub2c8\ub2e4."
+        if target_scope == "all"
+        else "\uc694\uccad\ud55c \ub0a0\uc9dc\uc640 \ud50c\ub79c \uc885\ub958\ub9cc \uce98\ub9b0\ub354\uc5d0\uc11c \uc81c\uac70\ud569\ub2c8\ub2e4."
+    )
 
     components = normalize_draft_components(
         {
@@ -3366,6 +3511,8 @@ def _build_plan_delete_draft(state: GraphState) -> dict:
             "search_grounding_summary": "",
         }
     )
+    components["core_message"] = f"{date_label} {plan_label} \ud50c\ub79c\uc744 \uc0ad\uc81c\ud560\uac8c."
+    components["reason_points"] = [reason]
     return {
         "draft_response": render_draft_preview(components),
         "draft_components": components,
@@ -3383,6 +3530,16 @@ def _format_delete_date_label(target_dates: list[str]) -> str:
     if len(target_dates) == 1:
         return f"{target_dates[0]}의"
     return f"{target_dates[0]}부터 {target_dates[-1]}까지"
+
+
+def _format_delete_date_label(target_dates: list[str], target_scope: str | None = None) -> str:
+    if target_scope == "all":
+        return "\ud604\uc7ac \uce98\ub9b0\ub354\uc758 \ubaa8\ub4e0"
+    if not target_dates:
+        return "\uc694\uccad\ud55c \ub0a0\uc9dc\uc758"
+    if len(target_dates) == 1:
+        return f"{target_dates[0]}\uc758"
+    return f"{target_dates[0]}\ubd80\ud130 {target_dates[-1]}\uae4c\uc9c0\uc758"
 
 
 def _build_care_draft(state: GraphState) -> dict:

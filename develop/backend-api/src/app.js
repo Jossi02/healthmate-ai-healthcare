@@ -5,8 +5,28 @@ const morgan = require('morgan');
 require('dotenv').config();
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
+const supabase = require('./config/db');
+const internalController = require('./controllers/internalController');
 
 const app = express();
+
+async function checkIdempotencyTable() {
+  const { error } = await supabase
+    .from('ai_was_idempotency_keys')
+    .select('idempotency_key')
+    .limit(1);
+
+  if (!error) return { ok: true };
+  return {
+    ok: false,
+    code: error.code || null,
+    message: error.message || String(error),
+  };
+}
+
+function idempotencyTableIsMissing(check) {
+  return check?.code === 'PGRST205' || check?.code === '42P01';
+}
 
 // ─── 보안 및 기본 미들웨어 ────────────────────────────────────────────
 app.use(helmet()); // HTTP 보안 헤더 자동 설정
@@ -45,6 +65,39 @@ app.get('/api/health', (req, res) => {
     message: '서버가 정상 동작 중입니다.',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
+  });
+});
+
+app.get('/api/readiness', async (req, res) => {
+  const requireDatabaseIdempotency =
+    String(process.env.REQUIRE_IDEMPOTENCY_TABLE || '').toLowerCase() === 'true';
+  const idempotencyTable = await checkIdempotencyTable();
+  const idempotencyMode = idempotencyTable.ok ? 'database' : 'memory_fallback';
+  const blockingIssues = [];
+  const warnings = [];
+
+  if (!idempotencyTable.ok && (!idempotencyTableIsMissing(idempotencyTable) || requireDatabaseIdempotency)) {
+    blockingIssues.push('idempotency_table_unavailable');
+  }
+  if (!idempotencyTable.ok && idempotencyTableIsMissing(idempotencyTable)) {
+    warnings.push(
+      'ai_was_idempotency_keys table is missing; using in-memory fallback until the Supabase migration is applied.'
+    );
+  }
+
+  const ok = blockingIssues.length === 0;
+  res.status(ok ? 200 : 503).json({
+    ok,
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    idempotency: {
+      mode: idempotencyMode,
+      database_required: requireDatabaseIdempotency,
+      table: idempotencyTable,
+      memory_fallback: internalController.__private?.getMemoryIdempotencyStatus?.() || null,
+    },
+    warnings,
+    blocking_issues: blockingIssues,
   });
 });
 

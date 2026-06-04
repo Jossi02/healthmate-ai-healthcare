@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from app.core.draft_contract import normalize_draft_components, render_draft_preview
 from app.graph.deps import NodeDeps
@@ -15,7 +16,7 @@ def make_finalize_node(deps: NodeDeps):
     async def finalize_node(state: GraphState) -> dict:
         started_at = time.perf_counter()
         if state.get("request_kind") == "home_recommendation":
-            recommendations = state.get("home_recommendations") or {}
+            recommendations = _safe_dict(state.get("home_recommendations"))
             deps.trace.record_current_event(
                 stage="finalize",
                 status="ok",
@@ -28,14 +29,15 @@ def make_finalize_node(deps: NodeDeps):
             )
             return {"force_regenerate": False}
 
-        response = str(state.get("response") or "").strip()
+        response = _response_text(state.get("response"))
         source = "response"
 
-        if not response and state.get("draft_components"):
-            response = render_draft_preview(normalize_draft_components(state.get("draft_components")))
+        draft_components = _safe_dict(state.get("draft_components"))
+        if not response and draft_components:
+            response = render_draft_preview(normalize_draft_components(draft_components))
             source = "draft_components"
         if not response and state.get("draft_response"):
-            response = str(state.get("draft_response") or "").strip()
+            response = _response_text(state.get("draft_response"))
             source = "draft_response"
         if not response:
             response = _FALLBACK_RESPONSE
@@ -45,7 +47,8 @@ def make_finalize_node(deps: NodeDeps):
             response = repaired or _FALLBACK_RESPONSE
             source = "mojibake_guard"
 
-        validation_report = state.get("validation_report") or {}
+        validation_report = _safe_dict(state.get("validation_report"))
+        validation_issues = _safe_list(validation_report.get("issues"))
         deps.trace.record_current_event(
             stage="finalize",
             status="ok" if source not in {"fallback", "mojibake_guard"} else "warn",
@@ -54,7 +57,7 @@ def make_finalize_node(deps: NodeDeps):
                 "source": source,
                 "response_length": len(response),
                 "validation_passed": validation_report.get("passed"),
-                "validation_issue_count": len(validation_report.get("issues") or []),
+                "validation_issue_count": len(validation_issues),
                 "resolved_persona_id": state.get("resolved_persona_id"),
             },
             duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
@@ -75,11 +78,13 @@ def _looks_like_mojibake(text: str) -> bool:
 
 
 def _safe_response_from_state(state: GraphState) -> str | None:
-    proposed_plan = state.get("proposed_plan") or []
+    proposed_plan = _safe_list(state.get("proposed_plan"))
     proposed_plan_type = state.get("proposed_plan_type")
-    if isinstance(proposed_plan, list) and proposed_plan and proposed_plan_type in {"workout", "diet"}:
+    if proposed_plan and proposed_plan_type in {"workout", "diet"}:
         plan_label = "식단" if proposed_plan_type == "diet" else "운동"
         preview = _safe_plan_preview(proposed_plan)
+        if not preview:
+            return None
         question = f"이 {plan_label} 플랜으로 작성할까요?"
         return f"{plan_label} 플랜을 제안해요.\n{preview}\n{question}".strip()
     if state.get("needs_clarification"):
@@ -87,11 +92,10 @@ def _safe_response_from_state(state: GraphState) -> str | None:
     return None
 
 
-def _safe_plan_preview(plan: list[dict]) -> str:
+def _safe_plan_preview(plan: object) -> str:
+    items = [item for item in _safe_list(plan) if isinstance(item, dict)]
     lines: list[str] = []
-    for item in plan[:7]:
-        if not isinstance(item, dict):
-            continue
+    for item in items[:7]:
         day = _safe_text(item.get("day")) or ""
         name = _safe_text(item.get("name")) or "플랜 항목"
         detail = _safe_text(item.get("detail"))
@@ -101,18 +105,15 @@ def _safe_plan_preview(plan: list[dict]) -> str:
         if content:
             line = f"{line}: {content}"
         lines.append(line)
-    if len(plan) > 7:
-        lines.append(f"- 외 {len(plan) - 7}개 항목")
+    if len(items) > 7:
+        lines.append(f"- 외 {len(items) - 7}개 항목")
     return "\n".join(lines)
 
 
 def _safe_exercise_preview(ex_list: object) -> str:
-    if not isinstance(ex_list, list):
-        return ""
+    items = [item for item in _safe_list(ex_list) if isinstance(item, dict)]
     parts: list[str] = []
-    for exercise in ex_list[:3]:
-        if not isinstance(exercise, dict):
-            continue
+    for exercise in items[:3]:
         name = _safe_text(exercise.get("exercise_name"))
         if not name:
             continue
@@ -124,11 +125,25 @@ def _safe_exercise_preview(ex_list: object) -> str:
             parts.append(f"{name} {duration}분")
         else:
             parts.append(name)
-    if len(ex_list) > 3:
-        parts.append(f"외 {len(ex_list) - 3}종목")
+    if len(items) > 3:
+        parts.append(f"외 {len(items) - 3}종목")
     return ", ".join(parts)
 
 
 def _safe_text(value: object) -> str:
+    if not isinstance(value, (str, int, float)):
+        return ""
     text = str(value or "").strip()
     return "" if _looks_like_mojibake(text) else text
+
+
+def _response_text(value: object) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _safe_dict(value: object) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _safe_list(value: object) -> list[Any]:
+    return value if isinstance(value, list) else []

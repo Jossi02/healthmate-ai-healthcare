@@ -534,6 +534,17 @@ def make_intent_node(deps: NodeDeps):
         if _looks_like_profile_record(message) or _looks_like_profile_record(routing_message):
             return _build_result(INTENT_RECORD, state, confidence=0.94, record_type="profile")
 
+        if _looks_like_condition_info_question(message, routing_message):
+            return _build_result(
+                INTENT_INFO,
+                state,
+                confidence=0.91,
+                search_targets=["vdb_external"],
+            )
+
+        if _looks_like_simple_condition_statement(message, routing_message):
+            return _build_result(INTENT_CASUAL, state, confidence=0.88)
+
         if _looks_like_emotional_care_request(message, routing_message):
             return _build_result(INTENT_CARE, state, confidence=0.9)
 
@@ -563,6 +574,46 @@ def make_intent_node(deps: NodeDeps):
                 signals=signals,
             )
             return _ambiguous_plan_clarification_result(state, signals)
+
+        if _looks_like_mixed_plan_clarification_followup(message, state):
+            result = _build_result(
+                INTENT_PLAN,
+                state,
+                confidence=0.9,
+                search_targets=["vdb_external", "vdb_memory", "vdb_user_important", "web"],
+                domain_override="workout",
+            )
+            result["routing_diagnostics"] = {
+                **(result.get("routing_diagnostics") or {}),
+                "reason_codes": [
+                    *((result.get("routing_diagnostics") or {}).get("reason_codes") or []),
+                    "mixed_plan_followup_start_workout_first",
+                ],
+                "domain_ambiguous": False,
+                "needs_clarification_recommended": False,
+            }
+            return result
+
+        if _looks_like_pending_sequential_plan_followup(message, state):
+            pending = state.get("pending_sequential_plan") or {}
+            pending_domain = str(pending.get("domain") or "diet")
+            result = _build_result(
+                INTENT_PLAN,
+                state,
+                confidence=0.91,
+                search_targets=["vdb_external", "vdb_memory", "vdb_user_important", "web"],
+                domain_override=pending_domain,
+            )
+            result["routing_diagnostics"] = {
+                **(result.get("routing_diagnostics") or {}),
+                "reason_codes": [
+                    *((result.get("routing_diagnostics") or {}).get("reason_codes") or []),
+                    "pending_sequential_plan_followup",
+                ],
+                "domain_ambiguous": False,
+                "needs_clarification_recommended": False,
+            }
+            return result
 
         if _looks_like_new_plan_request(message, routing_message):
             return _build_result(
@@ -657,6 +708,8 @@ def make_intent_node(deps: NodeDeps):
             and not _looks_like_plan_request(routing_message)
             and not _looks_like_modify_request(routing_message)
         ):
+            if _looks_like_simple_condition_statement(message, routing_message):
+                return _build_result(INTENT_CASUAL, state, confidence=0.86)
             return _build_result(INTENT_CARE, state, confidence=0.88)
 
         if _looks_like_profile_record(routing_message):
@@ -807,10 +860,17 @@ def _build_result(
     modify_target: str | None = None,
     record_type: str | None = None,
     is_today: bool | None = None,
+    domain_override: str | None = None,
 ) -> dict:
     is_profile_record = intent == INTENT_RECORD and _looks_like_profile_record(str(state.get("user_message") or ""))
     resolved_record_type = record_type or ("profile" if is_profile_record else None)
-    contract = _contract_fields(intent, state, record_type=resolved_record_type, modify_target=modify_target)
+    contract = _contract_fields(
+        intent,
+        state,
+        record_type=resolved_record_type,
+        modify_target=modify_target,
+        domain_override=domain_override,
+    )
     routing_diagnostics = _routing_diagnostics({}, intent, contract)
     return {
         "intent": intent,
@@ -938,6 +998,7 @@ def _contract_fields(
     profile_changes: dict | None = None,
     routing_message: str | None = None,
     emotion_override: dict | None = None,
+    domain_override: str | None = None,
 ) -> dict:
     action_intent = _action_intent_from_legacy(intent)
     support_mode = _support_mode(intent, state, routing_message, emotion_override)
@@ -949,7 +1010,9 @@ def _contract_fields(
     inferred_domain = infer_domain(effective_message)
 
     domain = "general"
-    if action_intent == "safety":
+    if domain_override in {"workout", "diet", "profile", "general"}:
+        domain = domain_override
+    elif action_intent == "safety":
         domain = "general"
     elif record_type == "profile" or profile_changes:
         domain = "profile"
@@ -1038,7 +1101,7 @@ def _support_mode(
         return "care"
 
     emotion = emotion_override or state.get("emotion") or {}
-    emotion_intensity = float(emotion.get("intensity") or 0.0)
+    emotion_intensity = _safe_float(emotion.get("intensity"))
     if emotion_intensity >= 0.6:
         return "care"
 
@@ -1066,10 +1129,19 @@ def _routing_message(state: GraphState, message: str) -> str:
     resolution = state.get("context_resolution") or {}
     resolved_reference = resolution.get("resolved_reference")
     resolved_text = str(resolution.get("resolved_text") or "").strip()
-    confidence = float(resolution.get("confidence") or 0.0)
+    confidence = _safe_float(resolution.get("confidence"))
     if resolved_reference and resolved_reference != "none" and resolved_text and confidence >= 0.6:
         return resolved_text
     return message
+
+
+def _safe_float(value: object, *, default: float = 0.0) -> float:
+    if value is None or isinstance(value, bool):
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _latest_assistant_message(state: GraphState) -> str:
@@ -1259,8 +1331,7 @@ def _looks_like_ambiguous_mixed_plan_request(message: str) -> bool:
     has_plan_request = _looks_like_plan_request(normalized)
     has_workout = any(keyword in normalized for keyword in ("운동", "러닝", "헬스", "근력", "유산소", "스트레칭", "산책", "workout", "exercise"))
     has_diet = any(keyword in normalized for keyword in ("식단", "식사", "메뉴", "아침", "점심", "저녁", "meal", "diet"))
-    explicit_both = any(marker in normalized for marker in ("같이", "함께", "둘 다", "둘다", "both", "운동과 식단", "운동 및 식단", "운동 계획과 식단"))
-    return has_plan_request and has_workout and has_diet and not explicit_both
+    return has_plan_request and has_workout and has_diet
 
 
 def _matches_hardcoded_confirmation_approval(message: str) -> bool:
@@ -1465,6 +1536,184 @@ def _looks_like_emotional_care_request(message: str, routing_message: str | None
         "응원",
     )
     return any(marker in combined for marker in reassurance_markers)
+
+
+def _looks_like_simple_condition_statement(message: str, routing_message: str | None = None) -> bool:
+    combined = " ".join(candidate.strip().lower() for candidate in (message, routing_message or "") if candidate.strip())
+    if not combined:
+        return False
+    if not _looks_like_care_request(combined):
+        return False
+    if "?" in combined or "？" in combined:
+        return False
+    if _looks_like_question_followup(combined) or _looks_like_read_only_info_request(combined):
+        return False
+    emotional_markers = (
+        "외로",
+        "불안",
+        "우울",
+        "무기력",
+        "멘탈",
+        "스트레스",
+        "자신감",
+        "망했",
+        "실패",
+        "lonely",
+        "anxious",
+        "depressed",
+        "stress",
+    )
+    if any(marker in combined for marker in emotional_markers):
+        return False
+    physical_markers = (
+        "잠",
+        "수면",
+        "식욕",
+        "허리",
+        "뻐근",
+        "피곤",
+        "컨디션",
+        "피곤",
+        "지침",
+        "컨디션",
+        "졸려",
+        "배고",
+        "근육통",
+        "몸살",
+        "아파",
+        "피로",
+        "tired",
+        "fatigue",
+        "sore",
+        "hungry",
+    )
+    if not any(marker in combined for marker in physical_markers):
+        return False
+    action_markers = (
+        "쉬어도",
+        "해야",
+        "될까",
+        "괜찮",
+        "어떻게",
+        "말해줘",
+        "위로",
+        "응원",
+        "도와",
+        "추천",
+        "계획",
+        "플랜",
+        "짜줘",
+        "작성",
+        "해줘",
+        "어떻게",
+        "쉬어도",
+        "해야",
+        "될까",
+        "괜찮",
+        "tell me",
+        "comfort",
+        "encourage",
+        "help",
+        "recommend",
+        "plan",
+        "should",
+        "can i",
+    )
+    return not any(marker in combined for marker in action_markers)
+
+
+def _looks_like_condition_info_question(message: str, routing_message: str | None = None) -> bool:
+    combined = " ".join(candidate.strip().lower() for candidate in (message, routing_message or "") if candidate.strip())
+    if not combined:
+        return False
+    if _looks_like_plan_request(combined) or _looks_like_modify_request(combined):
+        return False
+    rest_question_markers = ("쉬어도", "쉬어도 돼", "쉬어도 될", "rest today", "take a rest")
+    if any(marker in combined for marker in rest_question_markers):
+        return True
+    condition_markers = (
+        "피곤",
+        "잠",
+        "수면",
+        "졸려",
+        "식욕",
+        "배고",
+        "허리",
+        "뻐근",
+        "근육통",
+        "컨디션",
+        "피로",
+        "tired",
+        "sleep",
+        "appetite",
+        "hungry",
+        "stiff",
+        "sore",
+    )
+    if not any(marker in combined for marker in condition_markers):
+        return False
+    question_markers = (
+        "?",
+        "？",
+        "쉬어도",
+        "해야",
+        "될까",
+        "괜찮",
+        "어떻게",
+        "좋을까",
+        "먹어도",
+        "해도",
+        "should",
+        "can i",
+        "is it ok",
+    )
+    return any(marker in combined for marker in question_markers)
+
+
+def _looks_like_mixed_plan_clarification_followup(message: str, state: GraphState) -> bool:
+    normalized = str(message or "").strip().lower()
+    if not normalized:
+        return False
+    if not any(marker in normalized for marker in ("둘 다", "둘다", "같이", "함께", "both", "순서", "전부", "다 해")):
+        return False
+    latest_assistant = _latest_assistant_message_v2(state).lower()
+    return bool(
+        latest_assistant
+        and any(marker in latest_assistant for marker in ("운동", "workout"))
+        and any(marker in latest_assistant for marker in ("식단", "diet"))
+        and any(marker in latest_assistant for marker in ("골라", "먼저", "하나", "선택"))
+    )
+
+
+def _looks_like_pending_sequential_plan_followup(message: str, state: GraphState) -> bool:
+    pending = state.get("pending_sequential_plan") or {}
+    pending_domain = str(pending.get("domain") or "")
+    if pending_domain not in {"workout", "diet"}:
+        return False
+    if state.get("awaiting_plan_confirmation") or _has_pending_plan_confirmation_v2(state):
+        return False
+    normalized = str(message or "").strip().lower()
+    if not normalized:
+        return False
+    domain_markers = {
+        "diet": ("식단", "식사", "메뉴", "영양", "밥", "meal", "diet", "menu", "nutrition"),
+        "workout": ("운동", "루틴", "근력", "유산소", "스트레칭", "workout", "exercise", "routine"),
+    }
+    continuation_markers = ("이어서", "다음", "계속", "마저", "나머지", "그 다음", "까지", "도", "continue", "next", "too", "also")
+    request_markers = ("해줘", "짜줘", "작성", "만들", "부탁", "진행", "plan", "make", "create")
+    has_domain_marker = any(marker in normalized for marker in domain_markers[pending_domain])
+    has_continuation = any(marker in normalized for marker in continuation_markers)
+    has_request = any(marker in normalized for marker in request_markers)
+    other_domain = "workout" if pending_domain == "diet" else "diet"
+    has_other_domain_marker = any(marker in normalized for marker in domain_markers[other_domain])
+    short_domain_followup = has_domain_marker and len(normalized.replace(" ", "")) <= 12
+    if has_other_domain_marker and not has_domain_marker:
+        return False
+    return (
+        (has_domain_marker and (has_request or has_continuation))
+        or (has_continuation and has_request)
+        or short_domain_followup
+    )
 
 
 def _looks_like_health_context(message: str) -> bool:

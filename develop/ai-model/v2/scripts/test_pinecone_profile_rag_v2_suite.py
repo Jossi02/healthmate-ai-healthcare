@@ -7,6 +7,7 @@ correctly.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 import statistics
@@ -15,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+from google.genai import errors as genai_errors
 from pinecone import PineconeAsyncio
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -36,6 +38,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REPORT_JSON_PATH = ROOT / "docs" / "quality" / "pinecone_profile_rag_v2_report.json"
 REPORT_MD_PATH = ROOT / "docs" / "quality" / "pinecone_profile_rag_v2_report.md"
 SEARCH_TOP_K = EXTERNAL_FETCH_TOP_K
+SMOKE_ONLY_ENV = "PINECONE_PROFILE_RAG_SMOKE_ONLY"
 
 INTENT_PLAN = "계획"
 INTENT_MODIFY = "수정"
@@ -690,56 +693,166 @@ def _count_relevant(results: list[dict[str, Any]], case: dict[str, Any]) -> int:
     return count
 
 
+def _truthy_env(name: str) -> bool:
+    return str(os.getenv(name) or "").strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _is_external_retrieval_dependency_unavailable(exc: BaseException) -> bool:
+    code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+    status = str(getattr(exc, "status", "") or getattr(exc, "reason", "") or "")
+    message = str(exc)
+    normalized = f"{type(exc).__module__}.{type(exc).__name__} {status} {message}".upper()
+    if isinstance(exc, genai_errors.ServerError) and code in {500, 502, 503, 504}:
+        return True
+    if code in {500, 502, 503, 504} and any(marker in normalized for marker in ("UNAVAILABLE", "SERVICE", "SERVER")):
+        return True
+    return "503 UNAVAILABLE" in normalized or "SERVICE UNAVAILABLE" in normalized
+
+
+def _error_details(exc: BaseException, reason: str) -> dict[str, Any]:
+    return {
+        "reason": reason,
+        "error_type": f"{type(exc).__module__}.{type(exc).__name__}",
+        "error_code": getattr(exc, "code", None) or getattr(exc, "status_code", None),
+        "error_message": str(exc)[:1000],
+    }
+
+
+def _build_report(
+    trigger_results: list[dict[str, Any]],
+    retrieval_results: list[dict[str, Any]],
+    *,
+    retrieval_status: str = "ok",
+    blocked_details: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    all_results = trigger_results + retrieval_results
+    pass_count = sum(1 for result in all_results if result["grade"] == "pass")
+    fail_count = len(all_results) - pass_count
+    retrieval_relevant = [result["relevant_count"] for result in retrieval_results]
+    summary = {
+        "trigger_cases": len(trigger_results),
+        "retrieval_cases": len(retrieval_results),
+        "expected_retrieval_cases": len(RETRIEVAL_CASES),
+        "total_cases": len(all_results),
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        "accuracy": round(pass_count / len(all_results), 4) if all_results else 1.0,
+        "avg_relevant_evidence": round(statistics.mean(retrieval_relevant), 3) if retrieval_relevant else 0.0,
+        "retrieval_status": retrieval_status,
+        "blocked": retrieval_status == "blocked",
+    }
+    if blocked_details:
+        summary["blocked_details"] = blocked_details
+    return {
+        "summary": summary,
+        "trigger_results": trigger_results,
+        "retrieval_results": retrieval_results,
+    }
+
+
+def _write_report(report: dict[str, Any]) -> None:
+    REPORT_JSON_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    REPORT_MD_PATH.write_text(_render_markdown(report), encoding="utf-8")
+
+
+def _print_report_summary(report: dict[str, Any]) -> None:
+    print("[pinecone-profile-rag-v2] summary:", json.dumps(report["summary"], ensure_ascii=False))
+    print("[pinecone-profile-rag-v2] report json:", REPORT_JSON_PATH)
+    print("[pinecone-profile-rag-v2] report md:", REPORT_MD_PATH)
+
+
+async def _close_async_resource(resource: Any) -> None:
+    if resource is None:
+        return
+    for method_name in ("aclose", "close"):
+        method = getattr(resource, method_name, None)
+        if not callable(method):
+            continue
+        with contextlib.suppress(Exception):
+            maybe_awaitable = method()
+            if asyncio.iscoroutine(maybe_awaitable):
+                await maybe_awaitable
+        return
+
+
+async def _close_embedding_client(embed: EmbeddingClient | None) -> None:
+    if embed is None:
+        return
+    client = getattr(embed, "_client", None)
+    await _close_async_resource(getattr(client, "aio", None))
+    await _close_async_resource(client)
+
+
 async def main() -> None:
     load_dotenv(dotenv_path=ROOT / ".env")
     gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("ROUTER_API_KEY")
     pinecone_key = os.getenv("PINECONE_API_KEY")
     index_name = os.getenv("PINECONE_INDEX_NAME", "health-coach-ai")
-    if not gemini_key or not pinecone_key:
-        raise RuntimeError("GEMINI_API_KEY/ROUTER_API_KEY and PINECONE_API_KEY are required")
-
-    embed = EmbeddingClient(api_key=gemini_key)
-    pc_core = PineconeAsyncio(api_key=pinecone_key)
-    description = await pc_core.describe_index(index_name)
-    index = pc_core.IndexAsyncio(host=description.host)
-    client = PineconeClient(index=index)
-
     trigger_results = evaluate_trigger_cases()
-    retrieval_results = await evaluate_retrieval_cases(client, embed)
 
-    close_index = getattr(index, "close", None)
-    if close_index:
-        maybe_awaitable = close_index()
-        if asyncio.iscoroutine(maybe_awaitable):
-            await maybe_awaitable
-    await pc_core.close()
+    if _truthy_env(SMOKE_ONLY_ENV):
+        report = _build_report(trigger_results, [], retrieval_status="smoke_only")
+        _write_report(report)
+        _print_report_summary(report)
+        if report["summary"]["fail_count"]:
+            raise SystemExit(1)
+        return
 
-    all_results = trigger_results + retrieval_results
-    pass_count = sum(1 for result in all_results if result["grade"] == "pass")
-    fail_count = len(all_results) - pass_count
-    retrieval_relevant = [result["relevant_count"] for result in retrieval_results]
-    report = {
-        "summary": {
-            "trigger_cases": len(trigger_results),
-            "retrieval_cases": len(retrieval_results),
-            "total_cases": len(all_results),
-            "pass_count": pass_count,
-            "fail_count": fail_count,
-            "accuracy": round(pass_count / len(all_results), 4) if all_results else 1.0,
-            "avg_relevant_evidence": round(statistics.mean(retrieval_relevant), 3) if retrieval_relevant else 0.0,
-        },
-        "trigger_results": trigger_results,
-        "retrieval_results": retrieval_results,
-    }
+    if not gemini_key or not pinecone_key:
+        missing = []
+        if not gemini_key:
+            missing.append("GEMINI_API_KEY/ROUTER_API_KEY")
+        if not pinecone_key:
+            missing.append("PINECONE_API_KEY")
+        report = _build_report(
+            trigger_results,
+            [],
+            retrieval_status="blocked",
+            blocked_details={
+                "reason": "missing_external_credentials",
+                "missing": missing,
+            },
+        )
+        _write_report(report)
+        _print_report_summary(report)
+        if report["summary"]["fail_count"]:
+            raise SystemExit(1)
+        return
 
-    REPORT_JSON_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    REPORT_MD_PATH.write_text(_render_markdown(report), encoding="utf-8")
+    embed: EmbeddingClient | None = None
+    pc_core: PineconeAsyncio | None = None
+    index: Any = None
+    try:
+        embed = EmbeddingClient(api_key=gemini_key)
+        pc_core = PineconeAsyncio(api_key=pinecone_key)
+        description = await pc_core.describe_index(index_name)
+        index = pc_core.IndexAsyncio(host=description.host)
+        client = PineconeClient(index=index)
+        retrieval_results = await evaluate_retrieval_cases(client, embed)
+    except Exception as exc:
+        if not _is_external_retrieval_dependency_unavailable(exc):
+            raise
+        report = _build_report(
+            trigger_results,
+            [],
+            retrieval_status="blocked",
+            blocked_details=_error_details(exc, "external_retrieval_dependency_unavailable"),
+        )
+        _write_report(report)
+        _print_report_summary(report)
+        if report["summary"]["fail_count"]:
+            raise SystemExit(1)
+        return
+    finally:
+        await _close_async_resource(index)
+        await _close_async_resource(pc_core)
+        await _close_embedding_client(embed)
 
-    print("[pinecone-profile-rag-v2] summary:", json.dumps(report["summary"], ensure_ascii=False))
-    print("[pinecone-profile-rag-v2] report json:", REPORT_JSON_PATH)
-    print("[pinecone-profile-rag-v2] report md:", REPORT_MD_PATH)
+    report = _build_report(trigger_results, retrieval_results)
+    _write_report(report)
+    _print_report_summary(report)
 
-    if fail_count:
+    if report["summary"]["fail_count"]:
         raise SystemExit(1)
 
 
@@ -749,22 +862,39 @@ def _render_markdown(report: dict[str, Any]) -> str:
         "# Pinecone Profile RAG v2 Report",
         "",
         f"- Trigger cases: {summary['trigger_cases']}",
-        f"- Retrieval cases: {summary['retrieval_cases']}",
+        f"- Retrieval cases: {summary['retrieval_cases']} / expected {summary.get('expected_retrieval_cases', summary['retrieval_cases'])}",
         f"- Total cases: {summary['total_cases']}",
         f"- Accuracy: {summary['accuracy']}",
         f"- Pass/Fail: {summary['pass_count']}/{summary['fail_count']}",
         f"- Average relevant evidence: {summary['avg_relevant_evidence']}",
+        f"- Retrieval status: {summary.get('retrieval_status', 'ok')}",
+    ]
+    blocked_details = summary.get("blocked_details")
+    if blocked_details:
+        lines.extend(
+            [
+                f"- Blocked reason: {blocked_details.get('reason')}",
+                f"- Blocked error: {blocked_details.get('error_type')} code={blocked_details.get('error_code')}",
+            ]
+        )
+        if blocked_details.get("missing"):
+            lines.append(f"- Missing credentials: {blocked_details.get('missing')}")
+    lines.extend(
+        [
         "",
         "## Trigger Cases",
-    ]
+        ]
+    )
     for result in report["trigger_results"]:
         issues = ", ".join(result["issues"]) or "none"
         lines.append(
             f"- {result['case_id']}: {result['grade']} "
-            f"expected={result['expected_targets']} actual={result['actual_targets']} issues={issues}"
+            f"expected={result.get('expected_targets', [])} actual={result.get('actual_targets', [])} issues={issues}"
         )
 
     lines.extend(["", "## Retrieval Cases"])
+    if not report["retrieval_results"] and summary.get("retrieval_status") != "ok":
+        lines.append(f"- Retrieval suite did not run: {summary.get('retrieval_status')}")
     for result in report["retrieval_results"]:
         issues = ", ".join(result["issues"]) or "none"
         top = result["top"]

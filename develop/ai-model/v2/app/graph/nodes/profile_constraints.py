@@ -5,6 +5,7 @@ import time
 from typing import Any
 
 from app.core.conversation_state import (
+    merge_profile_override_for_plan_context,
     profile_change_fields,
     profile_changes_affect_plan_context,
 )
@@ -21,7 +22,7 @@ def make_profile_constraints_node(deps: NodeDeps):
         profile_changes = state.get("profile_changes") or {}
         base_profile = _current_user_profile(state)
         effective_profile = _profile_with_pending_changes(base_profile, profile_changes)
-        pending_overlay = _profile_with_pending_changes(state.get("pending_profile_overlay") or {}, profile_changes)
+        pending_overlay = _profile_with_pending_changes(_safe_dict(state.get("pending_profile_overlay")), profile_changes)
         changed_fields = profile_change_fields(profile_changes)
         has_profile_overlay = bool(pending_overlay) and bool(
             changed_fields or state.get("pending_profile_overlay")
@@ -52,6 +53,7 @@ def make_profile_constraints_node(deps: NodeDeps):
                 "profile_field_coverage": constraints.get("profile_field_coverage") or {},
                 "pending_profile_change_fields": sorted(changed_fields),
                 "active_proposal_cleared": cleared_active_proposal,
+                "pending_sequential_plan_cleared": cleared_active_proposal,
             },
             duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
         )
@@ -72,6 +74,7 @@ def make_profile_constraints_node(deps: NodeDeps):
                     "proposed_plan": None,
                     "proposed_plan_type": None,
                     "proposed_plan_action": None,
+                    "pending_sequential_plan": None,
                 }
             )
         return updates
@@ -80,24 +83,47 @@ def make_profile_constraints_node(deps: NodeDeps):
 
 
 def _resolved_query(state: GraphState) -> str:
-    resolution = state.get("context_resolution") or {}
+    resolution = _safe_dict(state.get("context_resolution"))
     resolved_text = str(resolution.get("resolved_text") or "").strip()
     resolved_reference = resolution.get("resolved_reference")
-    confidence = float(resolution.get("confidence") or 0.0)
+    confidence = _safe_float(resolution.get("confidence"))
     if resolved_reference and resolved_reference != "none" and resolved_text and confidence >= 0.6:
         return resolved_text
     return str(state.get("user_message") or "")
 
 
 def _current_user_profile(state: GraphState) -> dict[str, Any]:
-    return dict(state.get("effective_user_profile") or state.get("user_profile") or {})
+    effective_profile = _safe_dict(state.get("effective_user_profile"))
+    return effective_profile or _safe_dict(state.get("user_profile"))
 
 
-def _profile_with_pending_changes(profile: dict[str, Any], changes: object) -> dict[str, Any]:
-    merged = dict(profile or {})
+def _profile_with_pending_changes(profile: dict[str, Any] | object, changes: object) -> dict[str, Any]:
+    profile = _safe_dict(profile)
+    clean_changes: dict[str, Any] = {}
     if isinstance(changes, dict):
         for key, value in changes.items():
-            if key in {"item_id", "plan_type", "target_dates"}:
+            if key in {
+                "item_id",
+                "plan_type",
+                "target_dates",
+                "write_id",
+                "idempotency_key",
+                "_idempotency_key",
+                "write_type",
+            }:
                 continue
-            merged[key] = value
-    return merged
+            clean_changes[key] = value
+    return merge_profile_override_for_plan_context(profile or {}, clean_changes)
+
+
+def _safe_float(value: object, *, default: float = 0.0) -> float:
+    if value is None or isinstance(value, bool):
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_dict(value: object) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}

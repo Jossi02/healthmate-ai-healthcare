@@ -482,6 +482,26 @@ export default function ChatPage() {
 
     let currentText = "";
     const chars = fullText.split("");
+    const fastStreamForTest =
+      typeof window !== "undefined" &&
+      Boolean(
+        (
+          window as Window & {
+            __HEALTH_MATE_TEST_FAST_STREAM__?: boolean;
+          }
+        ).__HEALTH_MATE_TEST_FAST_STREAM__
+      );
+
+    if (fastStreamForTest) {
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === messageId
+            ? { ...message, content: fullText, isStreaming: false }
+            : message
+        )
+      );
+      return;
+    }
 
     for (let i = 0; i < chars.length; i += 1) {
       const delay = chars[i] === " " ? 20 : Math.random() * 30 + 10;
@@ -892,6 +912,7 @@ export default function ChatPage() {
       <header className="sticky top-0 z-10 border-b border-gray-200/60 bg-white/90 px-5 pb-4 pt-12 shadow-sm backdrop-blur-md">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
           <button
+            aria-label="홈으로 돌아가기"
             onClick={() => router.push("/")}
             className="rounded-full p-2 text-gray-600 transition-colors hover:bg-gray-100"
           >
@@ -1184,6 +1205,7 @@ export default function ChatPage() {
                 </div>
                 <button
                   type="button"
+                  aria-label="피드백 닫기"
                   onClick={closeFeedbackModal}
                   className="rounded-full border border-gray-100 bg-white p-2 text-gray-400 transition-colors hover:text-gray-600"
                 >
@@ -1279,6 +1301,7 @@ export default function ChatPage() {
                 disabled={isLoading}
               />
               <button
+                aria-label="메시지 보내기"
                 type="submit"
                 disabled={!input.trim() || isLoading}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl bg-[#2563eb] p-2.5 text-white shadow-[0_4px_12px_rgba(37,99,235,0.3)] transition-all hover:bg-blue-700 disabled:opacity-50"

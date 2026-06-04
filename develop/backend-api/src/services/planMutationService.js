@@ -2,6 +2,88 @@ function dedupeDates(items = []) {
   return [...new Set(items.map((item) => item.day))];
 }
 
+const DIET_EVIDENCE_MARKERS = [
+  '근거',
+  '이유',
+  '추천 이유',
+  '선정 이유',
+  '설명',
+  '고려',
+  '주의',
+  '참고',
+  '알레르기',
+  '질환',
+  '목표',
+  'reason',
+  'evidence',
+  'rationale',
+  'because',
+  'note',
+  'guideline',
+  'profile',
+  'allergy',
+  'disease',
+  'constraint',
+];
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function stripDietEvidenceTail(value) {
+  let next = String(value || '').replace(/\s+/g, ' ').trim();
+  for (const marker of DIET_EVIDENCE_MARKERS) {
+    const pattern = new RegExp(
+      `\\s*(?:[/|;,.]\\s*)?${escapeRegExp(marker)}\\s*(?:[:\\-]|\\s).*`,
+      'i'
+    );
+    next = next.replace(pattern, '');
+  }
+  return next.trim();
+}
+
+function isDietEvidencePiece(value) {
+  const normalized = String(value || '').toLowerCase();
+  return DIET_EVIDENCE_MARKERS.some((marker) => normalized.includes(marker.toLowerCase()));
+}
+
+function cleanDietPlanValue(value) {
+  const raw = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!raw) return '';
+  const withoutEvidenceTail = stripDietEvidenceTail(raw);
+  const pieces = withoutEvidenceTail
+    .split(/\s*(?:\/|\||;)\s*/)
+    .map((piece) => stripDietEvidenceTail(piece).trim())
+    .filter(Boolean)
+    .filter((piece) => !isDietEvidencePiece(piece));
+  return (pieces.length ? pieces.join(', ') : withoutEvidenceTail).trim();
+}
+
+function parseCalories(value) {
+  if (value === null || value === undefined || value === '') return 0;
+  const match = String(value).match(/-?\d+(?:\.\d+)?/);
+  if (!match) return 0;
+  const parsed = Number(match[0]);
+  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+  return Math.round(parsed);
+}
+
+function buildDietInsertPayload(userId, item, includeCalories = true) {
+  const foodName = cleanDietPlanValue(item.detail) || cleanDietPlanValue(item.name) || 'Meal';
+  const mealType = cleanDietPlanValue(item.name) || 'meal';
+  const payload = {
+    user_id: userId,
+    food_name: foodName,
+    meal_type: mealType,
+    target_date: item.day,
+    is_completed: false,
+  };
+  if (includeCalories) {
+    payload.calories = parseCalories(item.calories ?? item.kcal ?? item.total_calories);
+  }
+  return payload;
+}
+
 async function deleteWorkoutPlansByIds(supabase, userId, exerciseIds = []) {
   if (exerciseIds.length === 0) return;
 
@@ -45,6 +127,18 @@ async function deleteDietPlansForDates(supabase, userId, targetDates = []) {
   if (targetDates.length === 0) return 0;
 
   const mealIds = await loadExistingDietPlanIdsForDates(supabase, userId, targetDates);
+  await deleteDietPlansByIds(supabase, userId, mealIds);
+  return mealIds.length;
+}
+
+async function deleteWorkoutPlansForUser(supabase, userId) {
+  const exerciseIds = await loadExistingWorkoutPlanIdsForUser(supabase, userId);
+  await deleteWorkoutPlansByIds(supabase, userId, exerciseIds);
+  return exerciseIds.length;
+}
+
+async function deleteDietPlansForUser(supabase, userId) {
+  const mealIds = await loadExistingDietPlanIdsForUser(supabase, userId);
   await deleteDietPlansByIds(supabase, userId, mealIds);
   return mealIds.length;
 }
@@ -232,6 +326,26 @@ async function loadExistingDietPlanIdsForDates(supabase, userId, targetDates = [
   return (data || []).map((meal) => meal.meal_id).filter(Boolean);
 }
 
+async function loadExistingWorkoutPlanIdsForUser(supabase, userId) {
+  const { data, error } = await supabase
+    .from('user_exercise_plans')
+    .select('exercise_id')
+    .eq('user_id', userId);
+
+  if (error) throw error;
+  return (data || []).map((plan) => plan.exercise_id).filter(Boolean);
+}
+
+async function loadExistingDietPlanIdsForUser(supabase, userId) {
+  const { data, error } = await supabase
+    .from('user_meal_plans')
+    .select('meal_id')
+    .eq('user_id', userId);
+
+  if (error) throw error;
+  return (data || []).map((meal) => meal.meal_id).filter(Boolean);
+}
+
 async function createWorkoutPlans(supabase, userId, normalizedItems = []) {
   const createdItems = [];
   const createdExerciseIds = [];
@@ -306,14 +420,7 @@ async function createDietPlans(supabase, userId, normalizedItems = []) {
     for (const item of normalizedItems) {
       const { data: meal, error } = await supabase
         .from('user_meal_plans')
-        .insert({
-          user_id: userId,
-          food_name: item.detail || item.name,
-          meal_type: item.name,
-          target_date: item.day,
-          is_completed: false,
-          calories: 0,
-        })
+        .insert(buildDietInsertPayload(userId, item, true))
         .select('*')
         .single();
 
@@ -324,13 +431,7 @@ async function createDietPlans(supabase, userId, normalizedItems = []) {
       if (error) {
         const retry = await supabase
           .from('user_meal_plans')
-          .insert({
-            user_id: userId,
-            food_name: item.detail || item.name,
-            meal_type: item.name,
-            target_date: item.day,
-            is_completed: false,
-          })
+          .insert(buildDietInsertPayload(userId, item, false))
           .select('*')
           .single();
 
@@ -408,8 +509,10 @@ module.exports = {
   createWorkoutPlans,
   deleteDietPlansByIds,
   deleteDietPlansForDates,
+  deleteDietPlansForUser,
   deletePlanItemByOpaqueId,
   deleteWorkoutPlansForDates,
+  deleteWorkoutPlansForUser,
   deleteWorkoutPlansByIds,
   loadExistingConflictDates,
   replaceDietPlans,

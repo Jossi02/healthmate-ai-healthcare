@@ -91,6 +91,52 @@ async function installRoutes(page, { today, user, calendar, mode = 'success' }) 
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(calendar) })
   );
 
+  await page.route((url) => url.pathname === '/api/v1/home/recommendations', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        date: today,
+        scope: 'all',
+        workout: {
+          upper_body: {
+            exercise_name: 'Band row',
+            summary: 'Upper body routine.',
+            sets: 3,
+            duration_minutes: null,
+            calories: 90,
+          },
+          lower_body: {
+            exercise_name: 'Glute bridge',
+            summary: 'Lower body routine.',
+            sets: 3,
+            duration_minutes: null,
+            calories: 80,
+          },
+          cardio: {
+            exercise_name: 'Fast walk',
+            summary: 'Cardio routine.',
+            sets: null,
+            duration_minutes: 20,
+            calories: 130,
+          },
+          stretching: {
+            exercise_name: 'Full body stretch',
+            summary: 'Recovery routine.',
+            sets: 2,
+            duration_minutes: null,
+            calories: 35,
+          },
+        },
+        diet: {
+          breakfast: { food_name: 'Oat berry bowl', summary: 'Breakfast.', calories: 320 },
+          lunch: { food_name: 'Brown rice bowl', summary: 'Lunch.', calories: 480 },
+          dinner: { food_name: 'Mushroom rice bowl', summary: 'Dinner.', calories: 430 },
+        },
+      }),
+    })
+  );
+
   await page.route('**/api/v1/home/recommendations/workout', (route) =>
     route.fulfill({
       status: 200,
@@ -229,10 +275,20 @@ async function installRoutes(page, { today, user, calendar, mode = 'success' }) 
 }
 
 async function clickRecommendationAndConfirm(page, button) {
+  await button.waitFor({ state: 'visible', timeout: 10000 });
+  await page.waitForFunction(
+    (element) => element instanceof HTMLButtonElement && !element.disabled,
+    await button.elementHandle(),
+    { timeout: 10000 }
+  );
   await button.click();
-  const modalButtons = page.locator('div.fixed.inset-0 button');
+  const modalButtons = page.locator('div.fixed.inset-0 button:visible');
   await modalButtons.last().waitFor({ state: 'visible', timeout: 5000 });
   await modalButtons.last().click();
+}
+
+function recommendationButton(page, label) {
+  return page.locator(`button[aria-label="${label}"]`).first();
 }
 
 async function storedPlanHighlights(page) {
@@ -265,13 +321,13 @@ async function runSuccessScenario(browser, baseUrl, today) {
     await page.goto(baseUrl);
     await page.waitForLoadState('networkidle');
 
-    const recommendationButtons = page.locator('button[aria-label]');
+    const recommendationButtons = page.locator('button[aria-label$="추천 추가"], button[aria-label$="추천 반영"]');
     const recommendationButtonCount = await recommendationButtons.count();
     if (recommendationButtonCount < 7) {
       throw new Error(`Expected recommendation buttons to render, got ${recommendationButtonCount}`);
     }
 
-    const firstWorkoutButton = recommendationButtons.nth(0);
+    const firstWorkoutButton = recommendationButton(page, '상체 운동 추천 추가');
     await Promise.all([
       page.waitForResponse((response) =>
         response.url().includes('/api/v1/users/exercises/recommend-add') && response.status() === 200
@@ -286,7 +342,7 @@ async function runSuccessScenario(browser, baseUrl, today) {
       throw new Error('Expected applied workout recommendation button to be disabled');
     }
 
-    const firstDietButton = recommendationButtons.nth(4);
+    const firstDietButton = recommendationButton(page, '아침 식단 추천 반영');
     await Promise.all([
       page.waitForResponse((response) =>
         response.url().includes('/api/v1/users/meals/recommend-replace') && response.status() === 200
@@ -345,7 +401,7 @@ async function runAlreadyExistsScenario(browser, baseUrl, today) {
   try {
     await page.goto(baseUrl);
     await page.waitForLoadState('networkidle');
-    const firstDietButton = page.locator('button[aria-label]').nth(4);
+    const firstDietButton = recommendationButton(page, '아침 식단 추천 반영');
     await Promise.all([
       page.waitForResponse((response) =>
         response.url().includes('/api/v1/users/meals/recommend-replace') && response.status() === 200
@@ -372,7 +428,7 @@ async function runFailureScenario(browser, baseUrl, today) {
   try {
     await page.goto(baseUrl);
     await page.waitForLoadState('networkidle');
-    const firstWorkoutButton = page.locator('button[aria-label]').nth(0);
+    const firstWorkoutButton = recommendationButton(page, '상체 운동 추천 추가');
     await Promise.all([
       page.waitForResponse((response) =>
         response.url().includes('/api/v1/users/exercises/recommend-add') && response.status() === 500

@@ -62,6 +62,7 @@ def _build_home_initial_state(req: HomeRecommendationRequest) -> GraphState:
         "pending_writes": [],
         "awaiting_plan_confirmation": False,
         "active_proposal": None,
+        "pending_sequential_plan": None,
         "recent_dialogue": empty_recent_dialogue(),
         "draft_response": None,
         "draft_components": None,
@@ -130,6 +131,7 @@ async def _run_home_recommendations(
             else {},
         ).model_dump()
         response = HomeRecommendationResponse.model_validate(payload)
+        response.quality_flags = dict(result.get("generation_quality_flags") or {})
 
         trace_store.record_event(
             trace_id,

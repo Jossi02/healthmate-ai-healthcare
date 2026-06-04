@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from app.core.conversation_state import merge_profile_override_for_plan_context
 from app.core.exceptions import ExternalServiceError
 from app.graph.deps import NodeDeps
 from app.schemas.state import GraphState
@@ -54,21 +55,18 @@ def make_record_node(deps: NodeDeps):
 
 
 async def _handle_profile(state: GraphState) -> dict:
-    changes: dict[str, Any] = state.get("profile_changes") or _infer_profile_changes(
-        str(state.get("user_message") or "")
-    )
+    changes: dict[str, Any] = _safe_dict(state.get("profile_changes"))
+    if not changes:
+        changes = _infer_profile_changes(str(state.get("user_message") or ""))
 
     invalid_fields = set(changes.keys()) - _ALLOWED_PROFILE_FIELDS
     if invalid_fields:
         logger.info("Unsupported profile fields detected: %s", sorted(invalid_fields))
         return {"response": _ERR_INVALID_FIELD}
 
-    current_profile = dict(state.get("effective_user_profile") or state.get("user_profile") or {})
-    updated_profile = {**current_profile, **changes}
-    pending_overlay = {
-        **(state.get("pending_profile_overlay") or {}),
-        **changes,
-    }
+    current_profile = _safe_dict(state.get("effective_user_profile")) or _safe_dict(state.get("user_profile"))
+    updated_profile = merge_profile_override_for_plan_context(current_profile, changes)
+    pending_overlay = merge_profile_override_for_plan_context(_safe_dict(state.get("pending_profile_overlay")), changes)
 
     return {
         "effective_user_profile": updated_profile,
@@ -81,19 +79,19 @@ async def _handle_plan_check(deps: NodeDeps, state: GraphState) -> dict:
     if not state.get("is_today", False):
         return {"response": _ERR_NOT_TODAY}
 
-    profile_changes = state.get("profile_changes") or {}
+    profile_changes = _safe_dict(state.get("profile_changes"))
 
-    today_plan: list[dict] = state.get("today_plan") or []
+    today_plan = _safe_plan_items(state.get("today_plan"))
     try:
-        today_plan = await deps.was.get_today_plan(state["user_id"])
+        today_plan = _safe_plan_items(await deps.was.get_today_plan(state["user_id"]))
     except ExternalServiceError as exc:
         logger.warning("plan_check refresh failed; using cached today_plan: %s", exc)
 
-    item_id = profile_changes.get("item_id") or _infer_plan_check_item_id(
+    item_id = _safe_text(profile_changes.get("item_id")) or _infer_plan_check_item_id(
         str(state.get("user_message") or ""),
         today_plan,
     )
-    plan_ids = {item.get("id") for item in today_plan}
+    plan_ids = {_safe_text(item.get("id")) for item in today_plan if _safe_text(item.get("id"))}
     if item_id not in plan_ids:
         return {"response": _ERR_NOT_IN_PLAN}
 
@@ -103,18 +101,20 @@ async def _handle_plan_check(deps: NodeDeps, state: GraphState) -> dict:
 
 
 async def _handle_plan_delete(state: GraphState) -> dict:
-    payload = state.get("profile_changes") or _infer_plan_delete_payload(
-        str(state.get("user_message") or "")
-    )
-    target_dates = payload.get("target_dates") or []
-    plan_type = payload.get("plan_type") or "all"
+    payload = _safe_dict(state.get("profile_changes"))
+    if not payload:
+        payload = _infer_plan_delete_payload(str(state.get("user_message") or ""))
+    target_scope = _safe_plan_delete_scope(payload.get("target_scope") or payload.get("scope"))
+    target_dates = _safe_target_dates(payload.get("target_dates"))
+    plan_type = _safe_plan_delete_type(payload.get("plan_type"))
 
-    if not target_dates:
+    if target_scope != "all" and not target_dates:
         return {"response": _ERR_DELETE_DATE}
 
     return {
         "profile_changes": {
             "plan_type": plan_type,
+            "target_scope": target_scope,
             "target_dates": target_dates,
         },
     }
@@ -159,9 +159,11 @@ def _infer_profile_changes(message: str) -> dict[str, Any]:
 
 
 def _infer_plan_delete_payload(message: str) -> dict[str, Any]:
+    target_scope = _infer_plan_delete_scope(message)
     return {
         "plan_type": _infer_plan_delete_type(message),
-        "target_dates": _infer_plan_delete_dates(message),
+        "target_scope": target_scope,
+        "target_dates": [] if target_scope == "all" else _infer_plan_delete_dates(message),
     }
 
 
@@ -180,6 +182,124 @@ def _infer_plan_delete_type(message: str) -> str:
     if has_diet and not has_workout:
         return "diet"
     return "all"
+
+
+def _infer_plan_delete_type(message: str) -> str:
+    lowered = message.lower()
+    has_workout = any(
+        token in lowered
+        for token in (
+            "\uc6b4\ub3d9",
+            "\ub8e8\ud2f4",
+            "\uc720\uc0b0\uc18c",
+            "\uadfc\ub825",
+            "\uc2a4\ud2b8\ub808\uce6d",
+            "workout",
+            "exercise",
+        )
+    )
+    has_diet = any(
+        token in lowered
+        for token in (
+            "\uc2dd\ub2e8",
+            "\uc2dd\uc0ac",
+            "\uba54\ub274",
+            "\uc544\uce68",
+            "\uc810\uc2ec",
+            "\uc800\ub141",
+            "diet",
+            "meal",
+        )
+    )
+    if has_workout and not has_diet:
+        return "workout"
+    if has_diet and not has_workout:
+        return "diet"
+    return "all"
+
+
+def _infer_plan_delete_scope(message: str) -> str:
+    normalized = " ".join(message.strip().split())
+    lowered = normalized.lower()
+    if _has_specific_delete_date_reference(normalized):
+        return "dates"
+
+    all_tokens = (
+        "\ubaa8\ub4e0",
+        "\uc804\uccb4",
+        "\uc804\ubd80",
+        "\ubaa8\ub450",
+        "all",
+    )
+    scope_tokens = (
+        "\uce98\ub9b0\ub354",
+        "\ud50c\ub79c",
+        "\uacc4\ud68d",
+        "\ub0b4\uc5ed",
+        "\uae30\ub85d",
+        "\uc77c\uc815",
+        "\uc6b4\ub3d9",
+        "\uc2dd\ub2e8",
+        "\uc2dd\uc0ac",
+        "calendar",
+        "plan",
+        "plans",
+        "workout",
+        "exercise",
+        "diet",
+        "meal",
+    )
+    all_delete_phrases = (
+        "\ub2e4 \uc0ad\uc81c",
+        "\ub2e4 \uc9c0\uc6cc",
+        "\uc2f9 \uc0ad\uc81c",
+        "\uc2f9 \uc9c0\uc6cc",
+        "\uc804\ubd80 \uc0ad\uc81c",
+        "\uc804\ubd80 \uc9c0\uc6cc",
+        "\ucd08\uae30\ud654",
+        "\ube44\uc6cc",
+    )
+
+    if any(token in lowered for token in all_tokens) and any(token in lowered for token in scope_tokens):
+        return "all"
+    if any(phrase in lowered for phrase in all_delete_phrases) and any(token in lowered for token in scope_tokens):
+        return "all"
+    return "dates"
+
+
+def _has_specific_delete_date_reference(message: str) -> bool:
+    normalized = " ".join(message.strip().split())
+    today = datetime.now(_KST).date()
+    if _extract_explicit_dates(normalized, today.year):
+        return True
+
+    lowered = normalized.lower()
+    date_tokens = (
+        "\uc624\ub298",
+        "\ub0b4\uc77c",
+        "\uc5b4\uc81c",
+        "\uc774\ubc88 \uc8fc",
+        "\uc774\ubc88\uc8fc",
+        "\ud55c \uc8fc",
+        "\ud55c\uc8fc",
+        "\uc77c\uc8fc\uc77c",
+        "\uc8fc\uac04",
+        "1\uc8fc",
+        "7\uc77c",
+        "\uc774\ubc88 \ub2ec",
+        "\uc774\ubc88\ub2ec",
+        "\ud55c \ub2ec",
+        "\ud55c\ub2ec",
+        "\uc6d4\uac04",
+        "1\uac1c\uc6d4",
+        "30\uc77c",
+        "today",
+        "tomorrow",
+        "yesterday",
+        "week",
+        "month",
+    )
+    return any(token in lowered for token in date_tokens)
 
 
 def _infer_plan_delete_dates(message: str) -> list[str]:
@@ -233,6 +353,7 @@ def _today_iso() -> str:
 
 
 def _matches_delete_plan_type(item: dict, plan_type: str) -> bool:
+    item = _safe_dict(item)
     if plan_type == "all":
         return True
     item_type = str(item.get("type") or "").lower()
@@ -243,7 +364,8 @@ def _matches_delete_plan_type(item: dict, plan_type: str) -> bool:
     return False
 
 
-def _infer_plan_check_item_id(message: str, today_plan: list[dict]) -> str | None:
+def _infer_plan_check_item_id(message: str, today_plan: list[dict] | object) -> str | None:
+    today_plan = _safe_plan_items(today_plan)
     if not today_plan:
         return None
 
@@ -268,3 +390,49 @@ def _infer_plan_check_item_id(message: str, today_plan: list[dict]) -> str | Non
     if incomplete:
         return str(incomplete[0].get("id") or "") or None
     return str(today_plan[0].get("id") or "") or None
+
+
+def _safe_dict(value: object) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _safe_plan_items(value: object) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _safe_text(value: object) -> str:
+    if not isinstance(value, (str, int, float)):
+        return ""
+    return str(value).strip()
+
+
+def _safe_target_dates(value: object) -> list[str]:
+    if isinstance(value, str):
+        candidates = [value]
+    elif isinstance(value, list):
+        candidates = value
+    else:
+        return []
+    dates: list[str] = []
+    for candidate in candidates[:60]:
+        text = _safe_text(candidate)
+        if not text:
+            continue
+        try:
+            parsed = date.fromisoformat(text)
+        except ValueError:
+            continue
+        dates.append(parsed.isoformat())
+    return list(dict.fromkeys(dates))
+
+
+def _safe_plan_delete_type(value: object) -> str:
+    plan_type = _safe_text(value).lower()
+    return plan_type if plan_type in {"all", "workout", "diet"} else "all"
+
+
+def _safe_plan_delete_scope(value: object) -> str:
+    target_scope = _safe_text(value).lower()
+    return "all" if target_scope in {"all", "current_calendar"} else "dates"

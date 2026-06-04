@@ -58,10 +58,13 @@ async def enqueue_was_outbox(
     await ensure_was_outbox_table(db_path)
     async with aiosqlite.connect(db_path) as db:
         for write in writes:
-            write_id = str(write.get("write_id") or write.get("idempotency_key") or "")
-            if not write_id:
+            if not isinstance(write, dict):
                 continue
-            payload = write.get("payload") or {}
+            write_id = str(write.get("write_id") or write.get("idempotency_key") or "")
+            write_type = str(write.get("write_type") or "").strip()
+            payload = write.get("payload")
+            if not write_id or not write_type or not isinstance(payload, dict):
+                continue
             await db.execute(
                 "INSERT INTO was_outbox ("
                 "  write_id, user_id, session_id, trace_id, write_type, idempotency_key, payload_json, status,"
@@ -78,7 +81,7 @@ async def enqueue_was_outbox(
                     user_id,
                     session_id,
                     trace_id,
-                    write["write_type"],
+                    write_type,
                     str(write.get("idempotency_key") or write_id),
                     json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str),
                 ),
@@ -107,14 +110,21 @@ async def reconcile_pending_writes_with_outbox(
     if not writes:
         return [], []
 
-    write_ids = [
-        str(write.get("write_id") or write.get("idempotency_key") or "")
+    valid_writes = [
+        dict(write)
         for write in writes
         if isinstance(write, dict)
+        and str(write.get("write_id") or write.get("idempotency_key") or "").strip()
+        and str(write.get("write_type") or "").strip()
+        and isinstance(write.get("payload"), dict)
+    ]
+    write_ids = [
+        str(write.get("write_id") or write.get("idempotency_key") or "")
+        for write in valid_writes
     ]
     write_ids = [write_id for write_id in dict.fromkeys(write_ids) if write_id]
     if not write_ids:
-        return [dict(write) for write in writes if isinstance(write, dict)], []
+        return valid_writes, []
 
     await ensure_was_outbox_table(db_path)
     placeholders = ",".join("?" for _ in write_ids)
@@ -131,13 +141,12 @@ async def reconcile_pending_writes_with_outbox(
         if str(status or "").lower() == "succeeded"
     }
     if not succeeded_ids:
-        return [dict(write) for write in writes if isinstance(write, dict)], []
+        return valid_writes, []
 
     kept = [
         dict(write)
-        for write in writes
-        if isinstance(write, dict)
-        and str(write.get("write_id") or write.get("idempotency_key") or "") not in succeeded_ids
+        for write in valid_writes
+        if str(write.get("write_id") or write.get("idempotency_key") or "") not in succeeded_ids
     ]
     return kept, sorted(succeeded_ids)
 
@@ -191,12 +200,18 @@ async def periodic_was_outbox_replay(
 
 
 async def execute_outbox_write(deps: NodeDeps, user_id: str, write: dict[str, Any]) -> None:
-    write_type = write["write_type"]
-    payload = write["payload"]
+    write_type = str(write.get("write_type") or "").strip()
+    payload = write.get("payload")
+    if not write_type:
+        raise ExternalServiceError(service="WAS", message="Outbox write_type is missing")
+    if not isinstance(payload, dict):
+        raise ExternalServiceError(service="WAS", message=f"Outbox payload must be an object: {write_type}")
     idempotency_key = payload.get("_idempotency_key") or payload.get("idempotency_key")
     if write_type == "profile":
         await deps.was.put_user_profile(user_id, payload)
     elif write_type == "plan_check":
+        if "item_id" not in payload:
+            raise ExternalServiceError(service="WAS", message="plan_check outbox payload missing item_id")
         await deps.was.put_plan_check(user_id, payload["item_id"], idempotency_key=idempotency_key)
     elif write_type == "plan_create":
         await deps.was.post_plan_create(user_id, payload)
@@ -214,7 +229,9 @@ async def _mark_was_outbox_failed(
     attempt_count: int,
     exc: Exception,
 ) -> None:
-    next_attempt_count = int(attempt_count or 0) + 1
+    safe_attempt_count = _safe_attempt_count(attempt_count)
+    next_attempt_count = safe_attempt_count + 1
+    error_text = str(exc)[:1000]
     if next_attempt_count >= _MAX_OUTBOX_ATTEMPTS:
         async with aiosqlite.connect(db_path) as db:
             await db.execute(
@@ -225,12 +242,12 @@ async def _mark_was_outbox_failed(
                 "  next_attempt_at = datetime('now'),"
                 "  updated_at = datetime('now') "
                 "WHERE write_id = ?",
-                (str(exc), write_id),
+                (error_text, write_id),
             )
             await db.commit()
         return
 
-    delay_minutes = min(60, max(1, 2 ** int(attempt_count or 0)))
+    delay_minutes = min(60, max(1, 2 ** safe_attempt_count))
     async with aiosqlite.connect(db_path) as db:
         await db.execute(
             "UPDATE was_outbox SET "
@@ -239,9 +256,16 @@ async def _mark_was_outbox_failed(
             "  next_attempt_at = datetime('now', ?),"
             "  updated_at = datetime('now') "
             "WHERE write_id = ?",
-            (str(exc), f"+{delay_minutes} minutes", write_id),
+            (error_text, f"+{delay_minutes} minutes", write_id),
         )
         await db.commit()
+
+
+def _safe_attempt_count(value: object) -> int:
+    try:
+        return max(0, int(value))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0
 
 
 async def prune_was_outbox(db_path: str) -> None:

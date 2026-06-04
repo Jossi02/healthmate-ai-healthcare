@@ -54,6 +54,12 @@ function normalizeTargetDates(value) {
   ];
 }
 
+function normalizeDeleteTargetScope(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (text === 'all' || text === 'current_calendar') return 'all';
+  return 'dates';
+}
+
 function normalizeExerciseList(rawExerciseList, detailFallback) {
   if (Array.isArray(rawExerciseList) && rawExerciseList.length > 0) {
     return rawExerciseList
@@ -249,20 +255,82 @@ async function createWorkoutPlans(userId, normalizedItems) {
   return createdItems;
 }
 
+const DIET_EVIDENCE_MARKERS = [
+  '근거',
+  '이유',
+  '추천 이유',
+  '선정 이유',
+  '설명',
+  '고려',
+  '주의',
+  '참고',
+  '알레르기',
+  '질환',
+  '목표',
+  'reason',
+  'evidence',
+  'rationale',
+  'because',
+  'note',
+  'guideline',
+  'profile',
+  'allergy',
+  'disease',
+  'constraint',
+];
+
+function escapeDietRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function cleanDietPlanValue(value) {
+  let next = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!next) return '';
+  for (const marker of DIET_EVIDENCE_MARKERS) {
+    next = next.replace(
+      new RegExp(`\\s*(?:[/|;,.]\\s*)?${escapeDietRegExp(marker)}\\s*(?:[:\\-]|\\s).*`, 'i'),
+      ''
+    );
+  }
+  const pieces = next
+    .split(/\s*(?:\/|\||;)\s*/)
+    .map((piece) => piece.trim())
+    .filter(Boolean)
+    .filter((piece) => {
+      const normalized = piece.toLowerCase();
+      return !DIET_EVIDENCE_MARKERS.some((marker) => normalized.includes(marker.toLowerCase()));
+    });
+  return (pieces.length ? pieces.join(', ') : next).trim();
+}
+
+function parseDietCalories(value) {
+  const match = String(value ?? '').match(/-?\d+(?:\.\d+)?/);
+  if (!match) return 0;
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : 0;
+}
+
+function buildDietInsertPayload(userId, item, includeCalories = true) {
+  const payload = {
+    user_id: userId,
+    food_name: cleanDietPlanValue(item.detail) || cleanDietPlanValue(item.name) || 'Meal',
+    meal_type: cleanDietPlanValue(item.name) || 'meal',
+    target_date: item.day,
+    is_completed: false,
+  };
+  if (includeCalories) {
+    payload.calories = parseDietCalories(item.calories ?? item.kcal ?? item.total_calories);
+  }
+  return payload;
+}
+
 async function createDietPlans(userId, normalizedItems) {
   const createdItems = [];
 
   for (const item of normalizedItems) {
     const { data: meal, error } = await supabase
       .from('user_meal_plans')
-      .insert({
-        user_id: userId,
-        food_name: item.detail || item.name,
-        meal_type: item.name,
-        target_date: item.day,
-        is_completed: false,
-        calories: 0,
-      })
+      .insert(buildDietInsertPayload(userId, item, true))
       .select('*')
       .single();
 
@@ -273,13 +341,7 @@ async function createDietPlans(userId, normalizedItems) {
     if (error) {
       const retry = await supabase
         .from('user_meal_plans')
-        .insert({
-          user_id: userId,
-          food_name: item.detail || item.name,
-          meal_type: item.name,
-          target_date: item.day,
-          is_completed: false,
-        })
+        .insert(buildDietInsertPayload(userId, item, false))
         .select('*')
         .single();
 
@@ -968,13 +1030,14 @@ exports.deletePlan = async (req, res) => {
     if (!ensureValidUserIdParam(res, userId)) return;
 
     const planType = normalizeDeletePlanType(req.body.plan_type);
-    const targetDates = normalizeTargetDates(req.body.target_dates);
+    const targetScope = normalizeDeleteTargetScope(req.body.target_scope || req.body.scope);
+    const targetDates = targetScope === 'all' ? [] : normalizeTargetDates(req.body.target_dates);
 
     if (!planType) {
       return res.status(400).json({ error: 'plan_type is required.' });
     }
 
-    if (targetDates.length === 0) {
+    if (targetScope !== 'all' && targetDates.length === 0) {
       return res.status(400).json({ error: 'target_dates is required.' });
     }
 
@@ -985,24 +1048,29 @@ exports.deletePlan = async (req, res) => {
     if (idempotency.handled) return;
 
     if (planType === 'workout' || planType === 'all') {
-      deletedWorkoutCount = await planMutationService.deleteWorkoutPlansForDates(
-        supabase,
-        userId,
-        targetDates
-      );
+      deletedWorkoutCount = targetScope === 'all'
+        ? await planMutationService.deleteWorkoutPlansForUser(supabase, userId)
+        : await planMutationService.deleteWorkoutPlansForDates(
+            supabase,
+            userId,
+            targetDates
+          );
     }
 
     if (planType === 'diet' || planType === 'all') {
-      deletedDietCount = await planMutationService.deleteDietPlansForDates(
-        supabase,
-        userId,
-        targetDates
-      );
+      deletedDietCount = targetScope === 'all'
+        ? await planMutationService.deleteDietPlansForUser(supabase, userId)
+        : await planMutationService.deleteDietPlansForDates(
+            supabase,
+            userId,
+            targetDates
+          );
     }
 
     return sendWithIdempotency(res, idempotency, 200, {
       status: 'success',
       plan_type: planType,
+      target_scope: targetScope,
       target_dates: targetDates,
       deleted_workout_count: deletedWorkoutCount,
       deleted_diet_count: deletedDietCount,

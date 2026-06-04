@@ -145,6 +145,10 @@ function hasAnyKeyword(text: string, keywords: string[]) {
   return keywords.some((keyword) => text.includes(keyword.toLowerCase()));
 }
 
+function hasStrengthKeyword(text: string) {
+  return text.includes("근력") || text.includes("strength");
+}
+
 function normalizeText(...values: Array<string | undefined | null>) {
   return values
     .filter(Boolean)
@@ -153,21 +157,43 @@ function normalizeText(...values: Array<string | undefined | null>) {
     .toLowerCase();
 }
 
+function classifyWorkoutText(text: string, options: { allowStretchingFirst?: boolean } = {}) {
+  const hasUpper = hasAnyKeyword(text, UPPER_KEYWORDS);
+  const hasLower = hasAnyKeyword(text, LOWER_KEYWORDS);
+  const hasCardio = hasAnyKeyword(text, CARDIO_KEYWORDS);
+  const hasStretching = hasAnyKeyword(text, STRETCHING_KEYWORDS);
+  const hasFullBody = hasAnyKeyword(text, FULL_BODY_KEYWORDS);
+  const hasStrength = hasStrengthKeyword(text);
+
+  if (options.allowStretchingFirst && hasStretching && !hasUpper && !hasLower && !hasCardio && !hasStrength) {
+    return "stretching";
+  }
+  if ((hasUpper && hasLower) || (hasFullBody && (hasUpper || hasLower || hasStrength))) {
+    return "full_body";
+  }
+  if (hasUpper) return "upper_body";
+  if (hasLower) return "lower_body";
+  if (hasCardio) return "cardio";
+  if (hasStretching) return "stretching";
+  if (hasFullBody) return "full_body";
+  return null;
+}
+
 export function classifyWorkoutGroup(workout: Partial<WorkoutLike>): WorkoutGroupKey {
   const titleText = normalizeText(workout.title);
   const typeText = normalizeText(workout.type, workout.level);
   const combined = `${titleText} ${typeText}`.trim();
+  const titleCategory = classifyWorkoutText(titleText, { allowStretchingFirst: true });
+  if (titleCategory) return titleCategory;
 
-  if (hasAnyKeyword(titleText, STRETCHING_KEYWORDS)) return "stretching";
-  if (typeText.includes("stretching") || typeText.includes("스트레칭")) return "stretching";
   if (typeText.includes("upper_body")) return "upper_body";
   if (typeText.includes("lower_body")) return "lower_body";
   if (typeText.includes("cardio") || typeText.includes("유산소")) return "cardio";
-  if (hasAnyKeyword(combined, STRETCHING_KEYWORDS)) return "stretching";
-  if (hasAnyKeyword(combined, CARDIO_KEYWORDS)) return "cardio";
-  if (hasAnyKeyword(combined, UPPER_KEYWORDS)) return "upper_body";
-  if (hasAnyKeyword(combined, LOWER_KEYWORDS)) return "lower_body";
-  if (hasAnyKeyword(combined, FULL_BODY_KEYWORDS)) return "full_body";
+  if (typeText.includes("full_body") || typeText.includes("전신")) return "full_body";
+  if (typeText.includes("stretching") || typeText.includes("스트레칭")) return "stretching";
+
+  const combinedCategory = classifyWorkoutText(combined);
+  if (combinedCategory) return combinedCategory;
   return "other";
 }
 
@@ -218,6 +244,69 @@ export function compactText(value: string | undefined | null, maxLength = 52) {
   return `${cleaned.slice(0, maxLength - 1).trim()}…`;
 }
 
+const DIET_EVIDENCE_MARKERS = [
+  "\uadfc\uac70",
+  "\uc774\uc720",
+  "\ucd94\ucc9c \uc774\uc720",
+  "\uc120\uc815 \uc774\uc720",
+  "\uc124\uba85",
+  "\uace0\ub824",
+  "\uc8fc\uc758",
+  "\ucc38\uace0",
+  "\uc54c\ub808\ub974\uae30",
+  "\uc9c8\ud658",
+  "\ubaa9\ud45c",
+  "reason",
+  "evidence",
+  "rationale",
+  "because",
+  "note",
+  "guideline",
+  "profile",
+  "allergy",
+  "disease",
+  "constraint",
+];
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function stripDietEvidenceTail(value: string) {
+  let next = value;
+  for (const marker of DIET_EVIDENCE_MARKERS) {
+    const pattern = new RegExp(
+      `\\s*(?:[/|;,.]\\s*)?${escapeRegExp(marker)}\\s*(?:[:\\-]|\\s).*`,
+      "i"
+    );
+    next = next.replace(pattern, "");
+  }
+  return next.trim();
+}
+
+function isDietEvidencePiece(value: string) {
+  const normalized = value.toLowerCase();
+  return DIET_EVIDENCE_MARKERS.some((marker) =>
+    normalized.includes(marker.toLowerCase())
+  );
+}
+
+export function cleanDietPlanValue(value: string | undefined | null) {
+  const raw = String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!raw) return "";
+
+  const withoutEvidenceTail = stripDietEvidenceTail(raw);
+  const pieces = withoutEvidenceTail
+    .split(/\s*(?:\/|\||;)\s*/)
+    .map((piece) => stripDietEvidenceTail(piece).trim())
+    .filter(Boolean)
+    .filter((piece) => !isDietEvidencePiece(piece));
+
+  return (pieces.length ? pieces.join(", ") : withoutEvidenceTail).trim();
+}
+
 const LOW_VALUE_DETAIL_MARKERS = [
   "알레르기",
   "질환",
@@ -251,21 +340,19 @@ export function cleanPlannerDetail(value: string | undefined | null) {
 }
 
 export function getDietDisplay(diet: DietLike) {
-  const cleaned = cleanPlannerDetail(diet.name);
+  const cleaned = cleanDietPlanValue(diet.name) || cleanDietPlanValue(diet.desc);
   const parts = cleaned
     .split(/\s*(?:,|·|\+|와|과)\s*/)
     .map((part) => part.trim())
     .filter(Boolean);
 
   const concreteParts = parts.length >= 2 ? parts.slice(0, 3) : [cleaned];
-  const title = compactText(concreteParts.slice(0, 2).join(" + "), 30);
-  const subtitleSource =
-    concreteParts.length > 2 ? concreteParts.slice(2).join(" + ") : cleanPlannerDetail(diet.desc);
+  const title = compactText(concreteParts.join(" + "), 34);
 
   return {
     mealLabel: getDietSlotLabel(diet.type),
     title: title || getDietSlotLabel(diet.type),
-    subtitle: compactText(subtitleSource, 44),
+    subtitle: "",
     detail: cleaned || diet.name,
     kcal: diet.kcal || "",
   };

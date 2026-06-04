@@ -36,6 +36,25 @@ def _hash_id(value: Any) -> str | None:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
+def _safe_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _safe_list(value: Any) -> list[Any]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    return []
+
+
+def _safe_int_signal(value: Any, *, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _response_text(trace: dict[str, Any]) -> str:
     response = trace.get("response")
     if isinstance(response, dict):
@@ -76,37 +95,44 @@ def _issue(
     code: str,
     message: str,
     penalty: float,
+    detail: dict[str, Any] | None = None,
 ) -> None:
-    issues.append(
-        {
-            "severity": severity,
-            "code": code,
-            "message": message,
-            "penalty": penalty,
-        }
-    )
+    payload = {
+        "severity": severity,
+        "code": code,
+        "message": message,
+        "penalty": penalty,
+    }
+    if detail:
+        payload["detail"] = detail
+    issues.append(payload)
 
 
 def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
     """Create a compact, deterministic quality report for a completed trace."""
-    state_summary = trace.get("state_summary") or {}
-    response_payload = trace.get("response") or {}
+    state_summary = _safe_dict(trace.get("state_summary"))
+    response_payload = _safe_dict(trace.get("response"))
     response_text = _response_text(trace).strip()
     response_length = len(response_text)
     status = str(trace.get("status") or "")
     action_intent = state_summary.get("action_intent")
     intent = state_summary.get("intent")
     search_quality = state_summary.get("search_quality")
-    search_results_count = int(state_summary.get("search_results_count") or 0)
-    proposed_plan_count = int(state_summary.get("proposed_plan_count") or 0)
-    pending_writes_count = int(state_summary.get("pending_writes_count") or 0)
+    search_results_count = _safe_int_signal(state_summary.get("search_results_count"))
+    proposed_plan_count = _safe_int_signal(state_summary.get("proposed_plan_count"))
+    pending_writes_count = _safe_int_signal(state_summary.get("pending_writes_count"))
     needs_clarification = bool(state_summary.get("needs_clarification"))
-    draft_components = state_summary.get("draft_components") or {}
-    validation_report = state_summary.get("validation_report") or {}
-    validation_dimensions = validation_report.get("quality_dimensions") or {}
+    draft_components = _safe_dict(state_summary.get("draft_components"))
+    validation_report = _safe_dict(state_summary.get("validation_report"))
+    validation_dimensions = _safe_dict(validation_report.get("quality_dimensions"))
     evidence_status = validation_dimensions.get("evidence_status")
-    semantic_judge = validation_dimensions.get("semantic_judge") or validation_report.get("semantic_judge") or {}
-    generation_quality_flags = state_summary.get("generation_quality_flags") or {}
+    requires_external = bool(validation_dimensions.get("requires_external"))
+    profile_field_coverage = _safe_dict(validation_dimensions.get("profile_field_coverage"))
+    profile_fit_warning_codes = _safe_list(validation_dimensions.get("profile_fit_warning_codes"))
+    goal_fit_warning_codes = _safe_list(validation_dimensions.get("goal_fit_warning_codes"))
+    critical_profile_fit_codes = _safe_list(validation_dimensions.get("critical_profile_fit_codes"))
+    semantic_judge = _safe_dict(validation_dimensions.get("semantic_judge")) or _safe_dict(validation_report.get("semantic_judge"))
+    generation_quality_flags = _safe_dict(state_summary.get("generation_quality_flags"))
 
     issues: list[dict[str, Any]] = []
 
@@ -170,6 +196,14 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
             message="Plan generation continued with deterministic guards after degraded external retrieval.",
             penalty=0.10,
         )
+    if requires_external and search_results_count == 0 and not needs_clarification:
+        _issue(
+            issues,
+            severity="warning",
+            code="required_evidence_missing",
+            message="The flow required external evidence but retained no search results.",
+            penalty=0.16,
+        )
     if action_intent == "info" and search_results_count == 0 and search_quality != "ok":
         _issue(
             issues,
@@ -177,6 +211,44 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
             code="info_without_retrieval",
             message="Information request did not retain usable retrieval evidence.",
             penalty=0.15,
+        )
+    if action_intent in {"create", "modify"} and profile_field_coverage:
+        present_count = _safe_int_signal(profile_field_coverage.get("present_count"))
+        if present_count < 3:
+            _issue(
+                issues,
+                severity="warning",
+                code="low_profile_coverage_for_plan",
+                message="Plan generation had limited profile coverage.",
+                penalty=0.08,
+                detail={"present_count": present_count},
+            )
+    if critical_profile_fit_codes:
+        _issue(
+            issues,
+            severity="critical",
+            code="critical_profile_fit_violation",
+            message="Validator reported critical profile-fit conflicts.",
+            penalty=0.35,
+            detail={"codes": critical_profile_fit_codes[:8]},
+        )
+    if profile_fit_warning_codes:
+        _issue(
+            issues,
+            severity="warning",
+            code="profile_fit_warning",
+            message="Validator reported non-blocking profile-fit warnings.",
+            penalty=0.06,
+            detail={"codes": profile_fit_warning_codes[:8]},
+        )
+    if goal_fit_warning_codes:
+        _issue(
+            issues,
+            severity="warning",
+            code="goal_fit_warning",
+            message="Validator reported weak goal-to-plan alignment.",
+            penalty=0.06,
+            detail={"codes": goal_fit_warning_codes[:8]},
         )
 
     if action_intent in {"create", "modify"} and proposed_plan_count == 0 and not needs_clarification:
@@ -205,7 +277,7 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
             message="Safety intent did not expose structured safety notes.",
             penalty=0.20,
         )
-    if semantic_judge.get("mode") == "observe" and int(semantic_judge.get("issue_count") or 0) > 0:
+    if semantic_judge.get("mode") == "observe" and _safe_int_signal(semantic_judge.get("issue_count")) > 0:
         _issue(
             issues,
             severity="warning",
@@ -221,10 +293,37 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
             message="Persona style guard reported response-shape warnings.",
             penalty=0.06,
         )
+    if generation_quality_flags.get("semantic_fallback_applied"):
+        _issue(
+            issues,
+            severity="warning",
+            code="semantic_fallback_recovery_used",
+            message="Semantic validator failure was recovered with a deterministic fallback.",
+            penalty=0.04,
+            detail={
+                "revalidated": bool(generation_quality_flags.get("semantic_fallback_revalidated")),
+                "recovered_codes": generation_quality_flags.get("semantic_fallback_recovered_codes") or [],
+                "revalidation_issue_count": generation_quality_flags.get("semantic_fallback_revalidation_issue_count"),
+            },
+        )
+    if generation_quality_flags.get("safe_diet_fallback_applied"):
+        _issue(
+            issues,
+            severity="warning",
+            code="safe_diet_fallback_recovery_used",
+            message="Diet validator failure was recovered with a deterministic safe fallback.",
+            penalty=0.04,
+            detail={
+                "revalidated": bool(generation_quality_flags.get("safe_diet_fallback_revalidated")),
+                "recovered_codes": generation_quality_flags.get("safe_diet_fallback_recovered_codes") or [],
+                "revalidation_issue_count": generation_quality_flags.get("safe_diet_fallback_revalidation_issue_count"),
+            },
+        )
     if trace.get("kind") == "home_recommendation":
         home_guard_events = [
             event
-            for event in trace.get("events") or []
+            for event in _safe_list(trace.get("events"))
+            if isinstance(event, dict)
             if str(event.get("stage") or "").startswith("home_recommendation.profile_guard")
         ]
         if not home_guard_events:
@@ -310,7 +409,13 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
             "search_results_count": search_results_count,
             "proposed_plan_count": proposed_plan_count,
             "pending_writes_count": pending_writes_count,
+            "pending_sequential_plan": state_summary.get("pending_sequential_plan"),
             "evidence_status": evidence_status,
+            "requires_external": requires_external,
+            "profile_field_coverage": profile_field_coverage,
+            "profile_fit_warning_codes": profile_fit_warning_codes,
+            "goal_fit_warning_codes": goal_fit_warning_codes,
+            "critical_profile_fit_codes": critical_profile_fit_codes,
             "semantic_judge": semantic_judge,
             "plan_sync_applied": (
                 response_payload.get("plan_sync_applied")

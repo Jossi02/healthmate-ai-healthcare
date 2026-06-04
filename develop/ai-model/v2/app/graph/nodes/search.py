@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 TOP_K = 8
 EXTERNAL_FETCH_TOP_K = 30
 _WEB_ENABLED_INTENTS = {INTENT_INFO}
+_KNOWN_SEARCH_TARGETS = {"vdb_memory", "vdb_user_important", "vdb_external", "web"}
 _ACCEPT_SCORE_BY_INTENT = {
     INTENT_INFO: 0.6,
     INTENT_PLAN: 0.55,
@@ -82,7 +83,7 @@ def make_search_node(deps: NodeDeps):
     async def search_node(state: GraphState) -> dict:
         started_at = time.perf_counter()
         query = state.get("search_query") or _resolved_query(state)
-        targets = list(state.get("search_targets") or [])
+        targets = _safe_search_targets(state.get("search_targets"))
         retry_count = state.get("search_retry_count", 0)
         intent = state.get("intent", "")
         deps.trace.record_current_event(
@@ -120,14 +121,15 @@ def make_search_node(deps: NodeDeps):
             targets.append("web")
 
         if not targets:
+            search_quality = "degraded" if spec.should_search else "ok"
             deps.trace.record_current_event(
                 stage="search",
-                status="ok",
+                status="warn" if search_quality == "degraded" else "ok",
                 title="Search skipped",
-                detail={"reason": "no_targets"},
+                detail={"reason": "no_targets", "search_quality": search_quality, "spec_should_search": spec.should_search},
                 duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
             )
-            return {"search_results": [], "search_quality": "ok"}
+            return {"search_results": [], "search_quality": search_quality}
 
         try:
             query_vec = await deps.embed.embed(query)
@@ -438,7 +440,7 @@ def _resolved_query(state: GraphState) -> str:
     resolution = state.get("context_resolution") or {}
     resolved_text = str(resolution.get("resolved_text") or "").strip()
     resolved_reference = resolution.get("resolved_reference")
-    confidence = float(resolution.get("confidence") or 0.0)
+    confidence = _safe_float(resolution.get("confidence"))
 
     if resolved_reference and resolved_reference != "none" and resolved_text and confidence >= 0.6:
         return resolved_text
@@ -446,7 +448,7 @@ def _resolved_query(state: GraphState) -> str:
 
 
 def _normalize_targets(state: GraphState, query: str, targets: list[str]) -> list[str]:
-    normalized = list(dict.fromkeys(targets))
+    normalized = _safe_search_targets(targets)
     intent = state.get("intent")
     action_intent = state.get("action_intent")
 
@@ -470,7 +472,7 @@ def _info_needs_web(query: str) -> bool:
 
 
 def _apply_rag_trigger_targets(state: GraphState, query: str, targets: list[str]) -> list[str]:
-    normalized = list(dict.fromkeys(targets))
+    normalized = _safe_search_targets(targets)
     intent = state.get("intent")
     action_intent = str(state.get("action_intent") or "")
 
@@ -504,10 +506,11 @@ def _apply_rag_trigger_targets(state: GraphState, query: str, targets: list[str]
 
 def _plan_needs_external_rag(state: GraphState, query: str) -> bool:
     user_query = str(state.get("user_message") or query)
-    profile_constraints = state.get("profile_constraints") or {}
+    profile_constraints = _safe_mapping(state.get("profile_constraints"))
+    profile = _safe_mapping(state.get("user_profile"))
     return (
         bool(profile_constraints.get("should_use_rag"))
-        or _profile_has_rag_risk(state.get("user_profile") or {})
+        or _profile_has_rag_risk(profile)
         or _query_needs_evidence(user_query)
         or _query_mentions_specialized_topic(user_query)
     )
@@ -578,37 +581,39 @@ def _profile_has_rag_risk(profile: dict) -> bool:
     )
 
 
-def _build_retrieval_spec(state: GraphState, query: str, initial_targets: list[str]) -> RetrievalSpec:
+def _build_retrieval_spec(state: GraphState, query: str, initial_targets: object) -> RetrievalSpec:
     query_span = _build_query_span(query)
-    targets = _apply_rag_trigger_targets(state, query_span, list(initial_targets or []))
+    targets = _apply_rag_trigger_targets(state, query_span, _safe_search_targets(initial_targets))
     targets = _normalize_targets(state, query_span, targets)
     requires_recency = _info_needs_web(query_span)
     domain = _resolved_domain(state, query_span)
     action_intent = str(state.get("action_intent") or "")
-    profile = state.get("user_profile") or {}
+    profile = _safe_mapping(state.get("user_profile"))
     topics = _external_topics_for_query(domain, query_span)
     use_cases = _external_use_cases_for_request(domain, action_intent, query_span)
-    compiled_constraints = state.get("profile_constraints") or build_profile_constraint_set(
+    compiled_constraints = _safe_mapping(state.get("profile_constraints")) or build_profile_constraint_set(
         profile,
         query_span,
         domain=domain,
     )
-    profile_targets = list(compiled_constraints.get("profile_targets") or [])
-    negative_constraints = list(compiled_constraints.get("negative_constraints") or [])
+    profile_targets = _metadata_filter_values(compiled_constraints.get("profile_targets"))
+    negative_constraints = _metadata_filter_values(compiled_constraints.get("negative_constraints"))
     if "retrieval_constraints" in compiled_constraints:
-        constraints = list(compiled_constraints.get("retrieval_constraints") or [])
+        constraints = _metadata_filter_values(compiled_constraints.get("retrieval_constraints"))
     else:
-        constraints = list(compiled_constraints.get("constraints") or [])
+        constraints = _metadata_filter_values(compiled_constraints.get("constraints"))
     goals = _external_goal_values(
         [
-            *(compiled_constraints.get("goals") or []),
+            *_metadata_filter_values(compiled_constraints.get("goals")),
             *_external_goals_for_profile_and_query(profile, query_span),
         ]
     )
     if "retrieval_critical_constraints" in compiled_constraints:
-        critical_constraints = list(compiled_constraints.get("retrieval_critical_constraints") or [])
+        critical_constraints = _metadata_filter_values(compiled_constraints.get("retrieval_critical_constraints"))
     else:
-        critical_constraints = list(compiled_constraints.get("critical_constraints") or _critical_constraints_for_request(constraints))
+        critical_constraints = _metadata_filter_values(
+            compiled_constraints.get("critical_constraints") or _critical_constraints_for_request(constraints)
+        )
     strict_filter, relaxed_filter = _build_external_filters_from_parts(
         domain=domain,
         topics=topics,
@@ -669,6 +674,12 @@ def _build_external_filters_from_parts(
     constraints: list[str],
     goals: list[str],
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    topics = _metadata_filter_values(topics)
+    use_cases = _metadata_filter_values(use_cases)
+    profile_targets = _metadata_filter_values(profile_targets)
+    constraints = _metadata_filter_values(constraints)
+    goals = _metadata_filter_values(goals)
+
     clauses: list[dict[str, Any]] = []
     relaxed_filter: dict[str, Any] | None = None
 
@@ -748,7 +759,7 @@ def _rerank_external_results(
         return bonus
 
     decorated = [
-        (match_bonus(result), float(result.get("score") or 0.0), -index, result)
+        (match_bonus(result), _safe_float(result.get("score")), -index, result)
         for index, result in enumerate(results)
     ]
     return [result for *_unused, result in sorted(decorated, reverse=True)]
@@ -872,6 +883,43 @@ def _metadata_values(value: object) -> list[str]:
     if value is None:
         return []
     return [str(value)]
+
+
+def _metadata_filter_values(value: object, *, limit: int = 40, item_limit: int = 80) -> list[str]:
+    values: list[str] = []
+    for item in _metadata_values(value):
+        text = " ".join(str(item or "").split())
+        if not text:
+            continue
+        if len(text) > item_limit:
+            text = text[:item_limit].rstrip()
+        if text not in values:
+            values.append(text)
+        if len(values) >= limit:
+            break
+    return values
+
+
+def _safe_search_targets(value: object) -> list[str]:
+    if value is None:
+        raw_values: list[object] = []
+    elif isinstance(value, str):
+        raw_values = [value]
+    elif isinstance(value, (list, tuple, set)):
+        raw_values = list(value)
+    else:
+        raw_values = []
+
+    targets: list[str] = []
+    for item in raw_values:
+        target = str(item or "").strip()
+        if target in _KNOWN_SEARCH_TARGETS and target not in targets:
+            targets.append(target)
+    return targets
+
+
+def _safe_mapping(value: object) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
 
 
 def _returned_kb_ids(results: list[dict]) -> list[str]:
@@ -1265,7 +1313,7 @@ def _has_sufficient_info_results(results: list[dict]) -> bool:
     strong_results = [
         result
         for result in results
-        if float(result.get("score", 0.0) or 0.0) >= 0.55
+        if _safe_float(result.get("score")) >= 0.55
         and len(str(result.get("text") or "")) >= 80
         and result.get("source") in {"external", "web", "important"}
     ]
@@ -1501,6 +1549,21 @@ def _safe_int(value: object) -> int | None:
         return int(float(match.group(0)))
     except ValueError:
         return None
+
+
+def _safe_float(value: object, *, default: float = 0.0) -> float:
+    if value is None or isinstance(value, bool):
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        match = re.search(r"-?\d+(?:\.\d+)?", str(value))
+        if not match:
+            return default
+        try:
+            return float(match.group(0))
+        except ValueError:
+            return default
 
 
 def _is_plant_based_profile(profile: dict) -> bool:

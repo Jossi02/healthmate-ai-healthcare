@@ -61,8 +61,9 @@ def build_profile_constraint_set(
     *,
     domain: str = "general",
 ) -> dict[str, Any]:
-    profile = dict(profile or {})
+    profile = _safe_profile(profile)
     query_text = str(query or "")
+    domain = str(domain or "general").strip().lower() or "general"
     profile_text = _profile_constraint_text(profile)
     profile_negative_constraints = _negative_constraints(profile_text.lower())
     query_negative_constraints = _negative_constraints(query_text.lower())
@@ -229,7 +230,8 @@ def query_needs_user_memory(query: str) -> bool:
     )
 
 
-def profile_weight_value(profile: dict[str, Any]) -> int | None:
+def profile_weight_value(profile: dict[str, Any] | object) -> int | None:
+    profile = _safe_profile(profile)
     for key in ("weight", "body_weight", "current_weight"):
         value = profile.get(key)
         if value is None or value == "":
@@ -242,7 +244,8 @@ def profile_weight_value(profile: dict[str, Any]) -> int | None:
     return None
 
 
-def profile_bmi_value(profile: dict[str, Any]) -> float | None:
+def profile_bmi_value(profile: dict[str, Any] | object) -> float | None:
+    profile = _safe_profile(profile)
     explicit = profile.get("bmi")
     try:
         if explicit not in (None, ""):
@@ -289,6 +292,7 @@ def _meaningful_profile_text(value: object) -> str:
 
 
 def _profile_constraint_text(profile: dict[str, Any]) -> str:
+    profile = _safe_profile(profile)
     values: list[str] = []
     for field in _PROFILE_SIGNAL_FIELDS:
         values.extend(as_text_list(profile.get(field)))
@@ -296,6 +300,7 @@ def _profile_constraint_text(profile: dict[str, Any]) -> str:
 
 
 def _profile_targets(profile: dict[str, Any]) -> list[str]:
+    profile = _safe_profile(profile)
     targets: list[str] = ["general_adult"]
     age = _safe_int(profile.get("age"))
     if age is not None:
@@ -325,6 +330,7 @@ def _profile_targets(profile: dict[str, Any]) -> list[str]:
 
 
 def _goals(profile: dict[str, Any], query: str) -> list[str]:
+    profile = _safe_profile(profile)
     text = " ".join(
         [
             *as_text_list(profile.get("goal")),
@@ -439,6 +445,7 @@ def _hard_constraint_labels(constraints: list[str]) -> list[dict[str, str]]:
 
 
 def _safety_risks(constraints: list[str], profile: dict[str, Any]) -> list[str]:
+    profile = _safe_profile(profile)
     risks = []
     risk_constraints = {
         "cardiovascular_disease",
@@ -460,6 +467,7 @@ def _safety_risks(constraints: list[str], profile: dict[str, Any]) -> list[str]:
 
 
 def _summary(profile: dict[str, Any], hard_constraints: list[dict[str, str]], goals: list[str]) -> dict[str, Any]:
+    profile = _safe_profile(profile)
     return {
         "age": profile.get("age"),
         "gender": profile.get("gender") or profile.get("sex"),
@@ -481,6 +489,7 @@ def _summary(profile: dict[str, Any], hard_constraints: list[dict[str, str]], go
 
 
 def _profile_field_coverage(profile: dict[str, Any]) -> dict[str, Any]:
+    profile = _safe_profile(profile)
     present = [
         field
         for field in _PROFILE_SIGNAL_FIELDS
@@ -494,6 +503,7 @@ def _profile_field_coverage(profile: dict[str, Any]) -> dict[str, Any]:
 
 
 def _profile_has_rag_risk(profile: dict[str, Any]) -> bool:
+    profile = _safe_profile(profile)
     age = _safe_int(profile.get("age"))
     weight = profile_weight_value(profile)
     bmi = profile_bmi_value(profile)
@@ -523,6 +533,7 @@ def _profile_has_rag_risk(profile: dict[str, Any]) -> bool:
 
 
 def _height_cm_value(profile: dict[str, Any]) -> int | None:
+    profile = _safe_profile(profile)
     for key in ("height", "height_cm"):
         value = profile.get(key)
         if value is None or value == "":
@@ -536,6 +547,7 @@ def _height_cm_value(profile: dict[str, Any]) -> int | None:
 
 
 def _is_plant_based_profile(profile: dict[str, Any]) -> bool:
+    profile = _safe_profile(profile)
     text = " ".join(
         str(profile.get(field) or "")
         for field in ("diet_type", "dietary_restrictions", "dietary_preferences", "foods_to_avoid", "goal", "context_notes")
@@ -570,6 +582,10 @@ def _safe_int(value: object) -> int | None:
         return int(float(value))
     except (TypeError, ValueError):
         return None
+
+
+def _safe_profile(profile: object) -> dict[str, Any]:
+    return profile if isinstance(profile, dict) else {}
 
 
 def _negated_pattern(words: str, suffix: str = "") -> str:

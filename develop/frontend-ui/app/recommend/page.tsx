@@ -62,6 +62,21 @@ type DetailPopupState =
       items: DietDetailItem[];
     };
 
+type DeletePopupTarget =
+  | {
+      scope: 'item';
+      type: 'workout' | 'diet';
+      dateStr: string;
+      name: string;
+      index: number;
+    }
+  | {
+      scope: 'date';
+      type: 'all' | 'workout' | 'diet';
+      dateStr: string;
+      name: string;
+    };
+
 const hasHighlightedItems = (plan: DailyPlan, highlightedIds: string[]) => {
   return (
     plan.exercises.some((item, index) =>
@@ -79,6 +94,7 @@ export default function RecommendPage() {
     completeWorkout,
     completeDiet,
     deletePlanItem,
+    deletePlanDate,
     getPlanByDate,
     highlightedPlanItemIds,
     dismissPlanUpdate,
@@ -93,7 +109,7 @@ export default function RecommendPage() {
   const [today] = useState<Date>(initialToday);
 
   const [confirmPopup, setConfirmPopup] = useState<{isOpen: boolean, target: {type: 'workout'|'diet', dateStr: string, name: string, index: number} | null}>({isOpen: false, target: null});
-  const [deletePopup, setDeletePopup] = useState<{isOpen: boolean, target: {type: 'workout'|'diet', dateStr: string, name: string, index: number} | null, isDeleting: boolean}>({isOpen: false, target: null, isDeleting: false});
+  const [deletePopup, setDeletePopup] = useState<{isOpen: boolean, target: DeletePopupTarget | null, isDeleting: boolean}>({isOpen: false, target: null, isDeleting: false});
 
   const handleWorkoutComplete = (dateStr: string, name: string, index: number) => {
     setConfirmPopup({isOpen: true, target: {type: 'workout', dateStr, name, index}});
@@ -114,18 +130,37 @@ export default function RecommendPage() {
   };
 
   const handlePlanDelete = (dateStr: string, name: string, index: number, type: 'workout' | 'diet') => {
-    setDeletePopup({isOpen: true, target: {type, dateStr, name, index}, isDeleting: false});
+    setDeletePopup({isOpen: true, target: {scope: 'item', type, dateStr, name, index}, isDeleting: false});
+  };
+
+  const handleDatePlanDelete = (dateStr: string, type: 'all' | 'workout' | 'diet') => {
+    const label = type === 'all' ? '전체 플랜' : type === 'workout' ? '운동 플랜' : '식단 플랜';
+    setDeletePopup({
+      isOpen: true,
+      target: {
+        scope: 'date',
+        type,
+        dateStr,
+        name: `${dateStr} ${label}`,
+      },
+      isDeleting: false,
+    });
   };
 
   const executeDelete = async () => {
     if (!deletePopup.target || deletePopup.isDeleting) return;
 
     setDeletePopup((prev) => ({...prev, isDeleting: true}));
-    const didDelete = await deletePlanItem(
-      deletePopup.target.dateStr,
-      deletePopup.target.index,
-      deletePopup.target.type
-    );
+    const didDelete = deletePopup.target.scope === 'item'
+      ? await deletePlanItem(
+          deletePopup.target.dateStr,
+          deletePopup.target.index,
+          deletePopup.target.type
+        )
+      : await deletePlanDate(
+          deletePopup.target.dateStr,
+          deletePopup.target.type
+        );
 
     if (didDelete) {
       setDetailPopup(null);
@@ -298,13 +333,13 @@ export default function RecommendPage() {
           <div className="bg-white rounded-3xl p-5 md:p-6 shadow-[0_4px_16px_-6px_rgba(0,0,0,0.06)] border border-gray-100">
             {/* Calendar Header */}
             <div className="flex justify-between items-center mb-6">
-              <button onClick={prevMonth} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
+              <button aria-label="이전 달 보기" onClick={prevMonth} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
                 <ChevronLeft className="w-5 h-5 text-gray-500" />
               </button>
               <h3 className="text-lg font-bold text-gray-900">
                 {currentYear}년 {currentMonth + 1}월
               </h3>
-              <button onClick={nextMonth} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
+              <button aria-label="다음 달 보기" onClick={nextMonth} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
                 <ChevronRight className="w-5 h-5 text-gray-500" />
               </button>
             </div>
@@ -369,8 +404,18 @@ export default function RecommendPage() {
                 return (
                   <div
                     key={`day-${day}`}
+                    role={planForDay ? 'button' : undefined}
+                    tabIndex={planForDay ? 0 : undefined}
+                    aria-label={planForDay ? `캘린더 ${dateStr} 상세 보기` : undefined}
                     onClick={() => {
                       if (planForDay) {
+                        setSelectedPlan(planForDay);
+                        setIsModalOpen(true);
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if (planForDay && (event.key === 'Enter' || event.key === ' ')) {
+                        event.preventDefault();
                         setSelectedPlan(planForDay);
                         setIsModalOpen(true);
                       }
@@ -571,7 +616,9 @@ export default function RecommendPage() {
                       {getFoodEmoji(diet.name)}
                     </div>
                     <h3 className={`font-bold text-[15px] mb-1 ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{display.title}</h3>
-                    <p className={`min-h-[32px] text-xs font-semibold mb-2 ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-500'}`}>{display.subtitle || '상세 식단 보기'}</p>
+                    {display.subtitle && (
+                      <p className={`min-h-[32px] text-xs font-semibold mb-2 ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-500'}`}>{display.subtitle}</p>
+                    )}
                     <div className="mt-auto pt-3 pb-3 w-full border-t border-gray-50">
                       <span className={`text-xs font-bold ${isCompleted ? 'text-gray-400' : 'text-[#2563eb]'}`}>{display.kcal}</span>
                     </div>
@@ -609,19 +656,51 @@ export default function RecommendPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="bg-white rounded-3xl shadow-[0_20px_60px_-12px_rgba(0,0,0,0.15)] w-full max-w-md overflow-hidden z-10"
+              className="z-10 max-h-[86vh] w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_-12px_rgba(0,0,0,0.15)]"
             >
               <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-blue-50/50">
                 <div className="flex items-center space-x-2">
                   <CalendarIcon className="w-5 h-5 text-[#2563eb]" />
                   <h3 className="font-bold text-lg text-gray-900">{selectedPlan.date.split('-')[1]}월 {selectedPlan.date.split('-')[2]}일 상세 플랜</h3>
                 </div>
-                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors p-1 bg-white rounded-full shadow-sm">
+                <button aria-label="상세 플랜 닫기" onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors p-1 bg-white rounded-full shadow-sm">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               
-              <div className="p-6 space-y-6">
+              <div className="max-h-[calc(86vh-88px)] space-y-6 overflow-y-auto p-6">
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDatePlanDelete(selectedPlan.date, 'all')}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 transition-colors hover:bg-rose-100"
+                    aria-label={`${selectedPlan.date} 전체 플랜 삭제`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    전체
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDatePlanDelete(selectedPlan.date, 'workout')}
+                    disabled={selectedPlan.exercises.length === 0}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label={`${selectedPlan.date} 운동 플랜 삭제`}
+                  >
+                    <Flame className="h-3.5 w-3.5" />
+                    운동
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDatePlanDelete(selectedPlan.date, 'diet')}
+                    disabled={selectedPlan.diets.length === 0}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-xs font-bold text-green-600 transition-colors hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label={`${selectedPlan.date} 식단 플랜 삭제`}
+                  >
+                    <Apple className="h-3.5 w-3.5" />
+                    식단
+                  </button>
+                </div>
+
                 <div>
                   <div className="flex items-center space-x-2 mb-3">
                     <Flame className="w-5 h-5 text-orange-500" />
@@ -772,7 +851,7 @@ export default function RecommendPage() {
                   )}
                   <h3 className="font-bold text-lg text-gray-900">{detailPopup.title} 상세</h3>
                 </div>
-                <button onClick={() => setDetailPopup(null)} className="rounded-full bg-white p-1 text-gray-400 shadow-sm transition-colors hover:text-gray-600">
+                <button aria-label="세부 항목 닫기" onClick={() => setDetailPopup(null)} className="rounded-full bg-white p-1 text-gray-400 shadow-sm transition-colors hover:text-gray-600">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -892,7 +971,7 @@ export default function RecommendPage() {
       {/* Confirm Popup */}
       <AnimatePresence>
         {confirmPopup.isOpen && confirmPopup.target && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setConfirmPopup({isOpen: false, target: null})} />
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden z-10 px-6 py-8 text-center">
               <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${confirmPopup.target.type === 'workout' ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-500'}`}>

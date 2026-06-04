@@ -191,7 +191,7 @@ export default function LoginPage() {
             <span className="text-gray-500">아직 회원이 아니신가요? </span>
             <button
               onClick={() => router.push('/signup')}
-              className="font-bold text-blue-600 transition-all hover:underline"
+              className="inline-flex min-h-10 items-center rounded-lg px-1 font-bold text-blue-600 transition-all hover:underline"
             >
               회원가입하기
             </button>

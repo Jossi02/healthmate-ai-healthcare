@@ -21,6 +21,7 @@ export type HomeRecommendations = {
   scope: RecommendationScope;
   workout: Record<WorkoutSlot, WorkoutRecommendation | null>;
   diet: Record<DietSlot, DietRecommendation | null>;
+  quality_flags?: Record<string, unknown>;
 };
 
 export type RecommendationAddedState = {
@@ -95,6 +96,7 @@ export function createEmptyRecommendations(date: string): HomeRecommendations {
       lunch: null,
       dinner: null,
     },
+    quality_flags: {},
   };
 }
 
@@ -113,12 +115,14 @@ export function mergeRecommendations(
           ...current,
           date: incoming.date,
           workout: incoming.workout,
+          quality_flags: incoming.quality_flags ?? current.quality_flags,
         }
       : scope === "diet"
         ? {
             ...current,
             date: incoming.date,
             diet: incoming.diet,
+            quality_flags: incoming.quality_flags ?? current.quality_flags,
           }
         : incoming;
 

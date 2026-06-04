@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -25,6 +26,58 @@ from app.schemas.home import (
 KST = ZoneInfo("Asia/Seoul")
 WORKOUT_SLOTS = ("upper_body", "lower_body", "cardio", "stretching")
 DIET_SLOTS = ("breakfast", "lunch", "dinner")
+_HOME_HIGH_IMPACT_TERMS = (
+    "jump",
+    "jumping",
+    "burpee",
+    "sprint",
+    "plyo",
+    "plyometric",
+    "box jump",
+    "all-out",
+    "max effort",
+    "플라이오",
+    "점핑",
+    "?먰봽",
+    "踰꾪뵾",
+    "?꾨젰吏덉＜",
+)
+_HOME_ADVANCED_WORKOUT_TERMS = (
+    "hiit",
+    "interval",
+    "tabata",
+    "amrap",
+    "emom",
+    "agility",
+    "metcon",
+    "advanced",
+    "high intensity",
+    "heavy",
+    "max",
+    "power",
+    "circuit",
+    "power circuit",
+    "fast tempo",
+    "fast-paced",
+    "quick repeat",
+    "rapid repeat",
+    "tempo",
+    "민첩성",
+    "타바타",
+    "서킷",
+    "순환운동",
+    "빠르게 반복",
+    "빠른 반복",
+    "고강도",
+    "파워",
+    "서킷",
+    "순환",
+    "빠른 템포",
+    "고강도",
+    "?명꽣踰?",
+    "怨좉컯??",
+    "怨좎쨷??",
+)
 PROMPT_PATH = "home/recommendations.md"
 PROFILE_PROMPT_KEYS = (
     "age",
@@ -248,29 +301,29 @@ def build_home_recommendation_prompt_input(
     workout_by_slot = {slot: [] for slot in WORKOUT_SLOTS}
     diet_by_slot = {slot: [] for slot in DIET_SLOTS}
 
-    for item in today_plan or []:
+    for item in _bounded_dict_items(today_plan, limit=40):
         item_type = str(item.get("type") or "").strip().lower()
         slot_name = str(item.get("name") or "").strip().lower()
-        detail = str(item.get("detail") or "").strip()
+        detail = _bounded_prompt_text(item.get("detail"), limit=120)
         if not detail:
             continue
 
         if item_type == "exercise":
-            today_exercise_names.append(detail)
+            _append_unique_bounded(today_exercise_names, detail, limit=12)
             if slot_name in workout_by_slot:
-                workout_by_slot[slot_name].append(detail)
+                _append_unique_bounded(workout_by_slot[slot_name], detail, limit=5)
             continue
 
         if item_type == "meal":
-            today_meal_names.append(detail)
+            _append_unique_bounded(today_meal_names, detail, limit=12)
             if slot_name in diet_by_slot:
-                diet_by_slot[slot_name].append(detail)
+                _append_unique_bounded(diet_by_slot[slot_name], detail, limit=5)
 
     profile = _home_profile_prompt_payload(user_profile)
 
-    recent = recent_recommendations or {}
-    recent_workout = recent.get("workout") or {}
-    recent_diet = recent.get("diet") or {}
+    recent = _bounded_recent_recommendations(recent_recommendations)
+    recent_workout = recent["workout"]
+    recent_diet = recent["diet"]
 
     return "\n\n".join(
         [
@@ -287,8 +340,50 @@ def build_home_recommendation_prompt_input(
     )
 
 
+def _bounded_dict_items(items: object, *, limit: int) -> list[dict]:
+    if not isinstance(items, list):
+        return []
+    return [dict(item) for item in items[:limit] if isinstance(item, dict)]
+
+
+def _bounded_prompt_text(value: object, *, limit: int) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip()
+
+
+def _append_unique_bounded(target: list[str], value: str, *, limit: int) -> None:
+    if len(target) >= limit or not value or value in target:
+        return
+    target.append(value)
+
+
+def _bounded_recent_recommendations(recent_recommendations: object) -> dict[str, dict[str, list[str]]]:
+    recent = recent_recommendations if isinstance(recent_recommendations, dict) else {}
+    return {
+        "workout": {
+            slot: _bounded_text_list((recent.get("workout") or {}).get(slot) if isinstance(recent.get("workout"), dict) else [], limit=5)
+            for slot in WORKOUT_SLOTS
+        },
+        "diet": {
+            slot: _bounded_text_list((recent.get("diet") or {}).get(slot) if isinstance(recent.get("diet"), dict) else [], limit=5)
+            for slot in DIET_SLOTS
+        },
+    }
+
+
+def _bounded_text_list(values: object, *, limit: int) -> list[str]:
+    source = values if isinstance(values, list) else [values]
+    result: list[str] = []
+    for value in source:
+        text = _bounded_prompt_text(value, limit=80)
+        _append_unique_bounded(result, text, limit=limit)
+    return result
+
+
 def _home_profile_prompt_payload(user_profile: dict | None) -> dict[str, object]:
-    profile = user_profile or {}
+    profile = _safe_profile(user_profile)
     payload: dict[str, object] = {}
     for key in PROFILE_PROMPT_KEYS:
         value = profile.get(key)
@@ -309,6 +404,16 @@ def _home_profile_prompt_payload(user_profile: dict | None) -> dict[str, object]
         )
         if frequency not in (None, "", [], {}, "[]"):
             payload["exercise_frequency"] = frequency
+
+    allergy_values = _profile_values(
+        profile,
+        "allergies",
+        "allergy",
+        "otherAllergy",
+        "other_allergy",
+    )
+    if allergy_values:
+        payload["allergies"] = allergy_values
 
     social_orientation = (
         profile.get("social_orientation")
@@ -398,6 +503,7 @@ def normalize_home_recommendations(
         scope=scope,
         workout=workout,
         diet=diet,
+        quality_flags=dict(response.quality_flags or {}),
     )
 
 
@@ -435,16 +541,9 @@ def validate_home_recommendation_profile_fit(
     for slot, item in response.workout.model_dump().items():
         if not item:
             continue
-        text = f"{item.get('exercise_name') or ''} {item.get('summary') or ''}"
-        if not _is_workout_candidate_safe(slot, text, injury_tokens):
-            issues.append(
-                {
-                    "severity": "critical",
-                    "code": "home_workout_profile_conflict",
-                    "slot": slot,
-                    "item": item.get("exercise_name"),
-                }
-            )
+        issue = _home_workout_profile_issue(slot, item, user_profile, injury_tokens)
+        if issue:
+            issues.append(issue)
 
     for slot, item in response.diet.model_dump().items():
         if not item:
@@ -549,8 +648,8 @@ def _guard_workout_slots_for_profile(
     def keep_or_replace(slot: str, item: WorkoutRecommendationItem | None) -> WorkoutRecommendationItem | None:
         if item is None:
             return None
-        text = f"{item.exercise_name} {item.summary}"
-        if _is_workout_candidate_safe(slot, text, injury_tokens):
+        issue = _home_workout_profile_issue(slot, item.model_dump(), user_profile, injury_tokens)
+        if not issue or issue.get("severity") != "critical":
             return item
         return _build_workout_fallback(
             slot,
@@ -603,7 +702,7 @@ def _build_workout_fallback(
     recent_names: list[str],
 ) -> WorkoutRecommendationItem:
     excluded_names = _build_excluded_names(today_plan, recent_names, item_type="exercise")
-    injury_tokens = _profile_tokens(user_profile, "injury_history")
+    injury_tokens = _profile_tokens(user_profile, "injury_history") | _profile_tokens(user_profile, "pain_points")
 
     for candidate in _ordered_workout_candidates(slot, user_profile):
         exercise_name = candidate["exercise_name"]
@@ -612,6 +711,9 @@ def _build_workout_fallback(
         if not _is_workout_candidate_safe(slot, exercise_name, injury_tokens):
             continue
         candidate = _personalize_workout_candidate(slot, candidate, user_profile)
+        issue = _home_workout_profile_issue(slot, candidate, user_profile, injury_tokens)
+        if issue and issue.get("severity") == "critical":
+            continue
         return _normalize_workout_item(
             slot,
             WorkoutRecommendationItem(**candidate),
@@ -634,7 +736,7 @@ def _ordered_workout_candidates(slot: str, user_profile: dict | None) -> list[di
 
 
 def _workout_candidate_score(slot: str, candidate: dict, user_profile: dict | None) -> int:
-    profile = user_profile or {}
+    profile = _safe_profile(user_profile)
     orientation = _profile_social_orientation(profile)
     goal_text = _profile_goal_text(profile)
     exercise_name = _normalize_name(str(candidate.get("exercise_name") or ""))
@@ -652,7 +754,7 @@ def _workout_candidate_score(slot: str, candidate: dict, user_profile: dict | No
             score += 4
 
     if slot == "cardio" and _is_fat_loss_goal_text(goal_text):
-        score += int(candidate.get("duration_minutes") or 0) // 5
+        score += _bounded_int(candidate.get("duration_minutes"), default=0, minimum=0, maximum=120) // 5
         if any(marker in text for marker in ("걷기", "자전거", "제자리")):
             score += 4
     if slot == "stretching" and any(marker in goal_text for marker in ("health", "mobility", "건강", "가동성")):
@@ -661,7 +763,7 @@ def _workout_candidate_score(slot: str, candidate: dict, user_profile: dict | No
 
 
 def _personalize_workout_candidate(slot: str, candidate: dict, user_profile: dict | None) -> dict:
-    profile = user_profile or {}
+    profile = _safe_profile(user_profile)
     next_candidate = dict(candidate)
     orientation = _profile_social_orientation(profile)
     goal_text = _profile_goal_text(profile)
@@ -681,8 +783,21 @@ def _personalize_workout_candidate(slot: str, candidate: dict, user_profile: dic
             next_candidate["exercise_name"] = "친구와 빠른 걷기"
             summary = "친구와 함께 하거나 그룹 챌린지로 이어가기 쉬운 유산소 운동입니다."
         if _is_fat_loss_goal_text(goal_text):
-            next_candidate["duration_minutes"] = max(25, int(next_candidate.get("duration_minutes") or 20))
+            next_candidate["duration_minutes"] = max(
+                25,
+                _bounded_int(next_candidate.get("duration_minutes"), default=20, minimum=1, maximum=120),
+            )
             summary = f"{summary} 감량 목표에 맞춰 유산소 비중을 높였습니다.".strip()
+
+        available = _profile_available_minutes(profile)
+        if available:
+            next_candidate["duration_minutes"] = max(
+                1,
+                min(
+                    _bounded_int(next_candidate.get("duration_minutes"), default=20, minimum=1, maximum=120),
+                    available,
+                ),
+            )
 
     if slot in {"upper_body", "lower_body", "stretching"} and orientation == "introvert":
         if "집" not in summary and "홈" not in summary:
@@ -704,7 +819,7 @@ def _build_diet_fallback(
 ) -> DietRecommendationItem:
     excluded_names = _build_excluded_names(today_plan, recent_names, item_type="meal")
     allergies = _normalize_allergy_tokens(user_profile)
-    diet_type = str((user_profile or {}).get("diet_type") or "").strip().lower()
+    diet_type = str(_safe_profile(user_profile).get("diet_type") or "").strip().lower()
 
     for candidate in _DIET_FALLBACKS[slot]:
         food_name = candidate["food_name"]
@@ -820,7 +935,7 @@ def _safe_diet_fallback_candidate(slot: str, user_profile: dict | None) -> dict:
 
 
 def _home_profile_constraint_text(user_profile: dict | None) -> str:
-    profile = user_profile or {}
+    profile = _safe_profile(user_profile)
     chunks: list[str] = []
     for key in (
         "diet_type",
@@ -829,6 +944,8 @@ def _home_profile_constraint_text(user_profile: dict | None) -> str:
         "foods_to_avoid",
         "allergies",
         "allergy",
+        "otherAllergy",
+        "other_allergy",
         "medical_history",
         "medical_conditions",
         "conditions",
@@ -853,8 +970,12 @@ def _as_list(value: object) -> list[object]:
     return [value]
 
 
+def _safe_profile(user_profile: object) -> dict:
+    return user_profile if isinstance(user_profile, dict) else {}
+
+
 def _profile_social_orientation(user_profile: dict | None) -> str | None:
-    profile = user_profile or {}
+    profile = _safe_profile(user_profile)
     for key in (
         "social_orientation",
         "personality_axis",
@@ -883,7 +1004,7 @@ def _profile_social_orientation(user_profile: dict | None) -> str | None:
 
 
 def _profile_goal_text(user_profile: dict | None) -> str:
-    profile = user_profile or {}
+    profile = _safe_profile(user_profile)
     return " ".join(
         str(value)
         for value in (
@@ -901,6 +1022,111 @@ def _is_fat_loss_goal_text(goal_text: str) -> bool:
         marker in goal_text
         for marker in ("fat_loss", "weight_loss", "diet", "다이어트", "감량", "체중 감량")
     )
+
+
+def _profile_text(user_profile: dict | None, *keys: str) -> str:
+    profile = _safe_profile(user_profile)
+    chunks: list[str] = []
+    for key in keys:
+        for value in _as_list(profile.get(key)):
+            if value is not None:
+                chunks.append(str(value))
+    return " ".join(chunks).lower()
+
+
+def _profile_available_minutes(user_profile: dict | None) -> int | None:
+    profile = _safe_profile(user_profile)
+    for key in ("available_time_minutes", "available_minutes", "exercise_time_minutes"):
+        parsed = _safe_int(profile.get(key))
+        if parsed:
+            return parsed
+    return None
+
+
+def _profile_frequency(user_profile: dict | None) -> int | None:
+    profile = _safe_profile(user_profile)
+    for key in ("exercise_frequency", "workout_frequency", "frequency_per_week", "weekly_workouts", "target_workouts_per_week"):
+        parsed = _safe_int(profile.get(key))
+        if parsed:
+            return parsed
+    return None
+
+
+def _profile_level(user_profile: dict | None) -> str | None:
+    text = _profile_text(user_profile, "exercise_level", "fitness_level", "activity_level", "activityLevel")
+    if any(marker in text for marker in ("beginner", "low", "sedentary", "inactive", "starter", "초보", "낮", "적음")):
+        return "beginner"
+    if any(marker in text for marker in ("advanced", "athlete", "high", "expert", "상급", "높")):
+        return "advanced"
+    return None
+
+
+def _home_workout_item_duration(slot: str, item: dict) -> int:
+    if slot == "cardio":
+        return _safe_int(item.get("duration_minutes")) or 20
+    sets = _safe_int(item.get("sets")) or 3
+    return max(1, sets) * 3
+
+
+def _home_workout_profile_issue(
+    slot: str,
+    item: dict,
+    user_profile: dict | None,
+    injury_tokens: set[str],
+) -> dict | None:
+    text = f"{item.get('exercise_name') or ''} {item.get('summary') or ''}".lower()
+    if not _is_workout_candidate_safe(slot, text, injury_tokens):
+        return {
+            "severity": "critical",
+            "code": "home_workout_profile_conflict",
+            "slot": slot,
+            "item": item.get("exercise_name"),
+        }
+
+    available_minutes = _profile_available_minutes(user_profile)
+    duration = _home_workout_item_duration(slot, item)
+    if available_minutes and duration > max(available_minutes + 5, int(available_minutes * 1.25)):
+        return {
+            "severity": "critical",
+            "code": "home_workout_time_conflict",
+            "slot": slot,
+            "item": item.get("exercise_name"),
+            "duration_minutes": duration,
+            "available_time_minutes": available_minutes,
+        }
+
+    level = _profile_level(user_profile)
+    advanced = any(marker in text for marker in _HOME_ADVANCED_WORKOUT_TERMS)
+    high_impact = any(marker in text for marker in _HOME_HIGH_IMPACT_TERMS)
+    if level == "beginner" and (advanced or high_impact):
+        return {
+            "severity": "critical",
+            "code": "home_workout_level_conflict",
+            "slot": slot,
+            "item": item.get("exercise_name"),
+        }
+
+    age = _safe_int(_safe_profile(user_profile).get("age"))
+    if age is not None and (age < 19 or age >= 60) and high_impact:
+        return {
+            "severity": "critical",
+            "code": "home_workout_age_conflict",
+            "slot": slot,
+            "item": item.get("exercise_name"),
+            "age": age,
+        }
+
+    frequency = _profile_frequency(user_profile)
+    if frequency is not None and frequency <= 1 and (advanced or duration >= 35):
+        return {
+            "severity": "warning",
+            "code": "home_workout_frequency_fit_warning",
+            "slot": slot,
+            "item": item.get("exercise_name"),
+            "frequency_per_week": frequency,
+        }
+
+    return None
 
 
 def _build_excluded_names(
@@ -925,8 +1151,22 @@ def _normalize_name(value: str) -> str:
     return str(value or "").strip().lower()
 
 
+def _safe_int(value: object) -> int | None:
+    try:
+        if value is None or value == "":
+            return None
+        if isinstance(value, str):
+            match = re.search(r"\d+(?:\.\d+)?", value)
+            if not match:
+                return None
+            value = match.group(0)
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
 def _profile_tokens(user_profile: dict | None, field_name: str) -> set[str]:
-    raw = (user_profile or {}).get(field_name) or []
+    raw = _safe_profile(user_profile).get(field_name) or []
     values = raw if isinstance(raw, list) else [raw]
     tokens: set[str] = set()
 
@@ -938,8 +1178,26 @@ def _profile_tokens(user_profile: dict | None, field_name: str) -> set[str]:
     return tokens
 
 
+def _profile_values(profile: dict | None, *field_names: str) -> list[object]:
+    safe_profile = _safe_profile(profile)
+    values: list[object] = []
+    for field_name in field_names:
+        values.extend(_as_list(safe_profile.get(field_name)))
+    return [value for value in values if value not in (None, "", [], {}, "[]")]
+
+
 def _normalize_allergy_tokens(user_profile: dict | None) -> set[str]:
-    allergies = _profile_tokens(user_profile, "allergies")
+    allergies = {
+        _normalize_name(str(value))
+        for value in _profile_values(
+            user_profile,
+            "allergies",
+            "allergy",
+            "otherAllergy",
+            "other_allergy",
+        )
+        if _normalize_name(str(value))
+    }
     normalized: set[str] = set()
 
     alias_map = {
@@ -1017,28 +1275,28 @@ def _normalize_workout_item(
     if item is None:
         return None
 
-    exercise_name = item.exercise_name.strip()
+    exercise_name = _compact_display_text(item.exercise_name.strip(), limit=34)
     if not exercise_name:
         return None
 
-    calories = max(0, int(item.calories or 0))
+    calories = _bounded_int(item.calories, default=0, minimum=0, maximum=1000)
     summary = _compact_display_text(item.summary.strip(), limit=46)
 
     if slot == "cardio":
-        duration_minutes = int(item.duration_minutes or 20)
+        duration_minutes = _bounded_int(item.duration_minutes, default=20, minimum=1, maximum=120)
         return WorkoutRecommendationItem(
             exercise_name=exercise_name,
             summary=summary,
             sets=None,
-            duration_minutes=max(1, duration_minutes),
+            duration_minutes=duration_minutes,
             calories=calories,
         )
 
-    sets = int(item.sets or 3)
+    sets = _bounded_int(item.sets, default=3, minimum=1, maximum=20)
     return WorkoutRecommendationItem(
         exercise_name=exercise_name,
         summary=summary,
-        sets=max(1, sets),
+        sets=sets,
         duration_minutes=None,
         calories=calories,
     )
@@ -1055,8 +1313,15 @@ def _normalize_diet_item(item: DietRecommendationItem | None) -> DietRecommendat
     return DietRecommendationItem(
         food_name=food_name,
         summary=_compact_display_text(item.summary.strip(), limit=46),
-        calories=max(0, int(item.calories or 0)),
+        calories=_bounded_int(item.calories, default=0, minimum=0, maximum=2000),
     )
+
+
+def _bounded_int(value: object, *, default: int, minimum: int, maximum: int) -> int:
+    parsed = _safe_int(value)
+    if parsed is None:
+        parsed = default
+    return max(minimum, min(maximum, parsed))
 
 
 def _compact_display_text(value: str, *, limit: int) -> str:

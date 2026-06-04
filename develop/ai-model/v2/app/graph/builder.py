@@ -82,7 +82,7 @@ def route_search_retry(state: GraphState) -> str:
 
 def route_generate_self_eval(state: GraphState):
     if state.get("request_kind") == "home_recommendation":
-        return "finalize"
+        return "answer_validator"
     if state.get("self_eval_failure_reason"):
         return "generate"
     if state.get("response"):

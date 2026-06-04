@@ -510,6 +510,27 @@ async function testReplaceWorkoutPlansSwapsPlansOnSuccess() {
   assert.equal(supabase.tables.exercise_items[0].exercise_name, 'pushup');
 }
 
+async function testCreateDietPlansStoresMealValueAndCaloriesOnly() {
+  const supabase = new FakeSupabase({
+    user_meal_plans: [],
+  });
+
+  const created = await planMutationService.createDietPlans(supabase, 'user-1', [
+    {
+      day: '2026-06-03',
+      name: 'Lunch',
+      detail: '현미밥, 닭가슴살 샐러드 / 근거: 단백질 보충과 체중 감량 목표 고려',
+      calories: '420 kcal',
+    },
+  ]);
+
+  assert.equal(created.length, 1);
+  assert.equal(supabase.tables.user_meal_plans.length, 1);
+  assert.equal(supabase.tables.user_meal_plans[0].food_name, '현미밥, 닭가슴살 샐러드');
+  assert.equal(supabase.tables.user_meal_plans[0].meal_type, 'Lunch');
+  assert.equal(supabase.tables.user_meal_plans[0].calories, 420);
+}
+
 async function testDeleteWorkoutPlansForDatesRemovesChildren() {
   const supabase = new FakeSupabase({
     user_exercise_plans: [
@@ -550,6 +571,102 @@ async function testDeleteWorkoutPlansForDatesRemovesChildren() {
   assert.deepEqual(
     supabase.tables.exercise_items.map((item) => item.item_id),
     [100]
+  );
+}
+
+async function testDeleteDietPlansForDatesRemovesMealsOnlyOnTargetDate() {
+  const supabase = new FakeSupabase({
+    user_meal_plans: [
+      {
+        meal_id: 20,
+        user_id: 'user-1',
+        meal_type: 'Breakfast',
+        food_name: 'legacy-meal',
+        target_date: '2026-04-16',
+      },
+      {
+        meal_id: 21,
+        user_id: 'user-1',
+        meal_type: 'Lunch',
+        food_name: 'keep-meal',
+        target_date: '2026-04-17',
+      },
+    ],
+  });
+
+  const deletedCount = await planMutationService.deleteDietPlansForDates(
+    supabase,
+    'user-1',
+    ['2026-04-16']
+  );
+
+  assert.equal(deletedCount, 1);
+  assert.deepEqual(
+    supabase.tables.user_meal_plans.map((item) => item.meal_id),
+    [21]
+  );
+}
+
+async function testDeleteAllPlansForUserKeepsOtherUsers() {
+  const supabase = new FakeSupabase({
+    user_exercise_plans: [
+      {
+        exercise_id: 10,
+        user_id: 'user-1',
+        exercise_type: 'delete-workout',
+        target_date: '2026-04-16',
+      },
+      {
+        exercise_id: 11,
+        user_id: 'user-2',
+        exercise_type: 'keep-workout',
+        target_date: '2026-04-16',
+      },
+    ],
+    exercise_items: [
+      { item_id: 99, exercise_id: 10, exercise_name: 'delete-child' },
+      { item_id: 100, exercise_id: 11, exercise_name: 'keep-child' },
+    ],
+    user_meal_plans: [
+      {
+        meal_id: 20,
+        user_id: 'user-1',
+        meal_type: 'Breakfast',
+        food_name: 'delete-meal',
+        target_date: '2026-04-16',
+      },
+      {
+        meal_id: 21,
+        user_id: 'user-2',
+        meal_type: 'Lunch',
+        food_name: 'keep-meal',
+        target_date: '2026-04-16',
+      },
+    ],
+  });
+
+  const deletedWorkoutCount = await planMutationService.deleteWorkoutPlansForUser(
+    supabase,
+    'user-1'
+  );
+  const deletedDietCount = await planMutationService.deleteDietPlansForUser(
+    supabase,
+    'user-1'
+  );
+
+  assert.equal(deletedWorkoutCount, 1);
+  assert.equal(deletedDietCount, 1);
+  assert.deepEqual(
+    supabase.tables.user_exercise_plans.map((item) => item.exercise_id),
+    [11]
+  );
+  assert.deepEqual(
+    supabase.tables.exercise_items.map((item) => item.item_id),
+    [100]
+  );
+  assert.deepEqual(
+    supabase.tables.user_meal_plans.map((item) => item.meal_id),
+    [21]
   );
 }
 
@@ -647,14 +764,17 @@ async function main() {
   await testCreateWorkoutPlansRollsBackOnChildInsertFailure();
   await testReplaceWorkoutPlansKeepsOldPlanWhenNewCreateFails();
   await testReplaceWorkoutPlansSwapsPlansOnSuccess();
+  await testCreateDietPlansStoresMealValueAndCaloriesOnly();
   await testDeleteWorkoutPlansForDatesRemovesChildren();
+  await testDeleteDietPlansForDatesRemovesMealsOnlyOnTargetDate();
+  await testDeleteAllPlansForUserKeepsOtherUsers();
   await testDeletePlanItemByOpaqueExerciseId();
   testRecommendationNameNormalization();
   await testUuidValidation();
   await testPasswordHashValidationRejectsBadHashes();
   await testPasswordVerificationHandlesValidHashes();
   await testPersistedChatThreadRoundTrip();
-  console.log('[internal-contracts] 16/16 passed');
+  console.log('[internal-contracts] 18/18 passed');
 }
 
 main().catch((error) => {

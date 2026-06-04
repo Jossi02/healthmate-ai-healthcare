@@ -81,6 +81,12 @@ class ActiveProposal(TypedDict):
     last_used_turn: int
 
 
+class PendingSequentialPlan(TypedDict):
+    domain: Literal["workout", "diet"]
+    reason: str
+    created_turn: int
+
+
 class RecentTurn(TypedDict):
     turn_id: int
     user_text: str
@@ -146,6 +152,7 @@ class GraphState(TypedDict):
     pending_writes: list[PendingWrite]
     awaiting_plan_confirmation: bool
     active_proposal: Optional[ActiveProposal]
+    pending_sequential_plan: Optional[PendingSequentialPlan]
     recent_dialogue: RecentDialogue
 
     draft_response: Optional[str]

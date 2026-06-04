@@ -1,7 +1,7 @@
 """Schemas for home-tab recommendation requests and responses."""
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -55,3 +55,4 @@ class HomeRecommendationResponse(BaseModel):
     scope: HomeRecommendationScope = "all"
     workout: WorkoutRecommendationSlots = Field(default_factory=WorkoutRecommendationSlots)
     diet: DietRecommendationSlots = Field(default_factory=DietRecommendationSlots)
+    quality_flags: dict[str, Any] = Field(default_factory=dict)

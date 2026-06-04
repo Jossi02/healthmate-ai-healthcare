@@ -87,6 +87,7 @@ Set these values in `develop/deploy/gcp-two-vm/backend/.env.backend`:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `INTERNAL_API_KEY`
 - `JWT_SECRET`
+- `REQUIRE_IDEMPOTENCY_TABLE=false` for demo fallback mode, or `true` after applying `20260531090000_add_ai_was_idempotency_keys.sql`
 
 Backend health checks:
 
@@ -94,7 +95,9 @@ Backend health checks:
 docker compose ps
 docker compose logs -f backend
 curl http://127.0.0.1:8080/api/health
+curl http://127.0.0.1:8080/api/readiness
 curl https://<your-backend-domain>/api/health
+curl https://<your-backend-domain>/api/readiness
 ```
 
 ## AI VM setup

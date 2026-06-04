@@ -108,12 +108,13 @@ async def execute_was_writes(
                     failed_write_types.append("plan_check")
         elif record_type == "plan_delete":
             plan_type = profile_changes.get("plan_type")
+            target_scope = profile_changes.get("target_scope")
             target_dates = profile_changes.get("target_dates") or []
-            if plan_type and target_dates:
+            if plan_type and (target_scope == "all" or target_dates):
                 write = _make_pending_write(user_id, "plan_delete", profile_changes)
                 try:
                     await deps.was.delete_plan(user_id, write["payload"])
-                    logger.info("plan_delete WAS write succeeded: %s %s", plan_type, target_dates)
+                    logger.info("plan_delete WAS write succeeded: %s %s %s", plan_type, target_scope, target_dates)
                     write_succeeded = True
                     succeeded_write_ids.append(write["write_id"])
                 except ExternalServiceError as exc:
