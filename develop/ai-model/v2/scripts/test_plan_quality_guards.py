@@ -27,7 +27,7 @@ from app.core.conversation_state import (
     sync_proposal_fields,
 )
 from app.core.draft_contract import normalize_draft_components, render_draft_preview
-from app.core.intents import INTENT_INFO, INTENT_MODIFY, INTENT_PLAN, normalize_intent
+from app.core.intents import INTENT_CASUAL, INTENT_INFO, INTENT_MODIFY, INTENT_PLAN, normalize_intent
 from app.core.persona_style import apply_persona_signature, normalize_plan_flow_preview
 from app.core.profile_constraints import build_profile_constraint_set
 from app.core.was_outbox import (
@@ -39,6 +39,7 @@ from app.core.was_outbox import (
 from app.graph.nodes.generate import (
     _adjust_diet_plan_for_profile,
     _adjust_workout_plan_for_profile,
+    _build_casual_draft,
     _build_plan_delete_draft,
     _build_mixed_plan_clarification_draft,
     _build_modify_plan_fallback,
@@ -66,6 +67,7 @@ from app.graph.nodes.intent import (
     _looks_like_plan_delete_request,
     _looks_like_pending_sequential_plan_followup,
     _looks_like_simple_condition_statement,
+    _looks_like_self_intro_request,
     _routing_message,
     _support_mode,
 )
@@ -2985,6 +2987,49 @@ def test_persona_signature_adds_distinct_non_plan_tail() -> None:
         assert_true(expected_markers[persona_id] in output, f"{persona_id} should expose a distinct tail")
 
 
+def test_self_intro_routes_as_plain_casual_dialogue() -> None:
+    assert_true(_looks_like_self_intro_request("네 소개를 해줘"), "self-intro request should be a casual route")
+
+    draft = _build_casual_draft(
+        {
+            "user_message": "네 소개를 해줘",
+            "intent": INTENT_CASUAL,
+            "effective_user_profile": {"selected_ai_persona": "cheer_sis"},
+            "context_resolution": {"resolved_reference": "none"},
+        }
+    )
+    text = draft["draft_response"]
+
+    assert_true("FitUs" in text, "self-intro should introduce the assistant")
+    assert_true("운동" in text and "식단" in text, "self-intro should mention core capabilities")
+    assert_true("밝게" in text or "맞춰" in text, "selected persona should shape casual wording")
+    assert_true("근거" not in text, "casual intro should not render evidence sections")
+    assert_true("주의" not in text, "casual intro should not render safety sections")
+    assert_true("사용자 프로필" not in text, "casual intro should not expose profile rationale")
+
+
+def test_casual_context_ack_does_not_emit_profile_template() -> None:
+    draft = _build_casual_draft(
+        {
+            "user_message": "나 무릎이 조금 아파",
+            "intent": INTENT_CASUAL,
+            "effective_user_profile": {
+                "age": 25,
+                "gender": "male",
+                "weight": 70,
+                "goal": "건강 유지",
+                "allergies": ["우유"],
+            },
+            "context_resolution": {"resolved_reference": "none"},
+        }
+    )
+    text = draft["draft_response"]
+
+    assert_true("근거" not in text, "casual context ack should not render evidence sections")
+    assert_true("주의" not in text, "casual context ack should not render safety sections")
+    assert_true("유제품" not in text and "알레르기" not in text, "casual context ack should not drag unrelated profile constraints")
+
+
 def test_persona_signature_styles_plan_flow_without_preview() -> None:
     base_text = "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요."
     personas = [
@@ -3140,6 +3185,8 @@ def main() -> None:
         test_persona_style_report_flags_plan_shape,
         test_persona_plan_renderer_uses_distinct_core_and_approval,
         test_persona_signature_adds_distinct_non_plan_tail,
+        test_self_intro_routes_as_plain_casual_dialogue,
+        test_casual_context_ack_does_not_emit_profile_template,
         test_persona_signature_styles_plan_flow_without_preview,
         test_pinecone_profile_suite_marks_external_unavailable_as_blocked,
     ]

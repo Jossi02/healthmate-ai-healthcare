@@ -49,6 +49,11 @@ _CASUAL_PATTERNS = re.compile(
     r"^(안녕|하이|헬로|hello|hi|반가워|고마워|감사|수고|잘가|bye)[\s!?.]*$",
     re.IGNORECASE,
 )
+_SELF_INTRO_PATTERNS = re.compile(
+    r"(?:너|네|니|넌|너는|ai|챗봇|코치).{0,12}(?:소개|누구|정체|기능|뭘\s*할\s*수|무엇을\s*할\s*수)|"
+    r"(?:자기소개|너\s*뭐야|뭐\s*하는\s*(?:ai|챗봇|코치)|소개\s*해\s*줘|소개를\s*해\s*줘)",
+    re.IGNORECASE,
+)
 _OFFTOPIC_PATTERNS = re.compile(
     r"주식|주가|코인|비트코인|투자|매수|매도|환율|부동산|로또|복권|"
     r"날씨|뉴스|정치|선거|맛집|영화\s*추천|드라마\s*추천|게임\s*추천|"
@@ -499,6 +504,9 @@ def make_intent_node(deps: NodeDeps):
                 requires_past_memory=False,
                 short_term_memory_query=True,
             )
+
+        if _looks_like_self_intro_request(routing_message):
+            return _build_result(INTENT_CASUAL, state, confidence=0.93)
 
         if _looks_like_offtopic_request(routing_message):
             _record_intent_fallback(
@@ -1062,6 +1070,13 @@ def _action_intent_from_legacy(intent: str) -> str:
     if intent == INTENT_CARE:
         return "care"
     return "fallback"
+
+
+def _looks_like_self_intro_request(message: str) -> bool:
+    normalized = re.sub(r"\s+", " ", str(message or "").strip().lower())
+    if not normalized:
+        return False
+    return bool(_SELF_INTRO_PATTERNS.search(normalized))
 
 
 def _support_mode(

@@ -677,7 +677,10 @@ def _finalize_persona_aware_response(deps: NodeDeps, state: GraphState, result: 
     )
     if render_state.get("intent") in {INTENT_PLAN, INTENT_MODIFY, INTENT_APPROVAL}:
         final_response = dedupe_repeated_sentences(final_response)
-    final_response = apply_persona_signature(final_response, resolved_persona_id, render_state)
+    if render_state.get("intent") == INTENT_CASUAL:
+        final_response = dedupe_repeated_sentences(final_response)
+    else:
+        final_response = apply_persona_signature(final_response, resolved_persona_id, render_state)
     mutation_report = _persona_mutation_report(
         original_plan_snapshot,
         _canonical_plan_payload(payload.get("proposed_plan")),
@@ -3721,17 +3724,15 @@ def _build_care_draft(state: GraphState) -> dict:
 
 
 def _build_casual_draft(state: GraphState) -> dict:
-    profile = _effective_user_profile(state)
+    core_message = _casual_core_message(state)
     components = normalize_draft_components(
         {
-            "core_message": "알겠어요. 지금 알려준 상황과 제약을 기준으로 답할게요.",
-            "reason_points": [
-                _profile_fit_note(profile) or "다음 질문에서는 현재 맥락을 이어서 반영할게요.",
-            ],
-            "suggested_action": "운동, 식단, 통증, 피해야 할 것 중 궁금한 걸 바로 물어봐 주세요.",
-            "safety_notes": _profile_safety_notes(profile, None),
+            "core_message": core_message,
+            "reason_points": [],
+            "suggested_action": "",
+            "safety_notes": [],
             "approval_question": None,
-            "search_grounding_summary": _constraint_grounding_note(profile, None),
+            "search_grounding_summary": "",
         }
     )
     return {
@@ -3743,6 +3744,82 @@ def _build_casual_draft(state: GraphState) -> dict:
         "self_eval_count": 0,
         "self_eval_failure_reason": None,
     }
+
+
+_CASUAL_SELF_INTRO_PATTERNS = re.compile(
+    r"(?:너|네|니|넌|너는|ai|챗봇|코치).{0,12}(?:소개|누구|정체|기능|뭘\s*할\s*수|무엇을\s*할\s*수)|"
+    r"(?:자기소개|너\s*뭐야|뭐\s*하는\s*(?:ai|챗봇|코치)|소개\s*해\s*줘|소개를\s*해\s*줘)",
+    re.IGNORECASE,
+)
+
+
+_CASUAL_INTRO_MESSAGES = {
+    "default": (
+        "저는 FitUs AI 코치예요. 운동 플랜, 식단 플랜, 캘린더 반영, 플랜 수정과 삭제를 "
+        "도와드릴 수 있어요. 편하게 말해주면 필요한 것만 짧게 정리해드릴게요."
+    ),
+    "cheer_sis": (
+        "나는 FitUs에서 운동이랑 식단을 밝게 같이 맞춰주는 AI 코치예요. 플랜 작성, 캘린더 반영, "
+        "수정과 삭제까지 도와줄게요. 부담 낮춰서 시작하게 잘 맞춰볼게요."
+    ),
+    "soft_senior": (
+        "저는 FitUs에서 운동과 식단을 무리 없게 정리해드리는 AI 코치입니다. 플랜 작성, 캘린더 반영, "
+        "수정과 삭제를 차분히 도와드릴게요."
+    ),
+    "strict_trainer": (
+        "나는 FitUs AI 코치다. 운동 플랜, 식단 플랜, 캘린더 반영, 수정과 삭제를 바로 처리한다. "
+        "원하는 목표만 말하면 실행 범위로 정리하겠다."
+    ),
+    "science_coach": (
+        "저는 FitUs의 분석형 AI 코치입니다. 운동과 식단 플랜을 프로필, 일정, 안전성 기준에 맞춰 "
+        "정리하고 캘린더 반영까지 도와드립니다."
+    ),
+    "playful_buddy": (
+        "나는 FitUs에서 운동이랑 식단을 같이 맞춰보는 AI 코치야. 플랜 짜기, 캘린더 반영, 수정과 삭제까지 "
+        "도와줄 수 있어. 너무 무겁지 않게 같이 가보자."
+    ),
+    "daily_manager": (
+        "저는 FitUs 일정 관리형 AI 코치입니다. 운동 플랜, 식단 플랜, 캘린더 반영, 수정과 삭제를 "
+        "정리해서 처리해드립니다."
+    ),
+}
+
+_CASUAL_ACK_MESSAGES = {
+    "default": "알겠어요. 필요한 것만 짧게 이어서 도와드릴게요.",
+    "cheer_sis": "좋아요. 부담은 낮추고 필요한 것만 밝게 맞춰볼게요.",
+    "soft_senior": "알겠습니다. 무리 없게 천천히 이어가볼게요.",
+    "strict_trainer": "확인. 필요한 것만 바로 정리하겠다.",
+    "science_coach": "확인했습니다. 기준을 좁혀서 필요한 답만 드리겠습니다.",
+    "playful_buddy": "좋아, 확인했어. 부담 낮게 같이 이어가보자.",
+    "daily_manager": "확인했습니다. 필요한 항목만 정리해서 이어가겠습니다.",
+}
+
+_CASUAL_THANKS_MESSAGES = {
+    "default": "천만에요. 다음 것도 편하게 말해 주세요.",
+    "cheer_sis": "좋아요, 언제든 편하게 말해줘요. 같이 맞춰볼게요.",
+    "soft_senior": "천만에요. 필요하실 때 편하게 말씀해 주세요.",
+    "strict_trainer": "좋다. 다음 것도 바로 말해라.",
+    "science_coach": "도움이 됐다면 좋습니다. 다음 질문도 기준에 맞춰 답하겠습니다.",
+    "playful_buddy": "언제든 말해. 같이 하나씩 해보자.",
+    "daily_manager": "확인했습니다. 다음 요청도 바로 정리해드리겠습니다.",
+}
+
+
+def _casual_core_message(state: GraphState) -> str:
+    message = _resolved_user_message(state)
+    _, resolved_persona_id, _ = _persona_context(state)
+    persona_id = resolved_persona_id if resolved_persona_id in _CASUAL_ACK_MESSAGES else "default"
+    normalized = re.sub(r"\s+", " ", str(message or "").strip().lower())
+
+    if _CASUAL_SELF_INTRO_PATTERNS.search(normalized):
+        return _CASUAL_INTRO_MESSAGES.get(persona_id, _CASUAL_INTRO_MESSAGES["default"])
+    if state.get("should_save_episode"):
+        return "기억해둘게요. 다음 대화에서 그 맥락을 이어서 볼게요."
+    if any(marker in normalized for marker in ("고마워", "감사", "thanks", "thank you")):
+        return _CASUAL_THANKS_MESSAGES.get(persona_id, _CASUAL_THANKS_MESSAGES["default"])
+    if re.fullmatch(r"(안녕|하이|헬로|hello|hi|반가워)[\s!?.]*", normalized):
+        return _CASUAL_ACK_MESSAGES.get(persona_id, _CASUAL_ACK_MESSAGES["default"])
+    return _CASUAL_ACK_MESSAGES.get(persona_id, _CASUAL_ACK_MESSAGES["default"])
 
 
 def _build_safety_draft(state: GraphState) -> dict:

@@ -239,6 +239,7 @@ CASES: list[Case] = [
     Case("approval", "approval_keep_same", "그대로 해줘", "approval", "diet", active_proposal_domain="diet", expected_reference="active_proposal"),
 
     Case("casual", "casual_hello", "안녕", "casual", "general"),
+    Case("casual", "casual_self_intro", "네 소개를 해줘", "casual", "general"),
     Case("casual", "casual_thanks", "고마워", "casual", "general"),
     Case("casual", "casual_care_lonely", "오늘 너무 외로워", "care", "general", "care"),
     Case("casual", "casual_weekend", "주말 잘 보내", "casual", "general"),
