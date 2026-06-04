@@ -63,6 +63,7 @@ from app.graph.nodes.intent import (
     _looks_like_condition_info_question,
     _looks_like_ambiguous_mixed_plan_request,
     _looks_like_mixed_plan_clarification_followup,
+    _looks_like_plan_delete_request,
     _looks_like_pending_sequential_plan_followup,
     _looks_like_simple_condition_statement,
     _routing_message,
@@ -2461,6 +2462,23 @@ def test_record_and_preprocess_tolerate_malformed_write_state() -> None:
     assert_true(all_delete_result["profile_changes"]["target_scope"] == "all", "calendar-wide delete should use all target scope")
     assert_true(all_delete_result["profile_changes"]["target_dates"] == [], "calendar-wide delete should not collapse to today's date")
     assert_true(all_delete_result["profile_changes"]["plan_type"] == "all", "calendar-wide workout/diet delete should delete both plan types")
+
+    reversed_calendar_delete_message = "\ubaa8\ub450 \uc81c\uac70\ud574\uc918 \uce98\ub9b0\ub354 \ub0b4\uc6a9"
+    assert_true(
+        _looks_like_plan_delete_request(reversed_calendar_delete_message),
+        "reversed calendar delete phrasing should route as plan delete",
+    )
+    reversed_all_delete_result = asyncio.run(
+        _handle_plan_delete(
+            {
+                "user_message": reversed_calendar_delete_message,
+                "profile_changes": {},
+            }
+        )
+    )
+    assert_true(reversed_all_delete_result["profile_changes"]["target_scope"] == "all", "reversed calendar delete should use all scope")
+    assert_true(reversed_all_delete_result["profile_changes"]["target_dates"] == [], "reversed calendar delete should not infer today's date")
+    assert_true(reversed_all_delete_result["profile_changes"]["plan_type"] == "all", "reversed calendar delete should delete all plan types")
 
     today_delete_result = asyncio.run(
         _handle_plan_delete(

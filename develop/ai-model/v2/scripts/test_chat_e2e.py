@@ -47,6 +47,7 @@ MSG_RECORD_WEIGHT = "\ub0b4 \uccb4\uc911 72kg\ub85c \uae30\ub85d\ud574\uc918"
 MSG_PLAN_CHECK = "\uc624\ub298 \uc6b4\ub3d9 \uccb4\ud06c\ud588\uc5b4"
 MSG_PLAN_DELETE = "\uc624\ub298 \uc6b4\ub3d9 \ud50c\ub79c \uc0ad\uc81c\ud574\uc918"
 MSG_PLAN_DELETE_ALL = "\ud604\uc7ac \uce98\ub9b0\ub354\uc758 \ubaa8\ub4e0 \uc6b4\ub3d9/\uc2dd\ub2e8 \ub0b4\uc5ed\uc744 \uc0ad\uc81c\ud574\uc918"
+MSG_PLAN_DELETE_ALL_REVERSED = "\ubaa8\ub450 \uc81c\uac70\ud574\uc918 \uce98\ub9b0\ub354 \ub0b4\uc6a9"
 MSG_CARE = "\uc624\ub298 \ub108\ubb34 \uc678\ub85c\uc6cc"
 MSG_SAFETY = "\uc228\uc774 \ub108\ubb34 \ucc28\uace0 \uc5b4\uc9c0\ub7ec\uc6cc"
 
@@ -385,8 +386,8 @@ class FakeRouter:
                 "search_targets": [],
             }
 
-        if any(token in message for token in ("\uc0ad\uc81c", "\uc9c0\uc6cc", "\uc5c6\uc560", "delete", "remove")) and any(
-            token in message for token in ("\ud50c\ub79c", "\uacc4\ud68d", "\uc6b4\ub3d9", "\uc2dd\ub2e8")
+        if any(token in message for token in ("\uc0ad\uc81c", "\uc9c0\uc6cc", "\uc81c\uac70", "\uc5c6\uc560", "\ube44\uc6cc", "\ucd08\uae30\ud654", "delete", "remove", "clear")) and any(
+            token in message for token in ("\ud50c\ub79c", "\uacc4\ud68d", "\uce98\ub9b0\ub354", "\ub0b4\uc5ed", "\ub0b4\uc6a9", "\uc77c\uc815", "\uc6b4\ub3d9", "\uc2dd\ub2e8")
         ):
             return {
                 "intent": INTENT_RECORD,
@@ -775,7 +776,11 @@ async def main() -> None:
             info_debug = info["debug_state"]
             require(info_debug["action_intent"] == "info", "info action_intent mismatch")
             require(info_debug["domain"] == "workout", "info domain mismatch")
-            require("reason" in info["response"].lower(), "info response should explain rationale")
+            info_response_lower = info["response"].lower()
+            require(
+                any(marker in info_response_lower for marker in ("reason", "\uadfc\uac70", "\uc774\uc720")),
+                "info response should explain rationale",
+            )
 
             approval = await run_request(client, flow_user, MSG_APPROVAL, session_id=session_id)
             approval_debug = approval["debug_state"]
@@ -876,6 +881,21 @@ async def main() -> None:
             require(delete_all_payload.get("target_scope") == "all", "plan_delete_all should use full calendar scope")
             require(delete_all_payload.get("target_dates") == [], "plan_delete_all should not send today's date")
             require(fake_was.today_plans[delete_all_user] == [], "plan_delete_all should clear all current plan items")
+
+            reverse_delete_user = f"e2e-delete-all-reverse-{uuid.uuid4().hex[:6]}"
+            reverse_delete_all = await run_request(client, reverse_delete_user, MSG_PLAN_DELETE_ALL_REVERSED)
+            reverse_delete_debug = reverse_delete_all["debug_state"]
+            reverse_delete_payload = next(
+                payload
+                for write_type, user_id, payload in reversed(fake_was.write_log)
+                if write_type == "plan_delete" and user_id == reverse_delete_user
+            )
+            require(reverse_delete_debug["action_intent"] == "record", "reversed calendar delete action_intent mismatch")
+            require(reverse_delete_debug["record_type"] == "plan_delete", "reversed calendar delete record_type mismatch")
+            require(bool(reverse_delete_all.get("plan_sync_applied")), "reversed calendar delete should trigger WAS write")
+            require(reverse_delete_payload.get("target_scope") == "all", "reversed calendar delete should use full calendar scope")
+            require(reverse_delete_payload.get("target_dates") == [], "reversed calendar delete should not send dates")
+            require(fake_was.today_plans[reverse_delete_user] == [], "reversed calendar delete should clear current plan items")
 
             care = await run_request(client, care_user, MSG_CARE)
             care_debug = care["debug_state"]
