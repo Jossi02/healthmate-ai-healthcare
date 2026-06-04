@@ -201,6 +201,16 @@ CASES: list[Case] = [
     Case("create", "create_mixed_workout_diet_plan", "운동이나 식단을 가볍게 잡아줘", "create", "general"),
     Case("create", "create_diet_goal_workout_plan", "다이어트 운동 플랜 작성해줘", "create", "workout"),
 
+    Case("language", "language_workout_week_set", "이번 주 운동 루틴 세팅해줘", "create", "workout"),
+    Case("language", "language_workout_home_no_gym", "헬스장 못 가는데 집에서 할 운동 구성 부탁해", "create", "workout"),
+    Case("language", "language_workout_stretching_care", "오늘 몸 좀 깨우는 스트레칭 루틴 챙겨줘", "create", "workout"),
+    Case("language", "language_diet_rice_week", "밥 뭐 먹을지 일주일치 잡아줘", "create", "diet"),
+    Case("language", "language_diet_meal_setup", "이번 주 끼니 구성 부탁해", "create", "diet"),
+    Case("language", "language_diet_menu_setting", "점심 메뉴 세팅해줘", "create", "diet"),
+    Case("language", "language_care_restart_small_goal", "운동 계속 못 해서 다시 시작하기 무서워. 작은 목표만 같이 정해줘", "care", "workout", "care"),
+    Case("language", "language_care_no_shame_reset", "오늘 무너졌는데 혼내지 말고 다시 잡아줘", "care", "general", "care"),
+    Case("language", "language_care_motivation_support", "계속 실패해서 의욕이 안 나. 다시 시작할 수 있게 응원해줘", "care", "general", "care"),
+
     Case("modify", "modify_active_workout", "그거 좀 덜 빡세게 바꿔줘", "modify", "workout", active_proposal_domain="workout", expected_reference="active_proposal"),
     Case("modify", "modify_active_diet", "방금 식단에서 아침만 바꿔줘", "modify", "diet", active_proposal_domain="diet", expected_reference="active_proposal"),
     Case("modify", "modify_active_workout_safety_realistic", "방금 운동 계획을 무릎 통증과 18분 제한에 맞게 더 안전하고 현실적으로 수정해줘", "modify", "workout", active_proposal_domain="workout", expected_reference="active_proposal"),
@@ -237,6 +247,7 @@ CASES: list[Case] = [
     Case("approval", "approval_short_ack", "응", "approval", "workout", active_proposal_domain="workout"),
     Case("approval", "approval_modified_plan", "방금 수정한 계획 반영해줘", "approval", "workout", active_proposal_domain="workout", active_proposal_write_mode="update", expected_reference="active_proposal"),
     Case("approval", "approval_keep_same", "그대로 해줘", "approval", "diet", active_proposal_domain="diet", expected_reference="active_proposal"),
+    Case("approval", "approval_save_plan_wording", "방금 말한 계획 이대로 저장해줘", "approval", "diet", active_proposal_domain="diet", expected_reference="active_proposal"),
 
     Case("casual", "casual_hello", "안녕", "casual", "general"),
     Case("casual", "casual_self_intro", "네 소개를 해줘", "casual", "general"),

@@ -91,6 +91,10 @@ _PLAN_DOMAIN_KEYWORDS = (
     "식단",
     "식사",
     "메뉴",
+    "밥",
+    "끼니",
+    "음식",
+    "반찬",
     "루틴",
     "플랜",
     "계획",
@@ -119,16 +123,27 @@ _PLAN_REQUEST_KEYWORDS = (
     "플랜",
     "계획",
     "작성",
+    "작성해줘",
     "짜줘",
     "짜 줘",
+    "짜줄래",
+    "짜 줄래",
     "세워줘",
     "세워 줘",
+    "세팅",
+    "셋팅",
     "잡아줘",
     "잡아 줘",
     "잡아달",
+    "정해줘",
+    "정해 줘",
+    "부탁",
+    "챙겨줘",
+    "챙겨 줘",
     "구성",
     "설계",
     "만들어",
+    "만들어줘",
     "추천해줘",
     "정리해줘",
     "제안",
@@ -362,6 +377,14 @@ _CARE_SUPPORT_MARKERS = (
     "스트레스",
     "멘탈",
     "버겁",
+    "무서",
+    "두려",
+    "의욕",
+    "무너",
+    "혼내지",
+    "다시 시작",
+    "작은 목표",
+    "작게",
     "외롭",
     "외로워",
     "실패",
@@ -535,6 +558,9 @@ def make_intent_node(deps: NodeDeps):
                 record_type="plan_delete",
                 modify_target=_infer_plan_delete_target(routing_message or message),
             )
+
+        if _matches_hardcoded_confirmation_approval(message) or _matches_hardcoded_confirmation_approval(routing_message):
+            return _build_result(INTENT_APPROVAL, state, confidence=0.96)
 
         if _looks_like_plan_check_record(message) or _looks_like_plan_check_record(routing_message):
             return _build_result(INTENT_RECORD, state, confidence=0.94, record_type="plan_check", is_today=True)
@@ -1529,7 +1555,22 @@ def _looks_like_emotional_care_request(message: str, routing_message: str | None
     combined = " ".join(candidate.strip().lower() for candidate in (message, routing_message or "") if candidate.strip())
     if not combined:
         return False
-    if _looks_like_plan_request(combined) or _looks_like_modify_request(combined) or _looks_like_plan_check_record(combined):
+    explicit_care_override = any(
+        marker in combined
+        for marker in (
+            "다시 시작",
+            "작은 목표",
+            "혼내지",
+            "의욕",
+            "무서",
+            "무너",
+            "시작할 수",
+        )
+    )
+    if (
+        not explicit_care_override
+        and (_looks_like_plan_request(combined) or _looks_like_modify_request(combined) or _looks_like_plan_check_record(combined))
+    ):
         return False
     if not _looks_like_care_request(combined):
         return False
@@ -1549,6 +1590,13 @@ def _looks_like_emotional_care_request(message: str, routing_message: str | None
         "해낼",
         "위로",
         "응원",
+        "도와",
+        "정해줘",
+        "잡아줘",
+        "다시 시작",
+        "작은 목표",
+        "시작할 수",
+        "혼내지",
     )
     return any(marker in combined for marker in reassurance_markers)
 
@@ -1563,6 +1611,24 @@ def _looks_like_simple_condition_statement(message: str, routing_message: str | 
         return False
     if _looks_like_question_followup(combined) or _looks_like_read_only_info_request(combined):
         return False
+    explicit_care_request_markers = (
+        "응원해",
+        "위로해",
+        "도와",
+        "정해줘",
+        "정해 줘",
+        "잡아줘",
+        "잡아 줘",
+        "같이",
+        "말해줘",
+        "다시 시작",
+        "작은 목표",
+        "시작할 수",
+        "해낼",
+        "혼내지",
+    )
+    if any(marker in combined for marker in explicit_care_request_markers):
+        return False
     emotional_markers = (
         "외로",
         "불안",
@@ -1571,6 +1637,9 @@ def _looks_like_simple_condition_statement(message: str, routing_message: str | 
         "멘탈",
         "스트레스",
         "자신감",
+        "의욕",
+        "무너",
+        "무서",
         "망했",
         "실패",
         "lonely",

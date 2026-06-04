@@ -28,7 +28,12 @@ from app.core.conversation_state import (
 )
 from app.core.draft_contract import normalize_draft_components, render_draft_preview
 from app.core.intents import INTENT_CASUAL, INTENT_INFO, INTENT_MODIFY, INTENT_PLAN, normalize_intent
-from app.core.persona_style import apply_persona_signature, normalize_plan_flow_preview
+from app.core.persona_style import (
+    PERSONA_STYLE_SPECS,
+    apply_persona_signature,
+    normalize_plan_flow_preview,
+    persona_style_guardrails,
+)
 from app.core.profile_constraints import build_profile_constraint_set
 from app.core.was_outbox import (
     enqueue_was_outbox,
@@ -301,6 +306,8 @@ def test_diet_profile_concrete_adaptation() -> None:
 
 def test_plan_request_separation_and_question_copy() -> None:
     assert_true(infer_domain("운동이나 식단을 가볍게 잡아줘") == "general", "mixed workout/diet request should not pick one domain")
+    assert_true(infer_domain("밥 뭐 먹을지 일주일치 잡아줘") == "diet", "rice/meal wording should infer diet domain")
+    assert_true(infer_domain("이번 주 끼니 구성 부탁해") == "diet", "meal-slot wording should infer diet domain")
     assert_true(_is_mixed_plan_type_request("운동이나 식단을 가볍게 잡아줘"), "mixed plan request should be detected")
     assert_true(_is_mixed_plan_type_request("운동 계획과 식단 계획을 같이 짜줘"), "explicit both-domain request should be clarified before creating a plan")
 
@@ -1053,6 +1060,10 @@ def test_simple_condition_statement_routes_casual() -> None:
     assert_true(
         not _looks_like_simple_condition_statement("허리 아픈데 운동 추천해줘"),
         "condition plus workout recommendation should not be treated as plain casual condition",
+    )
+    assert_true(
+        not _looks_like_simple_condition_statement("계속 실패해서 의욕이 안 나. 다시 시작할 수 있게 응원해줘"),
+        "explicit care requests should route to care instead of casual condition ack",
     )
 
 
@@ -2910,6 +2921,82 @@ def test_persona_style_report_flags_plan_shape() -> None:
     assert_true("persona_plan_response_too_many_lines" in codes, "persona style report should flag long plan shape")
 
 
+def test_persona_style_specs_match_product_contract() -> None:
+    expected = {
+        "cheer_sis": {
+            "name": "응원 누나",
+            "speech_level": "존댓말",
+            "relation_role": "누나",
+            "emotional_tone": "밝고 따뜻함",
+            "directive_style": "권유형",
+            "evidence_style": "부담을 낮춰주는 짧은 근거",
+            "sentence_style": ("좋아요", "가요", "충분해요"),
+        },
+        "soft_senior": {
+            "name": "다정 선배",
+            "speech_level": "존댓말",
+            "relation_role": "선배",
+            "emotional_tone": "차분하고 안정적",
+            "directive_style": "안내형",
+            "evidence_style": "무리하지 않아도 된다는 안정 근거",
+            "sentence_style": ("괜찮습니다", "적절합니다", "해도 됩니다"),
+        },
+        "strict_trainer": {
+            "name": "직진 PT쌤",
+            "speech_level": "반말",
+            "relation_role": "PT쌤",
+            "emotional_tone": "단호함",
+            "directive_style": "명령형",
+            "evidence_style": "안전/효율 중심의 짧은 기준",
+            "sentence_style": ("해", "가", "멈춰", "무리는 빼"),
+        },
+        "science_coach": {
+            "name": "분석 코치",
+            "speech_level": "존댓말",
+            "relation_role": "코치",
+            "emotional_tone": "분석적",
+            "directive_style": "판단형",
+            "evidence_style": "선택 기준과 근거 중심",
+            "sentence_style": ("기준은", "근거는", "구성입니다"),
+        },
+        "playful_buddy": {
+            "name": "운동 메이트",
+            "speech_level": "반말",
+            "relation_role": "친구",
+            "emotional_tone": "가볍고 친근함",
+            "directive_style": "동행형",
+            "evidence_style": "부담 낮추는 공감형 이유",
+            "sentence_style": ("가보자", "하자", "괜찮아"),
+        },
+        "daily_manager": {
+            "name": "생활 매니저",
+            "speech_level": "존댓말",
+            "relation_role": "매니저/비서",
+            "emotional_tone": "절제되고 정리됨",
+            "directive_style": "보고형",
+            "evidence_style": "반영 범위와 실행 기준",
+            "sentence_style": ("확인했습니다", "항목입니다", "반영 범위는"),
+        },
+    }
+    assert_true(PERSONA_STYLE_SPECS == expected, "persona style contract should match the product table")
+
+
+def test_persona_guardrails_include_style_contract() -> None:
+    for persona_id, spec in PERSONA_STYLE_SPECS.items():
+        guardrails = persona_style_guardrails(persona_id)
+        for key in (
+            "name",
+            "speech_level",
+            "relation_role",
+            "emotional_tone",
+            "directive_style",
+            "evidence_style",
+        ):
+            assert_true(str(spec[key]) in guardrails, f"{persona_id} guardrails should include {key}")
+        for marker in spec["sentence_style"]:
+            assert_true(marker in guardrails, f"{persona_id} guardrails should include marker {marker}")
+
+
 def test_persona_plan_renderer_uses_distinct_core_and_approval() -> None:
     state = {
         "intent": INTENT_PLAN,
@@ -2935,12 +3022,12 @@ def test_persona_plan_renderer_uses_distinct_core_and_approval() -> None:
         "daily_manager",
     ]
     expected_markers = {
-        "cheer_sis": ("밝게", "충분해요", "잘 맞춰볼게요"),
-        "soft_senior": ("무리 없게", "천천히", "괜찮을까요"),
-        "strict_trainer": ("바로", "간다", "작성할까"),
-        "science_coach": ("기준", "안전성", "지속 가능성"),
-        "playful_buddy": ("같이", "가보자", "부담 낮게"),
-        "daily_manager": ("캘린더", "정리했습니다", "작성할까요"),
+        "cheer_sis": ("좋아요", "가요", "충분해요"),
+        "soft_senior": ("괜찮을까요", "적절합니다", "해도 됩니다"),
+        "strict_trainer": ("가", "무리는 빼", "작성할까"),
+        "science_coach": ("기준은", "근거는", "구성입니다"),
+        "playful_buddy": ("괜찮아", "가보자", "부담 낮게"),
+        "daily_manager": ("확인했습니다", "반영 범위는", "캘린더"),
     }
 
     first_lines: dict[str, str] = {}
@@ -3081,7 +3168,7 @@ def test_persona_signature_styles_plan_flow_without_preview() -> None:
         "strict_trainer": "핵심",
         "science_coach": "기준",
         "playful_buddy": "같이",
-        "daily_manager": "캘린더 반영 기준",
+        "daily_manager": "반영 범위는",
     }
 
     assert_true(len(set(outputs.values())) == len(personas), "plan-flow tails should be distinct without preview")
@@ -3214,6 +3301,8 @@ def main() -> None:
         test_intent_routing_uses_canonical_aliases,
         test_strict_weak_rag_fails_closed,
         test_persona_style_report_flags_plan_shape,
+        test_persona_style_specs_match_product_contract,
+        test_persona_guardrails_include_style_contract,
         test_persona_plan_renderer_uses_distinct_core_and_approval,
         test_persona_signature_adds_distinct_non_plan_tail,
         test_self_intro_routes_as_plain_casual_dialogue,

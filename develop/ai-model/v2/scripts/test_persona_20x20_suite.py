@@ -29,6 +29,7 @@ if str(ROOT) not in sys.path:
 os.environ.setdefault("CHECKPOINT_DB_PATH", str(ROOT / "data" / "persona_20x20_checkpoints.sqlite"))
 
 from app.core import config as app_config  # noqa: E402
+from app.core.persona_style import PERSONA_STYLE_SPECS  # noqa: E402
 from app.core.persona_registry import list_active_personas, resolve_persona  # noqa: E402
 from scripts.test_chat_e2e import FakeRouter, build_test_stack  # noqa: E402
 
@@ -49,12 +50,8 @@ PERSONAS = [
 ]
 
 PERSONA_STYLE_MARKERS = {
-    "cheer_sis": ["좋아요", "잘하고 있어요", "충분해요", "밝게", "맞춰볼게요"],
-    "soft_senior": ["괜찮습니다", "천천히", "부담", "무리 없게"],
-    "strict_trainer": ["핵심", "바로", "오늘은", "군더더기", "확인"],
-    "science_coach": ["근거", "이유", "따라서", "기준", "안전성", "지속 가능성"],
-    "playful_buddy": ["오케이", "가볍게", "같이", "가보자", "부담 낮게"],
-    "daily_manager": ["정리하면", "체크", "계획", "캘린더", "정리했습니다", "확인할 항목", "확인했습니다"],
+    persona_id: [marker for marker in spec["sentence_style"] if len(str(marker)) >= 2]
+    for persona_id, spec in PERSONA_STYLE_SPECS.items()
 }
 
 SAFETY_MARKERS = ["119", "응급실", "전문가", "상담", "중단", "안전"]
@@ -141,17 +138,17 @@ class PersonaContractRouter(FakeRouter):
         body = "\n".join(part for part in body_parts if part)
 
         if persona_id == "cheer_sis":
-            return f"좋아요, 잘하고 있어요. {body}\n오늘은 이 정도만 해도 충분해요."
+            return f"좋아요, 부담 줄여서 가요. {body}\n오늘은 이 정도만 해도 충분해요."
         if persona_id == "soft_senior":
-            return f"괜찮습니다, 천천히 가도 됩니다. {body}\n부담이 커지면 한 단계 낮춰도 됩니다."
+            return f"괜찮습니다. 지금 기준에서는 적절합니다. {body}\n부담이 커지면 한 단계 낮춰도 됩니다."
         if persona_id == "strict_trainer":
-            return f"핵심부터 말할게.\n{body}\n오늘은 바로 이 순서로 가자."
+            return f"핵심부터 해.\n{body}\n바로 가. 무리는 빼. 통증 나면 멈춰."
         if persona_id == "science_coach":
-            return f"근거부터 보면, {body}\n따라서 지금 선택은 이 방향이 가장 합리적입니다."
+            return f"기준은 요청 범위입니다. {body}\n근거는 부담과 지속성입니다. 이 구성입니다."
         if persona_id == "playful_buddy":
-            return f"오케이, 가볍게 같이 가자. {body}\n너무 크게 잡지 말고 한 번만 해보자."
+            return f"오케이, 괜찮아. {body}\n너무 크게 잡지 말고 같이 가보자."
         if persona_id == "daily_manager":
-            return f"정리하면 다음 계획입니다.\n{body}\n체크할 부분은 위 순서대로 확인하면 됩니다."
+            return f"확인했습니다. 반영 범위는 다음 항목입니다.\n{body}\n체크할 부분은 위 순서대로 확인하면 됩니다."
         return body
 
 

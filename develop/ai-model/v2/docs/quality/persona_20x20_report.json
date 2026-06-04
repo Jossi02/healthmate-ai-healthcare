@@ -4,8 +4,8 @@
     "turn_count": 20,
     "case_count": 400,
     "persona_count": 6,
-    "pass_count": 399,
-    "review_count": 1,
+    "pass_count": 400,
+    "review_count": 0,
     "fail_count": 0,
     "overall_average": 1.0,
     "criterion_average": {
@@ -13,7 +13,7 @@
       "persona_resolution": 1.0,
       "persona_style": 1.0,
       "profile_accuracy": 1.0,
-      "routing": 0.998,
+      "routing": 1.0,
       "safety": 1.0,
       "support_mode": 1.0
     },
@@ -21,7 +21,7 @@
       "cheer_sis": 1.0,
       "soft_senior": 1.0,
       "strict_trainer": 1.0,
-      "science_coach": 0.998,
+      "science_coach": 1.0,
       "playful_buddy": 1.0,
       "daily_manager": 1.0
     },
@@ -165,7 +165,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜을 밝게 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 18분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "오늘 운동 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 18분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -191,7 +191,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 18분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 18분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -243,7 +243,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜을 밝게 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 Breakfast: 무가당 콩무가당 콩요거트 and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 작성할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "오늘 식단 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 Breakfast: 무가당 콩무가당 콩요거트 and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -269,7 +269,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 Breakfast: 무가당 콩무가당 콩무가당 콩무가당 콩요거트 and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 Breakfast: 무가당 콩무가당 콩무가당 콩무가당 콩요거트 and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -452,7 +452,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 18분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 18분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -557,7 +557,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 밝게 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 18분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "운동 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 18분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -583,7 +583,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 Breakfast: 무가당 콩무가당 콩요거트 and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 Breakfast: 무가당 콩무가당 콩요거트 and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -687,7 +687,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜을 무리 없게 제안드립니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 작성해도 괜찮을까요?",
+      "response_excerpt": "오늘 운동 플랜을 무리 없게 제안드립니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 작성해도 괜찮을까요?",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -713,7 +713,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 무리 없게 조정했습니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 조정할까요?",
+      "response_excerpt": "운동 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 조정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -739,7 +739,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n괜찮습니다. 무리 없게 천천히 반영하겠습니다.",
+      "response_excerpt": "운동 수정안 반영할게.\n괜찮습니다. 지금 기준에서는 적절합니다. 무리 없게 반영하겠습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -765,7 +765,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜을 무리 없게 제안드립니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 작성해도 괜찮을까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리하겠습니다.",
+      "response_excerpt": "오늘 식단 플랜을 무리 없게 제안드립니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 작성해도 괜찮을까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -791,7 +791,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 조정할까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리하겠습니다.",
+      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 조정할까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -817,7 +817,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(38세, 성별 female, 체중 69kg, 운동 수준 beginner, 목표 consistency, 가능 시간 10분, 운동 빈도 주 2회, 생활패턴 caregiver, fragmented slee...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 추가 맥락(caregiver, fragmented sleep, consistency)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(38세, 성별 female, 체중 69kg, 운동 수준 beginner, 목표 consistency, 가능 시간 10분, 운동 빈도 주 2회, 생활패턴 caregiver, fragmented slee...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 추가 맥락(caregiver, fragmented sleep, consistency)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "info",
         "domain": "diet",
@@ -896,7 +896,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -922,7 +922,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -948,7 +948,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "통증 부위가 있으면 통증을 키우는 고충격 동작과 깊은 가동범위 동작은 피하는 편이 안전해요.\n\n근거:\n- 통증이 있는 부위에 반복 충격이나 비틀림이 들어가면 회복이 늦어질 수 있어요.\n- 대신 통증 없는 범위의 걷기, 가벼운 근력, 안정화 운동부터 확인하는 게 안전합니다.\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 통증이 생기면 즉시 중단하고, 지속되거나 붓기/불안정감이 있으면 전문가 상담을 권장해요.\n\n주의:\n- 추가 맥락(caregiver, fragmented sleep, consistency)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "통증 부위가 있으면 통증을 키우는 고충격 동작과 깊은 가동범위 동작은 피하는 편이 안전해요.\n\n근거:\n- 통증이 있는 부위에 반복 충격이나 비틀림이 들어가면 회복이 늦어질 수 있어요.\n- 대신 통증 없는 범위의 걷기, 가벼운 근력, 안정화 운동부터 확인하는 게 안전합니다.\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 통증이 생기면 즉시 중단하고, 지속되거나 붓기/불안정감이 있으면 전문가 상담을 권장해요.\n\n주의:\n- 추가 맥락(caregiver, fragmented sleep, consistency)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -974,7 +974,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 무리 없게 조정했습니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 조정할까요?",
+      "response_excerpt": "운동 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 조정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -1026,7 +1026,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리하겠습니다.",
+      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -1079,7 +1079,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 무리 없게 제안드립니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 작성해도 괜찮을까요?",
+      "response_excerpt": "운동 플랜을 무리 없게 제안드립니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 작성해도 괜찮을까요?",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -1105,7 +1105,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 조정할까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리하겠습니다.",
+      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 조정할까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -1131,7 +1131,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n괜찮습니다. 무리 없게 천천히 반영하겠습니다.",
+      "response_excerpt": "식단 수정안 반영할게.\n괜찮습니다. 지금 기준에서는 적절합니다. 무리 없게 반영하겠습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -1157,7 +1157,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -1183,7 +1183,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(38세, 성별 female, 체중 69kg, 운동 수준 beginner, 목표 consistency, 가능 시간 10분, 운동 빈도 주 2회, 생활패턴 caregiver, fragmented slee...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 추가 맥락(caregiver, fragmented sleep, consistency)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(38세, 성별 female, 체중 69kg, 운동 수준 beginner, 목표 consistency, 가능 시간 10분, 운동 빈도 주 2회, 생활패턴 caregiver, fragmented slee...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 추가 맥락(caregiver, fragmented sleep, consistency)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -1209,7 +1209,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜.\n바로 이대로 가.\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 간다.\n작성할까?",
+      "response_excerpt": "오늘 운동 플랜.\n안전 기준만 보고 이대로 가.\n무리는 빼.\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가.\n작성할까?",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -1235,7 +1235,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜.\n군더더기 빼고 다시 고쳤어.\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 간다.\n작성할까?",
+      "response_excerpt": "운동 플랜.\n군더더기 빼고 다시 고쳤어.\n무리는 빼.\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가.\n작성할까?",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -1261,7 +1261,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n확인. 이대로 간다. 바로 처리하자.",
+      "response_excerpt": "운동 수정안 반영할게.\n확인. 이대로 가. 무리는 빼고 바로 처리하자.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -1287,7 +1287,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜.\n바로 이대로 가.\n- 2026-06-04 Breakfast: Greek yogurt and fruit + 두부\n- 2026-06-04 Dinner: Chicken breast and vegetables\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 간다.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "오늘 식단 플랜.\n안전 기준만 보고 이대로 가.\n무리는 빼.\n- 2026-06-04 Breakfast: Greek yogurt and fruit + 두부\n- 2026-06-04 Dinner: Chicken breast and vegetables\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -1313,7 +1313,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n- 2026-06-04 Breakfast: Greek yogurt and fruit + 두부\n- 2026-06-04 Dinner: Chicken breast and vegetables\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 간다.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n무리는 빼.\n- 2026-06-04 Breakfast: Greek yogurt and fruit + 두부\n- 2026-06-04 Dinner: Chicken breast and vegetables\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -1339,7 +1339,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(31세, 성별 male, 체중 76kg, 운동 수준 advanced, 목표 muscle_gain, 가능 시간 50분, 운동 빈도 주 4회, 생활패턴 shift worker, 추가 맥락 shift wo...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n- 추가 맥락(shift worker, muscle_gain)을 반영해 무리한 방식은 피하세요.\n핵심만 간다. 군더더기 빼고 바로 실행 범위로 잡자.",
+      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(31세, 성별 male, 체중 76kg, 운동 수준 advanced, 목표 muscle_gain, 가능 시간 50분, 운동 빈도 주 4회, 생활패턴 shift worker, 추가 맥락 shift wo...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n- 추가 맥락(shift worker, muscle_gain)을 반영해 무리한 방식은 피하세요.\n핵심만 간다. 군더더기 빼고 바로 실행해. 무리는 빼.",
       "debug": {
         "action_intent": "info",
         "domain": "diet",
@@ -1418,7 +1418,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n핵심만 간다. 군더더기 빼고 바로 실행 범위로 잡자.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n핵심만 간다. 군더더기 빼고 바로 실행해. 무리는 빼.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -1444,7 +1444,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n핵심만 간다. 군더더기 빼고 바로 실행 범위로 잡자.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n핵심만 간다. 군더더기 빼고 바로 실행해. 무리는 빼.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -1496,7 +1496,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜.\n군더더기 빼고 다시 고쳤어.\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 간다.\n작성할까?",
+      "response_excerpt": "운동 플랜.\n군더더기 빼고 다시 고쳤어.\n무리는 빼.\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가.\n작성할까?",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -1548,7 +1548,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -1601,7 +1601,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜.\n바로 이대로 가.\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 간다.\n작성할까?",
+      "response_excerpt": "운동 플랜.\n안전 기준만 보고 이대로 가.\n무리는 빼.\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가.\n작성할까?",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -1627,7 +1627,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n- 2026-06-04 Breakfast: Greek yogurt and fruit + 두부\n- 2026-06-04 Dinner: Chicken breast and vegetables\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 간다.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n무리는 빼.\n- 2026-06-04 Breakfast: Greek yogurt and fruit + 두부\n- 2026-06-04 Dinner: Chicken breast and vegetables\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -1653,7 +1653,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n확인. 이대로 간다. 바로 처리하자.",
+      "response_excerpt": "식단 수정안 반영할게.\n확인. 이대로 가. 무리는 빼고 바로 처리하자.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -1679,7 +1679,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n핵심만 간다. 군더더기 빼고 바로 실행 범위로 잡자.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n핵심만 간다. 군더더기 빼고 바로 실행해. 무리는 빼.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -1705,7 +1705,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(31세, 성별 male, 체중 76kg, 운동 수준 advanced, 목표 muscle_gain, 가능 시간 50분, 운동 빈도 주 4회, 생활패턴 shift worker, 추가 맥락 shift wo...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n- 추가 맥락(shift worker, muscle_gain)을 반영해 무리한 방식은 피하세요.\n핵심만 간다. 군더더기 빼고 바로 실행 범위로 잡자.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(31세, 성별 male, 체중 76kg, 운동 수준 advanced, 목표 muscle_gain, 가능 시간 50분, 운동 빈도 주 4회, 생활패턴 shift worker, 추가 맥락 shift wo...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n- 추가 맥락(shift worker, muscle_gain)을 반영해 무리한 방식은 피하세요.\n핵심만 간다. 군더더기 빼고 바로 실행해. 무리는 빼.",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -1731,7 +1731,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜입니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "오늘 운동 플랜 구성입니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -1757,7 +1757,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 수정할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "운동 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 수정할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -1783,7 +1783,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n확인했습니다. 선택 기준에 맞춰 안전성과 지속 가능성을 우선해 반영합니다.",
+      "response_excerpt": "운동 수정안 반영할게.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -1809,7 +1809,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜입니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 Breakfast: Greek yogurt and 블루베리\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 작성할까요?\n기준은 일정과 부담입니다.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "오늘 식단 플랜 구성입니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 Breakfast: Greek yogurt and 블루베리\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 작성할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -1835,7 +1835,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 Breakfast: Greek yogurt and 블루베리\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 수정할까요?\n기준은 일정과 부담입니다.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 Breakfast: Greek yogurt and 블루베리\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 수정할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -1940,7 +1940,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n선택 기준은 안전성과 지속 가능성입니다. 근거는 부담을 낮추는 쪽입니다.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -2018,7 +2018,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 수정할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "운동 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 수정할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -2070,7 +2070,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -2123,7 +2123,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜입니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "운동 플랜 구성입니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -2149,7 +2149,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 Breakfast: Greek yogurt and 블루베리\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 수정할까요?\n기준은 일정과 부담입니다.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 Breakfast: Greek yogurt and 블루베리\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 수정할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -2175,7 +2175,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n확인했습니다. 선택 기준에 맞춰 안전성과 지속 가능성을 우선해 반영합니다.",
+      "response_excerpt": "식단 수정안 반영할게.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -2253,7 +2253,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜 잡아봤어.\n딱 이 정도로 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가볼까?\n부담 낮게 가자.",
+      "response_excerpt": "오늘 운동 플랜 잡아봤어.\n괜찮아, 딱 이 정도로 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -2279,7 +2279,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜 다시 잡았어.\n부담 낮게 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가볼까?\n부담 낮게 가자.",
+      "response_excerpt": "운동 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -2305,7 +2305,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n오케이, 이대로 같이 가보자.",
+      "response_excerpt": "운동 수정안 반영할게.\n오케이, 괜찮아. 이대로 같이 가보자.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -2331,7 +2331,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜 잡아봤어.\n딱 이 정도로 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가볼까?\n부담 낮게 가자.\n오케이, 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "오늘 식단 플랜 잡아봤어.\n괜찮아, 딱 이 정도로 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -2357,7 +2357,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜 다시 잡았어.\n부담 낮게 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가볼까?\n부담 낮게 가자.\n오케이, 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "식단 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -2383,7 +2383,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(24세, 성별 male, 체중 72kg, 운동 수준 intermediate, 목표 endurance, 가능 시간 35분, 운동 빈도 주 4회, 생활패턴 graduate student, 추가 맥락 gr...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n- 추가 맥락(graduate student, endurance)을 반영해 무리한 방식은 피하세요.\n오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(24세, 성별 male, 체중 72kg, 운동 수준 intermediate, 목표 endurance, 가능 시간 35분, 운동 빈도 주 4회, 생활패턴 graduate student, 추가 맥락 gr...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n- 추가 맥락(graduate student, endurance)을 반영해 무리한 방식은 피하세요.\n오케이, 괜찮아. 부담 낮게 같이 가보자.",
       "debug": {
         "action_intent": "info",
         "domain": "diet",
@@ -2462,7 +2462,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n오케이, 괜찮아. 부담 낮게 같이 가보자.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -2488,7 +2488,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n오케이, 괜찮아. 부담 낮게 같이 가보자.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -2514,7 +2514,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "발목가 있으면 통증을 키우는 고충격 동작과 깊은 가동범위 동작은 피하는 편이 안전해요.\n\n근거:\n- 통증이 있는 부위에 반복 충격이나 비틀림이 들어가면 회복이 늦어질 수 있어요.\n- 대신 통증 없는 범위의 걷기, 가벼운 근력, 안정화 운동부터 확인하는 게 안전합니다.\n\n근거 요약: 사용자 제약(발목)을 기준으로 피해야 할 운동을 좁혔어요.\n\n다음 행동: 통증이 생기면 즉시 중단하고, 지속되거나 붓기/불안정감이 있으면 전문가 상담을 권장해요.\n\n주의:\n- 발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n- 추가 맥락(graduate student, endurance)을 반영해 무리한 방식은 피하세요.\n오케이, 가볍게 같이 가보자.",
+      "response_excerpt": "발목가 있으면 통증을 키우는 고충격 동작과 깊은 가동범위 동작은 피하는 편이 안전해요.\n\n근거:\n- 통증이 있는 부위에 반복 충격이나 비틀림이 들어가면 회복이 늦어질 수 있어요.\n- 대신 통증 없는 범위의 걷기, 가벼운 근력, 안정화 운동부터 확인하는 게 안전합니다.\n\n근거 요약: 사용자 제약(발목)을 기준으로 피해야 할 운동을 좁혔어요.\n\n다음 행동: 통증이 생기면 즉시 중단하고, 지속되거나 붓기/불안정감이 있으면 전문가 상담을 권장해요.\n\n주의:\n- 발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n- 추가 맥락(graduate student, endurance)을 반영해 무리한 방식은 피하세요.\n오케이, 괜찮아. 부담 낮게 ",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -2540,7 +2540,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜 다시 잡았어.\n부담 낮게 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가볼까?\n부담 낮게 가자.",
+      "response_excerpt": "운동 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -2592,7 +2592,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n오케이, 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n오케이, 괜찮아. 운동이랑 식단은 나눠서 같이 다시 잡자.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -2645,7 +2645,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜 잡아봤어.\n딱 이 정도로 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가볼까?\n부담 낮게 가자.",
+      "response_excerpt": "운동 플랜 잡아봤어.\n괜찮아, 딱 이 정도로 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -2671,7 +2671,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜 다시 잡았어.\n부담 낮게 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가볼까?\n부담 낮게 가자.\n오케이, 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "식단 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -2697,7 +2697,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n오케이, 이대로 같이 가보자.",
+      "response_excerpt": "식단 수정안 반영할게.\n오케이, 괜찮아. 이대로 같이 가보자.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -2723,7 +2723,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n오케이, 괜찮아. 부담 낮게 같이 가보자.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -2749,7 +2749,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(24세, 성별 male, 체중 72kg, 운동 수준 intermediate, 목표 endurance, 가능 시간 35분, 운동 빈도 주 4회, 생활패턴 graduate student, 추가 맥락 gr...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n- 추가 맥락(graduate student, endurance)을 반영해 무리한 방식은 피하세요.\n오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(24세, 성별 male, 체중 72kg, 운동 수준 intermediate, 목표 endurance, 가능 시간 35분, 운동 빈도 주 4회, 생활패턴 graduate student, 추가 맥락 gr...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n- 추가 맥락(graduate student, endurance)을 반영해 무리한 방식은 피하세요.\n오케이, 괜찮아. 부담 낮게 같이 가보자.",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -2775,7 +2775,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜을 캘린더 기준으로 정리했습니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 3세트, Bridge 3세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 18분\n- 2026-06-04 하체 루틴: 스쿼트 3세트, 글루트 브릿지 3세트\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n이 운동 플랜으로 캘린더에 작성할까요?",
+      "response_excerpt": "확인했습니다.\n오늘 운동 플랜을 캘린더 기준으로 정리했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 3세트, Bridge 3세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 18분\n- 2026-06-04 하체 루틴: 스쿼트 3세트, 글루트 브릿지 3세트\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n반영 범위는 이 운동 플랜입니다.\n캘린더에 작성할까요?",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -2801,7 +2801,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 캘린더 기준으로 수정했습니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 18분\n- 2026-06-04 하체 루틴: 스쿼트 3세트, 글루트 브릿지 3세트\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n이 운동 플랜으로 캘린더에 수정할까요?",
+      "response_excerpt": "확인했습니다.\n운동 플랜을 캘린더 기준으로 수정했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 18분\n- 2026-06-04 하체 루틴: 스쿼트 3세트, 글루트 브릿지 3세트\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n반영 범위는 이 운동 플랜입니다.\n캘린더에 수정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -2827,7 +2827,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n확인했습니다. 반영 기준을 정리했고, 캘린더 흐름에 맞춰 처리합니다.",
+      "response_excerpt": "운동 수정안 반영할게.\n확인했습니다. 반영 범위는 정리했고, 캘린더 흐름에 맞춰 처리합니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -2853,7 +2853,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜을 캘린더 기준으로 정리했습니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 캘린더에 작성할까요?\n확인했습니다. 캘린더 반영 기준에 맞게 항목을 분리해 다시 정리하겠습니다.",
+      "response_excerpt": "확인했습니다.\n오늘 식단 플랜을 캘린더 기준으로 정리했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n반영 범위는 이 식단 플랜입니다.\n캘린더에 작성할까요?",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -2879,7 +2879,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 캘린더 기준으로 수정했습니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 캘린더에 수정할까요?\n확인했습니다. 캘린더 반영 기준에 맞게 항목을 분리해 다시 정리하겠습니다.",
+      "response_excerpt": "확인했습니다.\n식단 플랜을 캘린더 기준으로 수정했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n반영 범위는 이 식단 플랜입니다.\n캘린더에 수정할까요?\n확인했습니다. 반영 범위는 캘린더에 들어갈 항목입니다. 항목별로 다시 정리하겠습니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -2905,7 +2905,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(42세, 성별 female, 체중 66kg, 운동 수준 intermediate, 목표 health, 가능 시간 30분, 운동 빈도 주 4회, 생활패턴 busy office worker, 추가 맥락 b...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 알레르기/식이 제약(갑각류, 땅콩)은 제외하고 안전한 대체 식품으로 바꾸세요.\n- 추가 맥락(busy office worker, health)을 반영해 무리한 방식은 피하세요.",
+      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(42세, 성별 female, 체중 66kg, 운동 수준 intermediate, 목표 health, 가능 시간 30분, 운동 빈도 주 4회, 생활패턴 busy office worker, 추가 맥락 b...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 알레르기/식이 제약(갑각류, 땅콩)은 제외하고 안전한 대체 식품으로 바꾸세요.\n- 추가 맥락(busy office worker, health)을 반영해 무리한 방식은 피하세요.\n확인했습니다. 반영 범위는 이 ",
       "debug": {
         "action_intent": "info",
         "domain": "diet",
@@ -2984,7 +2984,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n확인했습니다. 반영 범위는 이 항목입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -3010,7 +3010,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n확인했습니다. 정리할 항목은 이 정도입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n확인했습니다. 반영 범위는 이 항목입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -3036,7 +3036,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "갑각류, 땅콩 제약이 있으면 해당 재료는 제외하고 안전한 대체 식품으로 구성하는 편이 좋아요.\n\n근거:\n- 알레르기나 식이 제약은 소량 노출도 문제가 될 수 있어 계획에서 명확히 빼는 게 안전합니다.\n- 단백질, 칼슘, 지방 같은 영양 목표는 다른 식품으로 대체할 수 있어요.\n\n근거 요약: 사용자 제약(갑각류, 땅콩)을 기준으로 피해야 할 운동을 좁혔어요.\n\n다음 행동: 식품 라벨을 확인하고, 반응 이력이 있으면 전문가 상담을 우선하세요.\n\n주의:\n- 추가 맥락(busy office worker, health)을 반영해 무리한 방식은 피하세요.\n확인했습니다. 정리할 항목은 이 정도입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
+      "response_excerpt": "갑각류, 땅콩 제약이 있으면 해당 재료는 제외하고 안전한 대체 식품으로 구성하는 편이 좋아요.\n\n근거:\n- 알레르기나 식이 제약은 소량 노출도 문제가 될 수 있어 계획에서 명확히 빼는 게 안전합니다.\n- 단백질, 칼슘, 지방 같은 영양 목표는 다른 식품으로 대체할 수 있어요.\n\n근거 요약: 사용자 제약(갑각류, 땅콩)을 기준으로 피해야 할 운동을 좁혔어요.\n\n다음 행동: 식품 라벨을 확인하고, 반응 이력이 있으면 전문가 상담을 우선하세요.\n\n주의:\n- 추가 맥락(busy office worker, health)을 반영해 무리한 방식은 피하세요.\n확인했습니다. 반영 범위는 이 항목입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -3062,7 +3062,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 캘린더 기준으로 수정했습니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 3세트, Bridge 3세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 18분\n- 2026-06-04 하체 루틴: 스쿼트 3세트, 글루트 브릿지 3세트\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n이 운동 플랜으로 캘린더에 수정할까요?",
+      "response_excerpt": "확인했습니다.\n운동 플랜을 캘린더 기준으로 수정했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 3세트, Bridge 3세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 18분\n- 2026-06-04 하체 루틴: 스쿼트 3세트, 글루트 브릿지 3세트\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n반영 범위는 이 운동 플랜입니다.\n캘린더에 수정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -3114,7 +3114,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필 제약과 충돌할 수 있는 항목이 있어서 이 플랜은 그대로 진행하지 않을게요.\n운동/식단 종류와 꼭 피해야 할 조건을 한 번만 더 알려주면 안전하게 다시 작성할게요.\n확인했습니다. 캘린더 반영 기준에 맞게 항목을 분리해 다시 정리하겠습니다.",
+      "response_excerpt": "프로필 제약과 충돌할 수 있는 항목이 있어서 이 플랜은 그대로 진행하지 않을게요.\n운동/식단 종류와 꼭 피해야 할 조건을 한 번만 더 알려주면 안전하게 다시 작성할게요.\n확인했습니다. 반영 범위는 캘린더에 들어갈 항목입니다. 항목별로 다시 정리하겠습니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -3167,7 +3167,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 캘린더 기준으로 정리했습니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 3세트, Bridge 3세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 18분\n- 2026-06-04 하체 루틴: 스쿼트 3세트, 글루트 브릿지 3세트\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n이 운동 플랜으로 캘린더에 작성할까요?",
+      "response_excerpt": "확인했습니다.\n운동 플랜을 캘린더 기준으로 정리했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 3세트, Bridge 3세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 18분\n- 2026-06-04 하체 루틴: 스쿼트 3세트, 글루트 브릿지 3세트\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n반영 범위는 이 운동 플랜입니다.\n캘린더에 작성할까요?",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -3193,7 +3193,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 캘린더 기준으로 수정했습니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 캘린더에 수정할까요?\n확인했습니다. 캘린더 반영 기준에 맞게 항목을 분리해 다시 정리하겠습니다.",
+      "response_excerpt": "확인했습니다.\n식단 플랜을 캘린더 기준으로 수정했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n반영 범위는 이 식단 플랜입니다.\n캘린더에 수정할까요?\n확인했습니다. 반영 범위는 캘린더에 들어갈 항목입니다. 항목별로 다시 정리하겠습니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -3219,7 +3219,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n확인했습니다. 반영 기준을 정리했고, 캘린더 흐름에 맞춰 처리합니다.",
+      "response_excerpt": "식단 수정안 반영할게.\n확인했습니다. 반영 범위는 정리했고, 캘린더 흐름에 맞춰 처리합니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -3245,7 +3245,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n확인했습니다. 정리할 항목은 이 정도입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n확인했습니다. 반영 범위는 이 항목입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -3271,7 +3271,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(42세, 성별 female, 체중 66kg, 운동 수준 intermediate, 목표 health, 가능 시간 30분, 운동 빈도 주 4회, 생활패턴 busy office worker, 추가 맥락 b...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 알레르기/식이 제약(갑각류, 땅콩)은 제외하고 안전한 대체 식품으로 바꾸세요.\n- 추가 맥락(busy office worker, health)을 반영해 무리한 방식은 피하세요.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(42세, 성별 female, 체중 66kg, 운동 수준 intermediate, 목표 health, 가능 시간 30분, 운동 빈도 주 4회, 생활패턴 busy office worker, 추가 맥락 b...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 알레르기/식이 제약(갑각류, 땅콩)은 제외하고 안전한 대체 식품으로 바꾸세요.\n- 추가 맥락(busy office worker, health)을 반영해 무리한 방식은 피하세요.\n확인했습니다. 반영 범위는 이 항",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -3297,7 +3297,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜을 밝게 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "오늘 운동 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -3323,7 +3323,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -3375,7 +3375,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜을 밝게 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 작성할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "오늘 식단 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -3401,7 +3401,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -3584,7 +3584,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -3689,7 +3689,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 밝게 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "운동 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -3715,7 +3715,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -3819,7 +3819,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜을 무리 없게 제안드립니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성해도 괜찮을까요?",
+      "response_excerpt": "오늘 운동 플랜을 무리 없게 제안드립니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성해도 괜찮을까요?",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -3845,7 +3845,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 무리 없게 조정했습니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 조정할까요?",
+      "response_excerpt": "운동 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 조정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -3871,7 +3871,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n괜찮습니다. 무리 없게 천천히 반영하겠습니다.",
+      "response_excerpt": "운동 수정안 반영할게.\n괜찮습니다. 지금 기준에서는 적절합니다. 무리 없게 반영하겠습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -3897,7 +3897,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜을 무리 없게 제안드립니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 작성해도 괜찮을까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리하겠습니다.",
+      "response_excerpt": "오늘 식단 플랜을 무리 없게 제안드립니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 작성해도 괜찮을까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -3923,7 +3923,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 조정할까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리하겠습니다.",
+      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 조정할까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -3949,7 +3949,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(17세, 성별 female, 체중 58kg, 운동 수준 beginner, 목표 healthy_habits, 가능 시간 25분, 운동 빈도 주 2회, 생활패턴 exam period, 추가 맥락 exam...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 추가 맥락(exam period, healthy_habits)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(17세, 성별 female, 체중 58kg, 운동 수준 beginner, 목표 healthy_habits, 가능 시간 25분, 운동 빈도 주 2회, 생활패턴 exam period, 추가 맥락 exam...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 추가 맥락(exam period, healthy_habits)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "info",
         "domain": "diet",
@@ -4028,7 +4028,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -4054,7 +4054,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -4080,7 +4080,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "통증 부위가 있으면 통증을 키우는 고충격 동작과 깊은 가동범위 동작은 피하는 편이 안전해요.\n\n근거:\n- 통증이 있는 부위에 반복 충격이나 비틀림이 들어가면 회복이 늦어질 수 있어요.\n- 대신 통증 없는 범위의 걷기, 가벼운 근력, 안정화 운동부터 확인하는 게 안전합니다.\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 통증이 생기면 즉시 중단하고, 지속되거나 붓기/불안정감이 있으면 전문가 상담을 권장해요.\n\n주의:\n- 추가 맥락(exam period, healthy_habits)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "통증 부위가 있으면 통증을 키우는 고충격 동작과 깊은 가동범위 동작은 피하는 편이 안전해요.\n\n근거:\n- 통증이 있는 부위에 반복 충격이나 비틀림이 들어가면 회복이 늦어질 수 있어요.\n- 대신 통증 없는 범위의 걷기, 가벼운 근력, 안정화 운동부터 확인하는 게 안전합니다.\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 통증이 생기면 즉시 중단하고, 지속되거나 붓기/불안정감이 있으면 전문가 상담을 권장해요.\n\n주의:\n- 추가 맥락(exam period, healthy_habits)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -4106,7 +4106,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 무리 없게 조정했습니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 조정할까요?",
+      "response_excerpt": "운동 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 조정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -4158,7 +4158,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리하겠습니다.",
+      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -4211,7 +4211,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 무리 없게 제안드립니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성해도 괜찮을까요?",
+      "response_excerpt": "운동 플랜을 무리 없게 제안드립니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성해도 괜찮을까요?",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -4237,7 +4237,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 조정할까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리하겠습니다.",
+      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 조정할까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -4263,7 +4263,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n괜찮습니다. 무리 없게 천천히 반영하겠습니다.",
+      "response_excerpt": "식단 수정안 반영할게.\n괜찮습니다. 지금 기준에서는 적절합니다. 무리 없게 반영하겠습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -4289,7 +4289,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -4315,7 +4315,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(17세, 성별 female, 체중 58kg, 운동 수준 beginner, 목표 healthy_habits, 가능 시간 25분, 운동 빈도 주 2회, 생활패턴 exam period, 추가 맥락 exam...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 추가 맥락(exam period, healthy_habits)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(17세, 성별 female, 체중 58kg, 운동 수준 beginner, 목표 healthy_habits, 가능 시간 25분, 운동 빈도 주 2회, 생활패턴 exam period, 추가 맥락 exam...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 추가 맥락(exam period, healthy_habits)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -4341,7 +4341,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -4367,7 +4367,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -4393,7 +4393,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "지금은 승인 대기 중인 계획이 없어요.\n다음 행동: 먼저 계획을 제안받은 뒤 승인 요청을 해주세요.\n확인. 이대로 간다. 바로 처리하자.",
+      "response_excerpt": "지금은 승인 대기 중인 계획이 없어요.\n다음 행동: 먼저 계획을 제안받은 뒤 승인 요청을 해주세요.\n확인. 이대로 가. 무리는 빼고 바로 처리하자.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -4419,7 +4419,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜.\n바로 이대로 가.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 간다.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "오늘 식단 플랜.\n안전 기준만 보고 이대로 가.\n무리는 빼.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -4445,7 +4445,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 간다.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n무리는 빼.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -4550,7 +4550,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n핵심만 간다. 군더더기 빼고 바로 실행 범위로 잡자.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n핵심만 간다. 군더더기 빼고 바로 실행해. 무리는 빼.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -4576,7 +4576,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n핵심만 간다. 군더더기 빼고 바로 실행 범위로 잡자.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n핵심만 간다. 군더더기 빼고 바로 실행해. 무리는 빼.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -4628,7 +4628,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -4680,7 +4680,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 간다.\n작성할까?",
+      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n무리는 빼.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -4707,7 +4707,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜.\n바로 이대로 가.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 간다.\n작성할까?",
+      "response_excerpt": "오늘 식단 플랜.\n안전 기준만 보고 이대로 가.\n무리는 빼.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -4733,7 +4733,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -4759,7 +4759,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 간다.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n무리는 빼.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -4785,7 +4785,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n확인. 이대로 간다. 바로 처리하자.",
+      "response_excerpt": "식단 수정안 반영할게.\n확인. 이대로 가. 무리는 빼고 바로 처리하자.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -4811,7 +4811,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n핵심만 간다. 군더더기 빼고 바로 실행 범위로 잡자.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n핵심만 간다. 군더더기 빼고 바로 실행해. 무리는 빼.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -4863,7 +4863,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -4889,7 +4889,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -4915,7 +4915,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "지금은 승인 대기 중인 계획이 없어요.\n다음 행동: 먼저 계획을 제안받은 뒤 승인 요청을 해주세요.\n확인했습니다. 선택 기준에 맞춰 안전성과 지속 가능성을 우선해 반영합니다.",
+      "response_excerpt": "지금은 승인 대기 중인 계획이 없어요.\n다음 행동: 먼저 계획을 제안받은 뒤 승인 요청을 해주세요.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -4941,7 +4941,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -4967,7 +4967,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -5072,7 +5072,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n선택 기준은 안전성과 지속 가능성입니다. 근거는 부담을 낮추는 쪽입니다.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -5150,7 +5150,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -5202,7 +5202,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -5255,7 +5255,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -5281,7 +5281,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "프로필 제약이나 전문 근거 확인이 필요한 요청이라 지금 결과는 확정하지 않을게요. 근거를 다시 확인한 뒤 플랜을 작성해야 해요.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -5296,22 +5296,20 @@
       "turn_id": "t18",
       "persona": "science_coach",
       "message": "방금 말한 계획 이대로 저장해줘",
-      "grade": "review",
-      "overall": 0.833,
+      "grade": "pass",
+      "overall": 1.0,
       "scores": {
-        "routing": 0.0,
+        "routing": 1.0,
         "domain": 1.0,
         "persona_resolution": 1.0,
         "persona_style": 1.0,
         "safety": 1.0,
         "profile_accuracy": 1.0
       },
-      "issues": [
-        "action_intent expected approval, got record"
-      ],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?",
+      "issues": [],
+      "response_excerpt": "지금은 승인 대기 중인 계획이 없어요.\n다음 행동: 먼저 계획을 제안받은 뒤 승인 요청을 해주세요.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
       "debug": {
-        "action_intent": "record",
+        "action_intent": "approval",
         "domain": "diet",
         "support_mode": "normal",
         "resolved_persona_id": "science_coach",
@@ -5387,7 +5385,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜 잡아봤어.\n딱 이 정도로 같이 가보자.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가볼까?\n부담 낮게 가자.",
+      "response_excerpt": "오늘 운동 플랜 잡아봤어.\n괜찮아, 딱 이 정도로 같이 가보자.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -5413,7 +5411,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜 다시 잡았어.\n부담 낮게 같이 가보자.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가볼까?\n부담 낮게 가자.",
+      "response_excerpt": "운동 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -5439,7 +5437,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n오케이, 이대로 같이 가보자.",
+      "response_excerpt": "운동 수정안 반영할게.\n오케이, 괜찮아. 이대로 같이 가보자.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -5465,7 +5463,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜 잡아봤어.\n딱 이 정도로 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가볼까?\n부담 낮게 가자.\n오케이, 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "오늘 식단 플랜 잡아봤어.\n괜찮아, 딱 이 정도로 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -5491,7 +5489,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜 다시 잡았어.\n부담 낮게 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가볼까?\n부담 낮게 가자.\n오케이, 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "식단 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -5596,7 +5594,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n오케이, 괜찮아. 부담 낮게 같이 가보자.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -5622,7 +5620,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n오케이, 괜찮아. 부담 낮게 같이 가보자.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -5674,7 +5672,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜 다시 잡았어.\n부담 낮게 같이 가보자.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가볼까?\n부담 낮게 가자.",
+      "response_excerpt": "운동 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -5726,7 +5724,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n오케이, 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n오케이, 괜찮아. 운동이랑 식단은 나눠서 같이 다시 잡자.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -5779,7 +5777,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜 잡아봤어.\n딱 이 정도로 같이 가보자.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가볼까?\n부담 낮게 가자.",
+      "response_excerpt": "운동 플랜 잡아봤어.\n괜찮아, 딱 이 정도로 같이 가보자.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -5805,7 +5803,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜 다시 잡았어.\n부담 낮게 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가볼까?\n부담 낮게 가자.\n오케이, 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "식단 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -5831,7 +5829,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n오케이, 이대로 같이 가보자.",
+      "response_excerpt": "식단 수정안 반영할게.\n오케이, 괜찮아. 이대로 같이 가보자.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -5857,7 +5855,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n오케이, 괜찮아. 부담 낮게 같이 가보자.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -5909,7 +5907,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜을 캘린더 기준으로 정리했습니다.\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 3세트, Bridge 3세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n이 운동 플랜으로 캘린더에 작성할까요?",
+      "response_excerpt": "확인했습니다.\n오늘 운동 플랜을 캘린더 기준으로 정리했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 3세트, Bridge 3세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n반영 범위는 이 운동 플랜입니다.\n캘린더에 작성할까요?",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -5935,7 +5933,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 캘린더 기준으로 수정했습니다.\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n이 운동 플랜으로 캘린더에 수정할까요?",
+      "response_excerpt": "확인했습니다.\n운동 플랜을 캘린더 기준으로 수정했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n반영 범위는 이 운동 플랜입니다.\n캘린더에 수정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -5961,7 +5959,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n확인했습니다. 반영 기준을 정리했고, 캘린더 흐름에 맞춰 처리합니다.",
+      "response_excerpt": "운동 수정안 반영할게.\n확인했습니다. 반영 범위는 정리했고, 캘린더 흐름에 맞춰 처리합니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -5987,7 +5985,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜을 캘린더 기준으로 정리했습니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 병아리콩\n- 2026-06-04 점심: 현미밥, 렌틸콩볼, 구운 채소, 삶은 병아리콩\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 캘린더에 작성할까요?",
+      "response_excerpt": "확인했습니다. 오늘 식단 플랜을 캘린더 기준으로 정리했습니다. 반영 범위는 아래 항목입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 병아리콩\n- 2026-06-04 점심: 현미밥, 렌틸콩볼, 구운 채소, 삶은 병아리콩\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n반영 범위는 이 식단 플랜입니다. 캘린더에 작성할까요?",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -6013,7 +6011,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 캘린더 기준으로 수정했습니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 병아리콩\n- 2026-06-04 점심: 현미밥, 렌틸콩볼, 구운 채소, 삶은 병아리콩\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 캘린더에 수정할까요?",
+      "response_excerpt": "확인했습니다.\n식단 플랜을 캘린더 기준으로 수정했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 병아리콩\n- 2026-06-04 점심: 현미밥, 렌틸콩볼, 구운 채소, 삶은 병아리콩\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n반영 범위는 이 식단 플랜입니다.\n캘린더에 수정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -6039,7 +6037,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(27세, 성별 female, 체중 53kg, 운동 수준 intermediate, 목표 muscle_gain, 가능 시간 40분, 운동 빈도 주 4회, 생활패턴 vegan designer, 추가 맥락...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 알레르기/식이 제약(유당)은 제외하고 안전한 대체 식품으로 바꾸세요.\n- 추가 맥락(vegan designer, muscle_gain)을 반영해 무리한 방식은 피하세요.",
+      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(27세, 성별 female, 체중 53kg, 운동 수준 intermediate, 목표 muscle_gain, 가능 시간 40분, 운동 빈도 주 4회, 생활패턴 vegan designer, 추가 맥락...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 알레르기/식이 제약(유당)은 제외하고 안전한 대체 식품으로 바꾸세요.\n- 추가 맥락(vegan designer, muscle_gain)을 반영해 무리한 방식은 피하세요.\n확인했습니다. 반영 범위는 이 항목입니다",
       "debug": {
         "action_intent": "info",
         "domain": "diet",
@@ -6118,7 +6116,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n확인했습니다. 반영 범위는 이 항목입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -6144,7 +6142,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n확인했습니다. 정리할 항목은 이 정도입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n확인했습니다. 반영 범위는 이 항목입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -6170,7 +6168,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "유당 제약이 있으면 해당 재료는 제외하고 안전한 대체 식품으로 구성하는 편이 좋아요.\n\n근거:\n- 알레르기나 식이 제약은 소량 노출도 문제가 될 수 있어 계획에서 명확히 빼는 게 안전합니다.\n- 단백질, 칼슘, 지방 같은 영양 목표는 다른 식품으로 대체할 수 있어요.\n\n근거 요약: 사용자 제약(유당)을 기준으로 피해야 할 운동을 좁혔어요.\n\n다음 행동: 식품 라벨을 확인하고, 반응 이력이 있으면 전문가 상담을 우선하세요.\n\n주의:\n- 추가 맥락(vegan designer, muscle_gain)을 반영해 무리한 방식은 피하세요.\n확인했습니다. 정리할 항목은 이 정도입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
+      "response_excerpt": "유당 제약이 있으면 해당 재료는 제외하고 안전한 대체 식품으로 구성하는 편이 좋아요.\n\n근거:\n- 알레르기나 식이 제약은 소량 노출도 문제가 될 수 있어 계획에서 명확히 빼는 게 안전합니다.\n- 단백질, 칼슘, 지방 같은 영양 목표는 다른 식품으로 대체할 수 있어요.\n\n근거 요약: 사용자 제약(유당)을 기준으로 피해야 할 운동을 좁혔어요.\n\n다음 행동: 식품 라벨을 확인하고, 반응 이력이 있으면 전문가 상담을 우선하세요.\n\n주의:\n- 추가 맥락(vegan designer, muscle_gain)을 반영해 무리한 방식은 피하세요.\n확인했습니다. 반영 범위는 이 항목입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -6196,7 +6194,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 캘린더 기준으로 수정했습니다.\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 3세트, Bridge 3세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n이 운동 플랜으로 캘린더에 수정할까요?",
+      "response_excerpt": "확인했습니다.\n운동 플랜을 캘린더 기준으로 수정했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 3세트, Bridge 3세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n반영 범위는 이 운동 플랜입니다.\n캘린더에 수정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -6248,7 +6246,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n확인했습니다. 캘린더 반영 기준에 맞게 항목을 분리해 다시 정리하겠습니다.",
+      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n확인했습니다. 반영 범위는 캘린더에 들어갈 항목입니다. 항목별로 다시 정리하겠습니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -6301,7 +6299,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 캘린더 기준으로 정리했습니다.\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 3세트, Bridge 3세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n이 운동 플랜으로 캘린더에 작성할까요?",
+      "response_excerpt": "확인했습니다.\n운동 플랜을 캘린더 기준으로 정리했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 상체 루틴: 푸시업 3세트, 밴드 로우 3세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 3세트, Bridge 3세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n반영 범위는 이 운동 플랜입니다.\n캘린더에 작성할까요?",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -6327,7 +6325,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 캘린더 기준으로 수정했습니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 병아리콩\n- 2026-06-04 점심: 현미밥, 렌틸콩볼, 구운 채소, 삶은 병아리콩\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 캘린더에 수정할까요?",
+      "response_excerpt": "확인했습니다. 식단 플랜을 캘린더 기준으로 수정했습니다. 반영 범위는 아래 항목입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 병아리콩\n- 2026-06-04 점심: 현미밥, 렌틸콩볼, 구운 채소, 삶은 병아리콩\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n반영 범위는 이 식단 플랜입니다. 캘린더에 수정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -6353,7 +6351,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 계획 반영할게.\n확인했습니다. 반영 기준을 정리했고, 캘린더 흐름에 맞춰 처리합니다.",
+      "response_excerpt": "식단 계획 반영할게.\n확인했습니다. 반영 범위는 정리했고, 캘린더 흐름에 맞춰 처리합니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -6379,7 +6377,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n확인했습니다. 정리할 항목은 이 정도입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n확인했습니다. 반영 범위는 이 항목입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -6405,7 +6403,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(27세, 성별 female, 체중 53kg, 운동 수준 intermediate, 목표 muscle_gain, 가능 시간 40분, 운동 빈도 주 4회, 생활패턴 vegan designer, 추가 맥락...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 알레르기/식이 제약(유당)은 제외하고 안전한 대체 식품으로 바꾸세요.\n- 추가 맥락(vegan designer, muscle_gain)을 반영해 무리한 방식은 피하세요.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(27세, 성별 female, 체중 53kg, 운동 수준 intermediate, 목표 muscle_gain, 가능 시간 40분, 운동 빈도 주 4회, 생활패턴 vegan designer, 추가 맥락...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 알레르기/식이 제약(유당)은 제외하고 안전한 대체 식품으로 바꾸세요.\n- 추가 맥락(vegan designer, muscle_gain)을 반영해 무리한 방식은 피하세요.\n확인했습니다. 반영 범위는 이 항목입니다.",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -6431,7 +6429,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜을 밝게 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 8분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "오늘 운동 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 8분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n좋아요, 이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -6457,7 +6455,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 8분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 8분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n좋아요, 이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -6509,7 +6507,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜을 밝게 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 작성할까요?\n잘 맞춰볼게요.\n좋아요, 운동과 식단은 밝게 나눠서 다시 맞춰볼게요.",
+      "response_excerpt": "오늘 식단 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n좋아요, 이 식단 플랜으로 작성할까요?\n잘 맞춰볼게요.\n좋아요, 운동과 식단은 밝게 나눠서 다시 맞춰볼게요.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -6535,7 +6533,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.\n좋아요, 운동과 식단은 밝게 나눠서 다시 맞춰볼게요.",
+      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n좋아요, 이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.\n좋아요, 운동과 식단은 밝게 나눠서 다시 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -6718,7 +6716,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 8분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 8분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n좋아요, 이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -6823,7 +6821,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 밝게 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 8분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "운동 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 8분\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n좋아요, 이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -6849,7 +6847,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.\n좋아요, 운동과 식단은 밝게 나눠서 다시 맞춰볼게요.",
+      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n좋아요, 이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.\n좋아요, 운동과 식단은 밝게 나눠서 다시 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -6953,7 +6951,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜을 무리 없게 제안드립니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성해도 괜찮을까요?",
+      "response_excerpt": "오늘 운동 플랜을 무리 없게 제안드립니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성해도 괜찮을까요?",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -6979,7 +6977,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 무리 없게 조정했습니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 조정할까요?",
+      "response_excerpt": "운동 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 조정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -7005,7 +7003,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n괜찮습니다. 무리 없게 천천히 반영하겠습니다.",
+      "response_excerpt": "운동 수정안 반영할게.\n괜찮습니다. 지금 기준에서는 적절합니다. 무리 없게 반영하겠습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -7031,7 +7029,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜을 무리 없게 제안드립니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 작성해도 괜찮을까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리하겠습니다.",
+      "response_excerpt": "오늘 식단 플랜을 무리 없게 제안드립니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 작성해도 괜찮을까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -7057,7 +7055,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 조정할까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리하겠습니다.",
+      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 조정할까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -7083,7 +7081,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(21세, 성별 female, 체중 49kg, 운동 수준 beginner, 목표 health, 가능 시간 25분, 운동 빈도 주 2회, 생활패턴 irregular meals, 추가 맥락 irregula...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 질환 정보(anemia)가 있으므로 증상이 있거나 약을 복용 중이면 전문가 상담을 우선하세요.\n- 추가 맥락(irregular meals, health)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 천천히 ",
+      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(21세, 성별 female, 체중 49kg, 운동 수준 beginner, 목표 health, 가능 시간 25분, 운동 빈도 주 2회, 생활패턴 irregular meals, 추가 맥락 irregula...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 질환 정보(anemia)가 있으므로 증상이 있거나 약을 복용 중이면 전문가 상담을 우선하세요.\n- 추가 맥락(irregular meals, health)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 지금 기",
       "debug": {
         "action_intent": "info",
         "domain": "diet",
@@ -7162,7 +7160,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -7188,7 +7186,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -7240,7 +7238,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 무리 없게 조정했습니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 조정할까요?",
+      "response_excerpt": "운동 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 조정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -7292,7 +7290,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리하겠습니다.",
+      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -7345,7 +7343,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 무리 없게 제안드립니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성해도 괜찮을까요?",
+      "response_excerpt": "운동 플랜을 무리 없게 제안드립니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성해도 괜찮을까요?",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -7371,7 +7369,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n천천히 따라가도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 조정할까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리하겠습니다.",
+      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 조정할까요?\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -7397,7 +7395,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n괜찮습니다. 무리 없게 천천히 반영하겠습니다.",
+      "response_excerpt": "식단 수정안 반영할게.\n괜찮습니다. 지금 기준에서는 적절합니다. 무리 없게 반영하겠습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -7423,7 +7421,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n괜찮습니다. 천천히 해도 됩니다. 무리 없게 한 단계만 보겠습니다.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n괜찮습니다. 지금 기준에서는 적절합니다. 천천히 해도 됩니다.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -7449,7 +7447,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(21세, 성별 female, 체중 49kg, 운동 수준 beginner, 목표 health, 가능 시간 25분, 운동 빈도 주 2회, 생활패턴 irregular meals, 추가 맥락 irregula...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 질환 정보(anemia)가 있으므로 증상이 있거나 약을 복용 중이면 전문가 상담을 우선하세요.\n- 추가 맥락(irregular meals, health)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 천천히 해",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(21세, 성별 female, 체중 49kg, 운동 수준 beginner, 목표 health, 가능 시간 25분, 운동 빈도 주 2회, 생활패턴 irregular meals, 추가 맥락 irregula...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 질환 정보(anemia)가 있으므로 증상이 있거나 약을 복용 중이면 전문가 상담을 우선하세요.\n- 추가 맥락(irregular meals, health)을 반영해 무리한 방식은 피하세요.\n괜찮습니다. 지금 기준",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -7475,7 +7473,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜.\n바로 이대로 가.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 간다.\n작성할까?",
+      "response_excerpt": "오늘 운동 플랜.\n안전 기준만 보고 이대로 가.\n무리는 빼.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가.\n작성할까?",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -7501,7 +7499,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜.\n군더더기 빼고 다시 고쳤어.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 간다.\n작성할까?",
+      "response_excerpt": "운동 플랜.\n군더더기 빼고 다시 고쳤어.\n무리는 빼.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가.\n작성할까?",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -7527,7 +7525,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n확인. 이대로 간다. 바로 처리하자.",
+      "response_excerpt": "운동 수정안 반영할게.\n확인. 이대로 가. 무리는 빼고 바로 처리하자.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -7553,7 +7551,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜.\n바로 이대로 가.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 간다.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "오늘 식단 플랜.\n안전 기준만 보고 이대로 가.\n무리는 빼.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -7579,7 +7577,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 간다.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n무리는 빼.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -7605,7 +7603,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(36세, 성별 male, 체중 79kg, 운동 수준 advanced, 목표 performance, 가능 시간 40분, 운동 빈도 주 4회, 생활패턴 CrossFit background, 추가 맥락 C...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n- 추가 맥락(CrossFit background, performance)을 반영해 무리한 방식은 피하세요.\n핵심만 간다. 군더더기 빼고 바로 실행 범",
+      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(36세, 성별 male, 체중 79kg, 운동 수준 advanced, 목표 performance, 가능 시간 40분, 운동 빈도 주 4회, 생활패턴 CrossFit background, 추가 맥락 C...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n- 추가 맥락(CrossFit background, performance)을 반영해 무리한 방식은 피하세요.\n핵심만 간다. 군더더기 빼고 바로 실행해.",
       "debug": {
         "action_intent": "info",
         "domain": "diet",
@@ -7684,7 +7682,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n핵심만 간다. 군더더기 빼고 바로 실행 범위로 잡자.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n핵심만 간다. 군더더기 빼고 바로 실행해. 무리는 빼.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -7710,7 +7708,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n핵심만 간다. 군더더기 빼고 바로 실행 범위로 잡자.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n핵심만 간다. 군더더기 빼고 바로 실행해. 무리는 빼.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -7762,7 +7760,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜.\n군더더기 빼고 다시 고쳤어.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 간다.\n작성할까?",
+      "response_excerpt": "운동 플랜.\n군더더기 빼고 다시 고쳤어.\n무리는 빼.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가.\n작성할까?",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -7814,7 +7812,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -7867,7 +7865,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜.\n바로 이대로 가.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 간다.\n작성할까?",
+      "response_excerpt": "운동 플랜.\n안전 기준만 보고 이대로 가.\n무리는 빼.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 가.\n작성할까?",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -7893,7 +7891,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 간다.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해.",
+      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n무리는 빼.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -7919,7 +7917,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n확인. 이대로 간다. 바로 처리하자.",
+      "response_excerpt": "식단 수정안 반영할게.\n확인. 이대로 가. 무리는 빼고 바로 처리하자.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -7945,7 +7943,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n핵심만 간다. 군더더기 빼고 바로 실행 범위로 잡자.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n핵심만 간다. 군더더기 빼고 바로 실행해. 무리는 빼.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -7971,7 +7969,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(36세, 성별 male, 체중 79kg, 운동 수준 advanced, 목표 performance, 가능 시간 40분, 운동 빈도 주 4회, 생활패턴 CrossFit background, 추가 맥락 C...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n- 추가 맥락(CrossFit background, performance)을 반영해 무리한 방식은 피하세요.\n핵심만 간다. 군더더기 빼고 바로 실행 범위",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(36세, 성별 male, 체중 79kg, 운동 수준 advanced, 목표 performance, 가능 시간 40분, 운동 빈도 주 4회, 생활패턴 CrossFit background, 추가 맥락 C...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n- 추가 맥락(CrossFit background, performance)을 반영해 무리한 방식은 피하세요.\n핵심만 간다. 군더더기 빼고 바로 실행해. ",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -7997,7 +7995,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜입니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "오늘 운동 플랜 구성입니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -8023,7 +8021,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 수정할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "운동 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 수정할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -8049,7 +8047,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n확인했습니다. 선택 기준에 맞춰 안전성과 지속 가능성을 우선해 반영합니다.",
+      "response_excerpt": "운동 수정안 반영할게.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -8075,7 +8073,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜입니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 작성할까요?\n기준은 일정과 부담입니다.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "오늘 식단 플랜 구성입니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 작성할까요?\n근거는 일정과 부담입니다.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -8101,7 +8099,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 수정할까요?\n기준은 일정과 부담입니다.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 수정할까요?\n근거는 일정과 부담입니다.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -8206,7 +8204,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n선택 기준은 안전성과 지속 가능성입니다. 근거는 부담을 낮추는 쪽입니다.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -8284,7 +8282,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 수정할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "운동 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 수정할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -8336,7 +8334,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -8389,7 +8387,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜입니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "운동 플랜 구성입니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 스트레칭 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n- 2026-06-04 유산소 루틴: 빠른 걷기 15분\n- 2026-06-04 하체 루틴: 의자 스쿼트 2세트, 글루트 브릿지 2세트\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n이 운동 플랜으로 작성할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -8415,7 +8413,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 수정할까요?\n기준은 일정과 부담입니다.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 수정할까요?\n근거는 일정과 부담입니다.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -8441,7 +8439,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n확인했습니다. 선택 기준에 맞춰 안전성과 지속 가능성을 우선해 반영합니다.",
+      "response_excerpt": "식단 수정안 반영할게.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -8493,7 +8491,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(46세, 성별 female, 체중 73kg, 운동 수준 beginner, 목표 heart_health, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 desk job, 추가 맥락 desk job,...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 질환 정보(heart disease)가 있으므로 증상이 있거나 약을 복용 중이면 전문가 상담을 우선하세요.\n- 추가 맥락(desk job, heart_health)을 반영해 무리한 방식은 피하세요.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(46세, 성별 female, 체중 73kg, 운동 수준 beginner, 목표 heart_health, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 desk job, 추가 맥락 desk job,...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 질환 정보(heart disease)가 있으므로 증상이 있거나 약을 복용 중이면 전문가 상담을 우선하세요.\n- 추가 맥락(desk job, heart_health)을 반영해 무리한 방식은 피하세요.\n선택 기준은",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -8519,7 +8517,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜 잡아봤어.\n딱 이 정도로 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 12분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 가볼까?\n부담 낮게 가자.",
+      "response_excerpt": "오늘 운동 플랜 잡아봤어.\n괜찮아, 딱 이 정도로 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 12분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -8545,7 +8543,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜 다시 잡았어.\n부담 낮게 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 12분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 가볼까?\n부담 낮게 가자.",
+      "response_excerpt": "운동 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 12분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -8571,7 +8569,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n오케이, 이대로 같이 가보자.",
+      "response_excerpt": "운동 수정안 반영할게.\n오케이, 괜찮아. 이대로 같이 가보자.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -8597,7 +8595,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜 잡아봤어.\n딱 이 정도로 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 가볼까?\n부담 낮게 가자.\n오케이, 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "오늘 식단 플랜 잡아봤어.\n괜찮아, 딱 이 정도로 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.\n오케이, 괜찮아. 운동이랑 식단은 나눠서 같이 다시 잡자.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -8623,7 +8621,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜 다시 잡았어.\n부담 낮게 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 가볼까?\n부담 낮게 가자.\n오케이, 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "식단 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.\n오케이, 괜찮아. 운동이랑 식단은 나눠서 같이 다시 잡자.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -8649,7 +8647,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(33세, 성별 nonbinary, 체중 63kg, 운동 수준 beginner, 목표 consistency, 가능 시간 12분, 운동 빈도 주 2회, 생활패턴 childcare, 추가 맥락 childc...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 추가 맥락(childcare, consistency)을 반영해 무리한 방식은 피하세요.\n오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+      "response_excerpt": "추천 이유를 간단히 정리했습니다.\n\n근거:\n- 사용자 조건과 근거를 함께 반영했습니다.\n- 사용자 프로필(33세, 성별 nonbinary, 체중 63kg, 운동 수준 beginner, 목표 consistency, 가능 시간 12분, 운동 빈도 주 2회, 생활패턴 childcare, 추가 맥락 childc...\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 필요하면 이유를 더 짧게 풀어드리겠습니다.\n\n주의:\n- 추가 맥락(childcare, consistency)을 반영해 무리한 방식은 피하세요.\n오케이, 괜찮아. 부담 낮게 같이 가보자.",
       "debug": {
         "action_intent": "info",
         "domain": "diet",
@@ -8728,7 +8726,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n오케이, 괜찮아. 부담 낮게 같이 가보자.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -8754,7 +8752,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n오케이, 괜찮아. 부담 낮게 같이 가보자.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -8780,7 +8778,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "통증 부위가 있으면 통증을 키우는 고충격 동작과 깊은 가동범위 동작은 피하는 편이 안전해요.\n\n근거:\n- 통증이 있는 부위에 반복 충격이나 비틀림이 들어가면 회복이 늦어질 수 있어요.\n- 대신 통증 없는 범위의 걷기, 가벼운 근력, 안정화 운동부터 확인하는 게 안전합니다.\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 통증이 생기면 즉시 중단하고, 지속되거나 붓기/불안정감이 있으면 전문가 상담을 권장해요.\n\n주의:\n- 추가 맥락(childcare, consistency)을 반영해 무리한 방식은 피하세요.\n오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+      "response_excerpt": "통증 부위가 있으면 통증을 키우는 고충격 동작과 깊은 가동범위 동작은 피하는 편이 안전해요.\n\n근거:\n- 통증이 있는 부위에 반복 충격이나 비틀림이 들어가면 회복이 늦어질 수 있어요.\n- 대신 통증 없는 범위의 걷기, 가벼운 근력, 안정화 운동부터 확인하는 게 안전합니다.\n\n근거 요약: 검색 근거를 요약해 답변에 반영했습니다.\n\n다음 행동: 통증이 생기면 즉시 중단하고, 지속되거나 붓기/불안정감이 있으면 전문가 상담을 권장해요.\n\n주의:\n- 추가 맥락(childcare, consistency)을 반영해 무리한 방식은 피하세요.\n오케이, 괜찮아. 부담 낮게 같이 가보자.",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -8806,7 +8804,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜 다시 잡았어.\n부담 낮게 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 12분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 가볼까?\n부담 낮게 가자.",
+      "response_excerpt": "운동 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 12분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -8858,7 +8856,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n오케이, 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n오케이, 괜찮아. 운동이랑 식단은 나눠서 같이 다시 잡자.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -8911,7 +8909,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜 잡아봤어.\n딱 이 정도로 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 12분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 가볼까?\n부담 낮게 가자.",
+      "response_excerpt": "운동 플랜 잡아봤어.\n괜찮아, 딱 이 정도로 같이 가보자.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 12분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n이 운동 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -8937,7 +8935,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜 다시 잡았어.\n부담 낮게 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 가볼까?\n부담 낮게 가자.\n오케이, 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "식단 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.\n오케이, 괜찮아. 운동이랑 식단은 나눠서 같이 다시 잡자.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -8963,7 +8961,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n오케이, 이대로 같이 가보자.",
+      "response_excerpt": "식단 수정안 반영할게.\n오케이, 괜찮아. 이대로 같이 가보자.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -8989,7 +8987,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n오케이, 괜찮아. 부담 낮게 같이 가보자.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -9015,7 +9013,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(33세, 성별 nonbinary, 체중 63kg, 운동 수준 beginner, 목표 consistency, 가능 시간 12분, 운동 빈도 주 2회, 생활패턴 childcare, 추가 맥락 childc...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 추가 맥락(childcare, consistency)을 반영해 무리한 방식은 피하세요.\n오케이, 가볍게 같이 가보자. 부담 낮게 잡자.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(33세, 성별 nonbinary, 체중 63kg, 운동 수준 beginner, 목표 consistency, 가능 시간 12분, 운동 빈도 주 2회, 생활패턴 childcare, 추가 맥락 childc...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 추가 맥락(childcare, consistency)을 반영해 무리한 방식은 피하세요.\n오케이, 괜찮아. 부담 낮게 같이 가보자.",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -9041,7 +9039,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n확인했습니다. 캘린더 반영 기준에 맞게 항목을 분리해 다시 정리하겠습니다.",
+      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n확인했습니다. 반영 범위는 캘린더에 들어갈 항목입니다. 항목별로 다시 정리하겠습니다.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -9067,7 +9065,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n확인했습니다. 캘린더 반영 기준에 맞게 항목을 분리해 다시 정리하겠습니다.",
+      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n확인했습니다. 반영 범위는 캘린더에 들어갈 항목입니다. 항목별로 다시 정리하겠습니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -9093,7 +9091,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "지금은 승인 대기 중인 계획이 없어요.\n다음 행동: 먼저 계획을 제안받은 뒤 승인 요청을 해주세요.\n확인했습니다. 반영 기준을 정리했고, 캘린더 흐름에 맞춰 처리합니다.",
+      "response_excerpt": "지금은 승인 대기 중인 계획이 없어요.\n다음 행동: 먼저 계획을 제안받은 뒤 승인 요청을 해주세요.\n확인했습니다. 반영 범위는 정리했고, 캘린더 흐름에 맞춰 처리합니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -9119,7 +9117,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜을 캘린더 기준으로 정리했습니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 캘린더에 작성할까요?\n확인했습니다. 캘린더 반영 기준에 맞게 항목을 분리해 다시 정리하겠습니다.",
+      "response_excerpt": "확인했습니다.\n오늘 식단 플랜을 캘린더 기준으로 정리했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n반영 범위는 이 식단 플랜입니다.\n캘린더에 작성할까요?",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -9145,7 +9143,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 캘린더 기준으로 수정했습니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 캘린더에 수정할까요?\n확인했습니다. 캘린더 반영 기준에 맞게 항목을 분리해 다시 정리하겠습니다.",
+      "response_excerpt": "확인했습니다.\n식단 플랜을 캘린더 기준으로 수정했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n반영 범위는 이 식단 플랜입니다.\n캘린더에 수정할까요?\n확인했습니다. 반영 범위는 캘린더에 들어갈 항목입니다. 항목별로 다시 정리하겠습니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -9250,7 +9248,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n확인했습니다. 반영 범위는 이 항목입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -9276,7 +9274,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n확인했습니다. 정리할 항목은 이 정도입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n확인했습니다. 반영 범위는 이 항목입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -9328,7 +9326,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n확인했습니다. 캘린더 반영 기준에 맞게 항목을 분리해 다시 정리하겠습니다.",
+      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n확인했습니다. 반영 범위는 캘린더에 들어갈 항목입니다. 항목별로 다시 정리하겠습니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -9380,7 +9378,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 캘린더 기준으로 수정했습니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 캘린더에 수정할까요?",
+      "response_excerpt": "확인했습니다.\n식단 플랜을 캘린더 기준으로 수정했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n반영 범위는 이 식단 플랜입니다.\n캘린더에 수정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -9407,7 +9405,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜을 캘린더 기준으로 정리했습니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 캘린더에 작성할까요?",
+      "response_excerpt": "확인했습니다.\n오늘 식단 플랜을 캘린더 기준으로 정리했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n반영 범위는 이 식단 플랜입니다.\n캘린더에 작성할까요?",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -9433,7 +9431,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n확인했습니다. 캘린더 반영 기준에 맞게 항목을 분리해 다시 정리하겠습니다.",
+      "response_excerpt": "응답을 안전하게 확정하기 어려운 부분이 있어요. 조건을 한 번만 더 확인한 뒤 다시 작성할게요.\n확인했습니다. 반영 범위는 캘린더에 들어갈 항목입니다. 항목별로 다시 정리하겠습니다.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -9459,7 +9457,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 캘린더 기준으로 수정했습니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n이 식단 플랜으로 캘린더에 수정할까요?\n확인했습니다. 캘린더 반영 기준에 맞게 항목을 분리해 다시 정리하겠습니다.",
+      "response_excerpt": "확인했습니다.\n식단 플랜을 캘린더 기준으로 수정했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n반영 범위는 이 식단 플랜입니다.\n캘린더에 수정할까요?\n확인했습니다. 반영 범위는 캘린더에 들어갈 항목입니다. 항목별로 다시 정리하겠습니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -9485,7 +9483,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n확인했습니다. 반영 기준을 정리했고, 캘린더 흐름에 맞춰 처리합니다.",
+      "response_excerpt": "식단 수정안 반영할게.\n확인했습니다. 반영 범위는 정리했고, 캘린더 흐름에 맞춰 처리합니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -9511,7 +9509,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n확인했습니다. 정리할 항목은 이 정도입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
+      "response_excerpt": "프로필을 반영했습니다.\n\n근거:\n- 사용자가 방금 말한 프로필 항목을 반영했습니다.\n\n다음 행동: 다른 프로필 항목도 이어서 반영할 수 있습니다.\n확인했습니다. 반영 범위는 이 항목입니다. 필요한 경우 캘린더 기준으로 처리합니다.",
       "debug": {
         "action_intent": "record",
         "domain": "profile",
@@ -9537,7 +9535,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(60세, 성별 male, 체중 90kg, 운동 수준 beginner, 목표 blood_pressure, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 dislikes gyms, 추가 맥락 disl...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 질환 정보(hypertension)가 있으므로 증상이 있거나 약을 복용 중이면 전문가 상담을 우선하세요.\n- 추가 맥락(dislikes gyms, blood_pressure)을 반영해 무리한 방식은 피하세요.",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n- 사용자 프로필(60세, 성별 male, 체중 90kg, 운동 수준 beginner, 목표 blood_pressure, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 dislikes gyms, 추가 맥락 disl...\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n주의:\n- 질환 정보(hypertension)가 있으므로 증상이 있거나 약을 복용 중이면 전문가 상담을 우선하세요.\n- 추가 맥락(dislikes gyms, blood_pressure)을 반영해 무리한 방식은 피하세요.\n",
       "debug": {
         "action_intent": "info",
         "domain": "profile",
@@ -9563,7 +9561,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜을 밝게 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "오늘 운동 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -9589,7 +9587,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -9641,7 +9639,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜을 밝게 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 작성할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "오늘 식단 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -9667,7 +9665,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -9850,7 +9848,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "운동 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 운동 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -9955,7 +9953,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 밝게 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "운동 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 20분\n- 2026-06-04 상체 루틴: 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 운동 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -9981,7 +9979,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n이 정도면 시작하기 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
+      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -10085,7 +10083,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 운동 플랜입니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 작성할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "오늘 운동 플랜 구성입니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 작성할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -10111,7 +10109,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 수정할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "운동 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 수정할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -10137,7 +10135,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n확인했습니다. 선택 기준에 맞춰 안전성과 지속 가능성을 우선해 반영합니다.",
+      "response_excerpt": "운동 수정안 반영할게.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -10163,7 +10161,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "오늘 식단 플랜입니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 작성할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "오늘 식단 플랜 구성입니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 작성할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "create",
         "domain": "diet",
@@ -10189,7 +10187,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 수정할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 수정할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -10294,7 +10292,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?",
+      "response_excerpt": "운동 내용을 정리했습니다.\n\n근거:\n- 지속 가능성과 안전성을 우선했습니다.\n\n근거 요약: 운동 기준과 사용자 조건을 함께 반영했습니다.\n\n다음 행동: 진행 여부만 알려주시면 이어서 반영하겠습니다.\n\n이 운동 플랜으로 진행할까요?\n선택 기준은 안전성과 지속 가능성입니다. 근거는 부담을 낮추는 쪽입니다.",
       "debug": {
         "action_intent": "record",
         "domain": "workout",
@@ -10372,7 +10370,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 수정할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "운동 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 수정할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "workout",
@@ -10424,7 +10422,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n선택 기준을 분리해서 다시 확인하겠습니다. 기준은 안전성과 지속 가능성입니다.",
+      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -10477,7 +10475,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 플랜입니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 작성할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "운동 플랜 구성입니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 스트레칭 루틴: 전신 스트레칭 2세트\n- 2026-06-04 유산소 - Cardio: Treadmill Walk 10분\n- 2026-06-04 상체 루틴: 월 푸시업 2세트, 밴드 로우 2세트\n- 2026-06-04 하체 - Lower Body Session: Leg Press 2세트, Bridge 2세트\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 운동 플랜으로 작성할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "create",
         "domain": "workout",
@@ -10503,7 +10501,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 수정할까요?\n기준은 일정과 부담입니다.",
+      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 Breakfast: Greek yogurt and fruit\n- 2026-06-04 Dinner: Chicken breast and vegetables\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 수정할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -10529,7 +10527,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n확인했습니다. 선택 기준에 맞춰 안전성과 지속 가능성을 우선해 반영합니다.",
+      "response_excerpt": "식단 수정안 반영할게.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",

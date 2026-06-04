@@ -231,6 +231,10 @@ _DIET_KEYWORDS = (
     "식단",
     "식사",
     "메뉴",
+    "밥",
+    "끼니",
+    "음식",
+    "반찬",
     "영양",
     "칼로리",
     "다이어트",
@@ -288,7 +292,7 @@ def infer_domain(text: str | None) -> Domain:
 
     explicit_diet_hits = sum(
         1
-        for keyword in ("식단", "식사", "메뉴", "아침", "점심", "저녁", "meal", "diet")
+        for keyword in ("식단", "식사", "메뉴", "밥", "끼니", "음식", "반찬", "아침", "점심", "저녁", "meal", "diet")
         if keyword in normalized
     )
     explicit_workout_hits = sum(
