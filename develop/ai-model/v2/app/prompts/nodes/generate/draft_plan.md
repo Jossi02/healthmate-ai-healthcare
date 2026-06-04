@@ -9,12 +9,12 @@ Additional rules:
 - If the plan has many items, keep the visible explanation to the representative items and let `proposed_plan` carry the full structured data.
 - If the user asks for a range such as 일주일, 한 주, 1주, 7일, 한 달, 한달, 4주, 30일, weekly, or monthly, `proposed_plan` should contain calendar-ready dated items across that range instead of only a few sample recommendations.
 - For weekly/range plans, start from `[오늘 날짜]` unless the user explicitly says another start date such as 내일부터, 다음 주, or a specific date.
-- For long diet plans, create simple meal items per day with food-only `detail`; do not put reasons or constraints into the calendar item text.
+- For long diet plans, create separate meal-slot items for each date: one `아침`, one `점심`, and one `저녁` item per day with food-only `detail`; do not store a whole day as one item such as `1일차 건강 식단`.
 - For long workout plans, create dated weekly sessions that can be inserted into the calendar; do not leave the plan as an abstract weekly template only.
 - Build a practical plan, not a vague recommendation.
 - Do not mix workout and diet in a single plan unless the user explicitly asks for both. If both are mentioned ambiguously, ask which one to write first.
 - If the user asks for a workout plan, `proposed_plan_type` must be `workout` and every proposed item must be an exercise item with `ex_list`.
-- If the user asks for a diet plan, `proposed_plan_type` must be `diet` and every proposed item must be a meal item with empty `ex_list`.
+- If the user asks for a diet plan, `proposed_plan_type` must be `diet` and every proposed item must be a meal item with empty `ex_list`; `name` should be exactly `아침`, `점심`, or `저녁` whenever the plan has meal slots.
 - For workout plans, make frequency, intensity, recovery, and exercise structure visible.
 - For workout plans, cover these four movement categories whenever safe: stretching, cardio, upper body, and lower body.
 - If fat loss, weight loss, or diet is the primary goal, make cardio the leading emphasis while still keeping light strength and stretching.

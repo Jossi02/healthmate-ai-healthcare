@@ -21,6 +21,16 @@ type DietLike = {
   kcal?: string;
 };
 
+export type DietSlotDisplayType = "Breakfast" | "Lunch" | "Dinner";
+
+export type SplitDietEntry = {
+  type: DietSlotDisplayType;
+  name: string;
+};
+
+const DIET_SLOT_PATTERN = /(아침|점심|저녁|breakfast|lunch|dinner)\s*[:：-]\s*/gi;
+const DIET_SLOT_PREFIX_PATTERN = /^\s*(아침|점심|저녁|breakfast|lunch|dinner)\s*[:：-]\s*/i;
+
 export const WORKOUT_GROUP_ORDER: WorkoutGroupKey[] = [
   "cardio",
   "stretching",
@@ -236,6 +246,48 @@ export function getDietSlotLabel(type?: string) {
   return type || "식단";
 }
 
+export function getDietSlotDisplayType(value?: string): DietSlotDisplayType | null {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized.includes("breakfast") || normalized.includes("아침")) return "Breakfast";
+  if (normalized.includes("lunch") || normalized.includes("점심")) return "Lunch";
+  if (normalized.includes("dinner") || normalized.includes("저녁")) return "Dinner";
+  return null;
+}
+
+export function stripDietSlotPrefix(value: string | undefined | null) {
+  return String(value || "").replace(DIET_SLOT_PREFIX_PATTERN, "").trim();
+}
+
+function trimDietSegment(value: string) {
+  return value.replace(/^[\s,，;|/]+|[\s,，;|/]+$/g, "").trim();
+}
+
+export function splitCompoundDietText(value: string | undefined | null): SplitDietEntry[] {
+  const raw = String(value || "").replace(/\s+/g, " ").trim();
+  if (!raw) return [];
+
+  const matches = [...raw.matchAll(DIET_SLOT_PATTERN)];
+  if (matches.length === 0) return [];
+
+  return matches
+    .map((match, index) => {
+      const type = getDietSlotDisplayType(match[1]);
+      const start = (match.index ?? 0) + match[0].length;
+      const end = matches[index + 1]?.index ?? raw.length;
+      const name = cleanDietPlanValue(trimDietSegment(raw.slice(start, end)));
+      return type && name ? { type, name } : null;
+    })
+    .filter((item): item is SplitDietEntry => Boolean(item));
+}
+
+export function normalizeDietKcal(value: string | number | undefined | null) {
+  const matched = String(value ?? "").match(/\d+/);
+  if (!matched) return "";
+  const calories = Number(matched[0]);
+  if (!Number.isFinite(calories) || calories <= 0) return "";
+  return `${Math.round(calories)} kcal`;
+}
+
 export function compactText(value: string | undefined | null, maxLength = 52) {
   const cleaned = String(value || "")
     .replace(/\s+/g, " ")
@@ -340,7 +392,12 @@ export function cleanPlannerDetail(value: string | undefined | null) {
 }
 
 export function getDietDisplay(diet: DietLike) {
-  const cleaned = cleanDietPlanValue(diet.name) || cleanDietPlanValue(diet.desc);
+  const splitEntries = splitCompoundDietText(diet.name);
+  const splitEntry = splitEntries[0] || null;
+  const cleaned =
+    splitEntry?.name ||
+    cleanDietPlanValue(stripDietSlotPrefix(diet.name)) ||
+    cleanDietPlanValue(diet.desc);
   const parts = cleaned
     .split(/\s*(?:,|·|\+|와|과)\s*/)
     .map((part) => part.trim())
@@ -350,10 +407,10 @@ export function getDietDisplay(diet: DietLike) {
   const title = compactText(concreteParts.join(" + "), 34);
 
   return {
-    mealLabel: getDietSlotLabel(diet.type),
-    title: title || getDietSlotLabel(diet.type),
+    mealLabel: getDietSlotLabel(splitEntry?.type || diet.type),
+    title: title || getDietSlotLabel(splitEntry?.type || diet.type),
     subtitle: "",
     detail: cleaned || diet.name,
-    kcal: diet.kcal || "",
+    kcal: normalizeDietKcal(diet.kcal),
   };
 }

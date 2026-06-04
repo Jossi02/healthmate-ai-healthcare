@@ -137,7 +137,7 @@ function parsePlanCheckId(itemId) {
   if (itemId.startsWith('meal-')) {
     return {
       kind: 'meal',
-      numericId: Number(itemId.replace('meal-', '')),
+      numericId: Number(itemId.match(/^meal-(\d+)/)?.[1]),
     };
   }
 

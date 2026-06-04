@@ -15,6 +15,11 @@ import {
   redirectToLoginForExpiredSession,
 } from "@/lib/auth";
 import { formatKstDate } from "@/lib/date";
+import {
+  normalizeDietKcal,
+  splitCompoundDietText,
+  stripDietSlotPrefix,
+} from "@/lib/planDisplay";
 
 export type WorkoutItem = {
   itemId?: string;
@@ -301,6 +306,15 @@ function buildSummaryMealLabel(mealType?: string) {
   return mealType || "Meal";
 }
 
+function buildMealItemId(mealId?: number, suffix?: string) {
+  if (!mealId) return undefined;
+  return suffix ? `meal-${mealId}-${suffix}` : `meal-${mealId}`;
+}
+
+function normalizeMealCalories(calories?: number) {
+  return normalizeDietKcal(calories ? `${calories} kcal` : "");
+}
+
 function normalizeCalendarResponse(response: CalendarResponse) {
   const completedTasks: CompletedTasksType = {};
   const plans: DailyPlan[] = Object.entries(response || {})
@@ -356,16 +370,37 @@ function normalizeCalendarResponse(response: CalendarResponse) {
         });
       });
 
-      const diets: (DietItem & { completed?: boolean })[] = mealPlans.map(
-        (meal) => ({
-          itemId: meal.meal_id ? `meal-${meal.meal_id}` : undefined,
-          type: buildSummaryMealLabel(meal.meal_type),
-          name: meal.food_name || "Meal",
+      const diets: (DietItem & { completed?: boolean })[] = [];
+      mealPlans.forEach((meal) => {
+        const compoundMeals = splitCompoundDietText(meal.food_name);
+        if (compoundMeals.length >= 2) {
+          compoundMeals.forEach((entry) => {
+            diets.push({
+              itemId: buildMealItemId(meal.meal_id, entry.type),
+              type: entry.type,
+              name: entry.name,
+              desc: "",
+              kcal: normalizeMealCalories(meal.calories),
+              completed: Boolean(meal.is_completed),
+            });
+          });
+          return;
+        }
+
+        const singleCompoundMeal = compoundMeals[0];
+        const normalizedType = singleCompoundMeal?.type || buildSummaryMealLabel(meal.meal_type);
+        const normalizedName =
+          singleCompoundMeal?.name || stripDietSlotPrefix(meal.food_name) || "Meal";
+
+        diets.push({
+          itemId: buildMealItemId(meal.meal_id),
+          type: normalizedType,
+          name: normalizedName,
           desc: meal.meal_type || "meal",
-          kcal: `${meal.calories ?? 0} kcal`,
+          kcal: normalizeMealCalories(meal.calories),
           completed: Boolean(meal.is_completed),
-        })
-      );
+        });
+      });
 
       completedTasks[date] = {
         workouts: exercises.reduce<number[]>((acc, item, index) => {

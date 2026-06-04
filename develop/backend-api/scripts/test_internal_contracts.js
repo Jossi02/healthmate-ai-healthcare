@@ -532,6 +532,34 @@ async function testCreateDietPlansStoresMealValueAndCaloriesOnly() {
   assert.equal(supabase.tables.user_meal_plans[0].calories, 420);
 }
 
+async function testCreateDietPlansSplitsCompoundDailyMealText() {
+  const supabase = new FakeSupabase({
+    user_meal_plans: [],
+  });
+
+  const created = await planMutationService.createDietPlans(supabase, 'user-1', [
+    {
+      day: '2026-06-04',
+      name: '6월 4일 식단',
+      detail: '아침: 잡곡밥 + 구운 고등어 + 시금치나물, 점심: 닭가슴살 샐러드, 현미밥, 저녁: 두부구이, 버섯볶음, 보리밥',
+    },
+  ]);
+
+  assert.equal(created.length, 3);
+  assert.deepEqual(
+    supabase.tables.user_meal_plans.map((row) => row.meal_type),
+    ['Breakfast', 'Lunch', 'Dinner']
+  );
+  assert.deepEqual(
+    supabase.tables.user_meal_plans.map((row) => row.food_name),
+    [
+      '잡곡밥 + 구운 고등어 + 시금치나물',
+      '닭가슴살 샐러드, 현미밥',
+      '두부구이, 버섯볶음, 보리밥',
+    ]
+  );
+}
+
 async function testDeleteWorkoutPlansForDatesRemovesChildren() {
   const supabase = new FakeSupabase({
     user_exercise_plans: [
@@ -699,6 +727,39 @@ async function testDeletePlanItemByOpaqueExerciseId() {
   assert.deepEqual(supabase.tables.exercise_items, []);
 }
 
+async function testDeletePlanItemByOpaqueMealIdWithVirtualSlotSuffix() {
+  const supabase = new FakeSupabase({
+    user_meal_plans: [
+      {
+        meal_id: 20,
+        user_id: 'user-1',
+        meal_type: 'Breakfast',
+        food_name: 'delete-meal',
+        target_date: '2026-06-04',
+      },
+      {
+        meal_id: 21,
+        user_id: 'user-1',
+        meal_type: 'Lunch',
+        food_name: 'keep-meal',
+        target_date: '2026-06-04',
+      },
+    ],
+  });
+
+  const deleted = await planMutationService.deletePlanItemByOpaqueId(
+    supabase,
+    'user-1',
+    'meal-20-Breakfast'
+  );
+
+  assert.equal(deleted.kind, 'meal');
+  assert.deepEqual(
+    supabase.tables.user_meal_plans.map((item) => item.meal_id),
+    [21]
+  );
+}
+
 async function testPasswordHashValidationRejectsBadHashes() {
   assert.equal(isValidBcryptHash(null), false);
   assert.equal(isValidBcryptHash(''), false);
@@ -821,17 +882,19 @@ async function main() {
   await testReplaceWorkoutPlansKeepsOldPlanWhenNewCreateFails();
   await testReplaceWorkoutPlansSwapsPlansOnSuccess();
   await testCreateDietPlansStoresMealValueAndCaloriesOnly();
+  await testCreateDietPlansSplitsCompoundDailyMealText();
   await testDeleteWorkoutPlansForDatesRemovesChildren();
   await testDeleteDietPlansForDatesRemovesMealsOnlyOnTargetDate();
   await testDeleteAllPlansForUserKeepsOtherUsers();
   await testDeletePlanItemByOpaqueExerciseId();
+  await testDeletePlanItemByOpaqueMealIdWithVirtualSlotSuffix();
   testRecommendationNameNormalization();
   await testUuidValidation();
   await testPasswordHashValidationRejectsBadHashes();
   await testPasswordVerificationHandlesValidHashes();
   await testPersistedChatThreadRoundTrip();
   await testDeleteChatThreadRemovesOnlyOwnedThreadData();
-  console.log('[internal-contracts] 19/19 passed');
+  console.log('[internal-contracts] 21/21 passed');
 }
 
 main().catch((error) => {

@@ -68,9 +68,67 @@ function parseCalories(value) {
   return Math.round(parsed);
 }
 
+const MEAL_SLOT_PATTERN = /(아침|점심|저녁|breakfast|lunch|dinner)\s*[:：-]\s*/gi;
+const MEAL_SLOT_PREFIX_PATTERN = /^\s*(아침|점심|저녁|breakfast|lunch|dinner)\s*[:：-]\s*/i;
+
+function canonicalMealType(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized.includes('breakfast') || normalized.includes('아침')) return 'Breakfast';
+  if (normalized.includes('lunch') || normalized.includes('점심')) return 'Lunch';
+  if (normalized.includes('dinner') || normalized.includes('저녁')) return 'Dinner';
+  return null;
+}
+
+function stripMealTypePrefix(value) {
+  return String(value || '').replace(MEAL_SLOT_PREFIX_PATTERN, '').trim();
+}
+
+function trimMealSegment(value) {
+  return String(value || '').replace(/^[\s,，;|/]+|[\s,，;|/]+$/g, '').trim();
+}
+
+function splitCompoundDietText(value) {
+  const raw = cleanDietPlanValue(value);
+  if (!raw) return [];
+
+  const matches = [...raw.matchAll(MEAL_SLOT_PATTERN)];
+  if (matches.length === 0) return [];
+
+  return matches
+    .map((match, index) => {
+      const mealType = canonicalMealType(match[1]);
+      const start = (match.index || 0) + match[0].length;
+      const end = matches[index + 1]?.index ?? raw.length;
+      const foodName = cleanDietPlanValue(trimMealSegment(raw.slice(start, end)));
+      return mealType && foodName ? { mealType, foodName } : null;
+    })
+    .filter(Boolean);
+}
+
+function expandDietPlanItems(normalizedItems = []) {
+  return normalizedItems.flatMap((item) => {
+    const detailSegments = splitCompoundDietText(item.detail);
+    const nameSegments = splitCompoundDietText(item.name);
+    const segments = detailSegments.length >= 2 ? detailSegments : nameSegments.length >= 2 ? nameSegments : [];
+
+    if (segments.length === 0) {
+      return [item];
+    }
+
+    return segments.map((segment) => ({
+      ...item,
+      name: segment.mealType,
+      detail: segment.foodName,
+    }));
+  });
+}
+
 function buildDietInsertPayload(userId, item, includeCalories = true) {
-  const foodName = cleanDietPlanValue(item.detail) || cleanDietPlanValue(item.name) || 'Meal';
-  const mealType = cleanDietPlanValue(item.name) || 'meal';
+  const cleanedName = cleanDietPlanValue(item.name);
+  const cleanedDetail = cleanDietPlanValue(item.detail);
+  const inferredMealType = canonicalMealType(cleanedName);
+  const foodName = cleanedDetail || cleanDietPlanValue(stripMealTypePrefix(cleanedName)) || 'Meal';
+  const mealType = inferredMealType || cleanedName || 'meal';
   const payload = {
     user_id: userId,
     food_name: foodName,
@@ -252,7 +310,7 @@ async function deletePlanItemByOpaqueId(supabase, userId, itemId = '') {
   }
 
   if (rawItemId.startsWith('meal-')) {
-    const mealId = Number(rawItemId.replace('meal-', ''));
+    const mealId = Number(rawItemId.match(/^meal-(\d+)/)?.[1]);
     if (!Number.isFinite(mealId)) return null;
 
     const { data: meal, error } = await supabase
@@ -415,9 +473,10 @@ async function createWorkoutPlans(supabase, userId, normalizedItems = []) {
 async function createDietPlans(supabase, userId, normalizedItems = []) {
   const createdItems = [];
   const createdMealIds = [];
+  const insertItems = expandDietPlanItems(normalizedItems);
 
   try {
-    for (const item of normalizedItems) {
+    for (const item of insertItems) {
       const { data: meal, error } = await supabase
         .from('user_meal_plans')
         .insert(buildDietInsertPayload(userId, item, true))
@@ -482,9 +541,10 @@ async function replaceWorkoutPlans(supabase, userId, normalizedItems = []) {
 }
 
 async function replaceDietPlans(supabase, userId, normalizedItems = []) {
-  const targetDates = dedupeDates(normalizedItems);
+  const insertItems = expandDietPlanItems(normalizedItems);
+  const targetDates = dedupeDates(insertItems);
   const existingMealIds = await loadExistingDietPlanIdsForDates(supabase, userId, targetDates);
-  const createdItems = await createDietPlans(supabase, userId, normalizedItems);
+  const createdItems = await createDietPlans(supabase, userId, insertItems);
 
   try {
     await deleteDietPlansByIds(supabase, userId, existingMealIds);

@@ -340,7 +340,7 @@ def make_generate_node(deps: NodeDeps):
                 },
             )
 
-        if intent in {INTENT_PLAN, INTENT_MODIFY} and _is_mixed_plan_type_request(_resolved_user_message(state)):
+        if intent in {INTENT_PLAN, INTENT_MODIFY} and _is_mixed_plan_type_request(str(state.get("user_message") or "")):
             deps.trace.record_current_event(
                 stage="generate",
                 status="ok",
@@ -640,6 +640,7 @@ def _build_persona_generation_prompt(state: GraphState) -> str:
         "- Persona style may appear only in short user-facing prose fields such as core_message and approval_question, and it must never add, remove, or rename foods/exercises/durations/sets.",
         "- Keep the concrete result first. Do not add a greeting, catchphrase, meta setup, or long emotional preface before the result.",
         "- For plan create/modify, keep workout and diet structurally separate and keep rationale short unless the user asks why.",
+        "- For diet proposed_plan data, create separate meal-slot items for each date. Use name exactly 아침, 점심, or 저녁; never store a whole day as one item such as '1일차 건강 식단'.",
         "- Do not add explanatory phrases such as 'allergy considered', 'restriction reflected', or 'disease considered' in plan answers unless safety requires it.",
         "- The response must still satisfy the DraftResponse JSON schema exactly.",
         f"- Selected persona id: {selected_persona or 'default'}; resolved persona id: {resolved_persona_id}.",
@@ -2955,17 +2956,24 @@ def _build_modify_plan_fallback(
     state: GraphState,
 ) -> tuple[DraftComponents, str, list[dict], str | None, str | None]:
     active_proposal = state.get("active_proposal") or {}
+    active_domain = active_proposal.get("domain") if active_proposal.get("domain") in {"workout", "diet"} else None
+    state_plan_type = state.get("proposed_plan_type") if state.get("proposed_plan_type") in {"workout", "diet"} else None
     plan_type = (
         state.get("modify_target")
         if state.get("modify_target") in {"workout", "diet"}
-        else active_proposal.get("domain")
-        if active_proposal.get("domain") in {"workout", "diet"}
-        else state.get("proposed_plan_type")
-        if state.get("proposed_plan_type") in {"workout", "diet"}
+        else active_domain
+        if active_domain in {"workout", "diet"}
+        else state_plan_type
+        if state_plan_type in {"workout", "diet"}
         else _infer_plan_type_from_message(str(state.get("user_message") or ""))
     )
 
-    base_plan = state.get("proposed_plan") or active_proposal.get("items") or []
+    if state_plan_type == plan_type:
+        base_plan = state.get("proposed_plan") or []
+    elif active_domain == plan_type:
+        base_plan = active_proposal.get("items") or []
+    else:
+        base_plan = []
     proposed_plan = [dict(item) for item in base_plan if isinstance(item, dict)]
     if not proposed_plan or plan_type not in {"workout", "diet"}:
         if plan_type in {"workout", "diet"}:
@@ -3006,7 +3014,14 @@ def _expand_long_range_plan_if_requested(
 
     proposed_plan = _align_plan_start_to_today_if_implicit(state, proposed_plan)
 
-    target_days = _requested_plan_days(_resolved_user_message(state))
+    user_message = _resolved_user_message(state)
+    target_days = _requested_plan_days(user_message)
+    if proposed_plan_type == "diet":
+        proposed_plan = _normalize_diet_plan_meal_slots(
+            proposed_plan,
+            user_message=user_message,
+            force_daily_split=bool(target_days),
+        )
     if not target_days:
         return proposed_plan
 
@@ -3018,6 +3033,176 @@ def _expand_long_range_plan_if_requested(
     if proposed_plan_type == "diet":
         return _expand_diet_plan_days(proposed_plan, start_day, target_days)
     return _expand_workout_plan_days(proposed_plan, start_day, target_days)
+
+
+_DIET_MEAL_SLOT_ORDER = ("아침", "점심", "저녁")
+_DIET_MEAL_SLOT_ALIASES = {
+    "breakfast": "아침",
+    "morning": "아침",
+    "아침": "아침",
+    "lunch": "점심",
+    "점심": "점심",
+    "dinner": "저녁",
+    "supper": "저녁",
+    "evening": "저녁",
+    "저녁": "저녁",
+}
+_DIET_MEAL_SLOT_PREFIX_RE = re.compile(
+    r"(아침|점심|저녁|breakfast|lunch|dinner|supper|morning|evening)\s*[:：\-]\s*",
+    re.IGNORECASE,
+)
+_DIET_DAILY_CALORIE_RE = re.compile(r"\s*[\(\[]?\s*\d{2,4}\s*(?:kcal|칼로리)\s*[\)\]]?", re.IGNORECASE)
+_DIET_FOOD_SPLIT_RE = re.compile(r"\s*(?:,|，|;|/|\+|ㆍ|·|\n)\s*")
+
+
+def _normalize_diet_plan_meal_slots(
+    plan_items: list[dict],
+    *,
+    user_message: str = "",
+    force_daily_split: bool = False,
+) -> list[dict]:
+    allow_inferred_split = force_daily_split or not _requested_single_diet_meal_slot(user_message)
+    normalized: list[dict] = []
+    for item in plan_items or []:
+        if not isinstance(item, dict):
+            continue
+
+        split_items = _split_compound_diet_plan_item(item, allow_inferred_split=allow_inferred_split)
+        if split_items:
+            normalized.extend(split_items)
+            continue
+
+        normalized.append(_normalize_single_diet_plan_item(item))
+
+    return normalized or plan_items
+
+
+def _split_compound_diet_plan_item(item: dict, *, allow_inferred_split: bool) -> list[dict]:
+    if item.get("ex_list"):
+        return []
+
+    raw_detail = str(item.get("detail") or "").strip()
+    if not raw_detail:
+        return []
+
+    explicit_slots = _split_explicit_diet_meal_slots(raw_detail)
+    if explicit_slots:
+        return [_copy_diet_plan_slot_item(item, slot, detail) for slot, detail in explicit_slots]
+
+    if _canonical_diet_meal_slot_name(item.get("name")):
+        return []
+
+    if not allow_inferred_split:
+        return []
+
+    inferred_slots = _split_food_list_into_diet_meal_slots(raw_detail)
+    if inferred_slots:
+        return [_copy_diet_plan_slot_item(item, slot, detail) for slot, detail in inferred_slots]
+
+    return []
+
+
+def _normalize_single_diet_plan_item(item: dict) -> dict:
+    copied = dict(item)
+    slot_name = _canonical_diet_meal_slot_name(copied.get("name"))
+    if slot_name:
+        copied["name"] = slot_name
+        copied["detail"] = _strip_leading_diet_slot_prefix(str(copied.get("detail") or ""))
+    copied["ex_list"] = []
+    return copied
+
+
+def _split_explicit_diet_meal_slots(detail: str) -> list[tuple[str, str]]:
+    text = _strip_plan_detail_explanations(str(detail or "").strip())
+    matches = list(_DIET_MEAL_SLOT_PREFIX_RE.finditer(text))
+    if len(matches) < 3:
+        return []
+
+    slots: dict[str, str] = {}
+    for index, match in enumerate(matches):
+        slot = _canonical_diet_meal_slot_name(match.group(1))
+        if not slot:
+            continue
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        cleaned = _clean_split_diet_detail(text[start:end])
+        if cleaned:
+            slots[slot] = cleaned
+
+    if not all(slot in slots for slot in _DIET_MEAL_SLOT_ORDER):
+        return []
+    return [(slot, slots[slot]) for slot in _DIET_MEAL_SLOT_ORDER]
+
+
+def _split_food_list_into_diet_meal_slots(detail: str) -> list[tuple[str, str]]:
+    text = _clean_split_diet_detail(detail)
+    pieces = [
+        piece.strip(" ,;:/+-ㆍ·")
+        for piece in _DIET_FOOD_SPLIT_RE.split(text)
+        if piece and piece.strip(" ,;:/+-ㆍ·")
+    ]
+    if len(pieces) < 3:
+        return []
+
+    base_size, remainder = divmod(len(pieces), len(_DIET_MEAL_SLOT_ORDER))
+    chunk_sizes = [
+        base_size + (1 if index < remainder else 0)
+        for index in range(len(_DIET_MEAL_SLOT_ORDER))
+    ]
+
+    slots: list[tuple[str, str]] = []
+    cursor = 0
+    for slot, size in zip(_DIET_MEAL_SLOT_ORDER, chunk_sizes):
+        chunk = pieces[cursor:cursor + size]
+        cursor += size
+        if not chunk:
+            return []
+        slots.append((slot, ", ".join(chunk)))
+
+    return slots
+
+
+def _copy_diet_plan_slot_item(item: dict, slot: str, detail: str) -> dict:
+    copied = dict(item)
+    copied["name"] = slot
+    copied["detail"] = detail
+    copied["ex_list"] = []
+    for calorie_key in ("calories", "kcal", "total_calories"):
+        copied.pop(calorie_key, None)
+    return copied
+
+
+def _canonical_diet_meal_slot_name(value: object) -> str | None:
+    lowered = str(value or "").strip().lower()
+    if not lowered:
+        return None
+    for marker, slot in _DIET_MEAL_SLOT_ALIASES.items():
+        if marker in lowered:
+            return slot
+    return None
+
+
+def _strip_leading_diet_slot_prefix(value: str) -> str:
+    text = _strip_plan_detail_explanations(str(value or "").strip())
+    text = _DIET_MEAL_SLOT_PREFIX_RE.sub("", text, count=1)
+    return re.sub(r"\s+", " ", text).strip(" ,;:/+-ㆍ·")
+
+
+def _clean_split_diet_detail(value: str) -> str:
+    text = _strip_plan_detail_explanations(str(value or "").strip())
+    text = _DIET_DAILY_CALORIE_RE.sub("", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip(" ,;:/+-ㆍ·")
+
+
+def _requested_single_diet_meal_slot(message: str) -> bool:
+    lowered = str(message or "").lower()
+    found_slots = {
+        slot
+        for marker, slot in _DIET_MEAL_SLOT_ALIASES.items()
+        if marker in lowered
+    }
+    return len(found_slots) == 1
 
 
 def _requested_plan_days(message: str) -> int | None:
@@ -3708,7 +3893,7 @@ def _build_care_draft(state: GraphState) -> dict:
             "core_message": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.",
             "reason_points": [
                 _profile_fit_note(profile) or "지금은 큰 계획보다 바로 할 수 있는 작은 행동이 더 잘 맞아요.",
-                "오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.",
+                "오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.",
             ],
             "suggested_action": "오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.",
             "safety_notes": _profile_safety_notes(profile, None),

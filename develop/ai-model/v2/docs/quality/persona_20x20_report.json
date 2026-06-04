@@ -348,7 +348,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(29세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 fat_loss, 가능 시간 18분, 운동 빈도 주 2회, 생활패턴 late commute office worker, 추...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(무릎, 우유, late commute office worker, fat_loss)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 ",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(29세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 fat_loss, 가능 시간 18분, 운동 빈도 주 2회, 생활패턴 late commute office worker, 추...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(무릎, 우유, late commute office worker, fat_loss)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 ",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -504,7 +504,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n좋아요, 운동과 식단은 밝게 나눠서 다시 맞춰볼게요.",
+      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -531,9 +531,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(29세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 fat_loss, 가능 시간 18분, 운동 빈도 주 2회, 생활패턴 late commute office worker, 추...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(무릎, 우유, late commute office worker, fat_loss)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 ",
+      "response_excerpt": "오늘 식단 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n무릎 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "cheer_sis",
@@ -870,7 +870,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(38세, 성별 female, 체중 69kg, 운동 수준 beginner, 목표 consistency, 가능 시간 10분, 운동 빈도 주 2회, 생활패턴 caregiver, fragmented slee...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(caregiver, fragmented sleep, consistency)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 ",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(38세, 성별 female, 체중 69kg, 운동 수준 beginner, 목표 consistency, 가능 시간 10분, 운동 빈도 주 2회, 생활패턴 caregiver, fragmented slee...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(caregiver, fragmented sleep, consistency)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -1026,7 +1026,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
+      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 조정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -1053,9 +1053,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(38세, 성별 female, 체중 69kg, 운동 수준 beginner, 목표 consistency, 가능 시간 10분, 운동 빈도 주 2회, 생활패턴 caregiver, fragmented slee...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(caregiver, fragmented sleep, consistency)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 ",
+      "response_excerpt": "오늘 식단 플랜을 무리 없게 제안드립니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 작성해도 괜찮을까요?",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "soft_senior",
@@ -1392,7 +1392,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(31세, 성별 male, 체중 76kg, 운동 수준 advanced, 목표 muscle_gain, 가능 시간 50분, 운동 빈도 주 4회, 생활패턴 shift worker, 추가 맥락 shift wo...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(어깨, shift worker, muscle_gain)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:\n-",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(31세, 성별 male, 체중 76kg, 운동 수준 advanced, 목표 muscle_gain, 가능 시간 50분, 운동 빈도 주 4회, 생활패턴 shift worker, 추가 맥락 shift wo...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(어깨, shift worker, muscle_gain)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -1548,7 +1548,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
+      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n무리는 빼.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀 + 두부\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -1575,9 +1575,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(31세, 성별 male, 체중 76kg, 운동 수준 advanced, 목표 muscle_gain, 가능 시간 50분, 운동 빈도 주 4회, 생활패턴 shift worker, 추가 맥락 shift wo...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(어깨, shift worker, muscle_gain)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:\n-",
+      "response_excerpt": "오늘 식단 플랜.\n안전 기준만 보고 이대로 가.\n무리는 빼.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀 + 두부\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n어깨 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "strict_trainer",
@@ -1783,7 +1783,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
+      "response_excerpt": "운동 수정안 반영할게.\n기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다. 이 구성으로 반영하겠습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -1914,7 +1914,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(57세, 성별 male, 체중 86kg, 운동 수준 beginner, 목표 glucose_control, 가능 시간 15분, 운동 빈도 주 2회, 생활패턴 night driver, 추가 맥락 nigh...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 식단 제약(type 2 diabetes, 계란, night driver, glucose_control)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(57세, 성별 male, 체중 86kg, 운동 수준 beginner, 목표 glucose_control, 가능 시간 15분, 운동 빈도 주 2회, 생활패턴 night driver, 추가 맥락 nigh...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 식단 제약(type 2 diabetes, 계란, night driver, glucose_control)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -2070,7 +2070,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
+      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 두부\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 수정할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -2097,9 +2097,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(57세, 성별 male, 체중 86kg, 운동 수준 beginner, 목표 glucose_control, 가능 시간 15분, 운동 빈도 주 2회, 생활패턴 night driver, 추가 맥락 nigh...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 식단 제약(type 2 diabetes, 계란, night driver, glucose_control)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것",
+      "response_excerpt": "오늘 식단 플랜 구성입니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 두부\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 작성할까요?\n근거는 일정과 부담입니다.",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "science_coach",
@@ -2175,7 +2175,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
+      "response_excerpt": "식단 수정안 반영할게.\n기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다. 이 구성으로 반영하겠습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -2436,7 +2436,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(24세, 성별 male, 체중 72kg, 운동 수준 intermediate, 목표 endurance, 가능 시간 35분, 운동 빈도 주 4회, 생활패턴 graduate student, 추가 맥락 gr...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(발목, graduate student, endurance)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(24세, 성별 male, 체중 72kg, 운동 수준 intermediate, 목표 endurance, 가능 시간 35분, 운동 빈도 주 4회, 생활패턴 graduate student, 추가 맥락 gr...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(발목, graduate student, endurance)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -2592,7 +2592,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n오케이, 괜찮아. 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "식단 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -2619,9 +2619,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(24세, 성별 male, 체중 72kg, 운동 수준 intermediate, 목표 endurance, 가능 시간 35분, 운동 빈도 주 4회, 생활패턴 graduate student, 추가 맥락 gr...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(발목, graduate student, endurance)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:",
+      "response_excerpt": "오늘 식단 플랜 잡아봤어.\n괜찮아, 딱 이 정도로 같이 가보자.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n발목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "playful_buddy",
@@ -2958,7 +2958,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(42세, 성별 female, 체중 66kg, 운동 수준 intermediate, 목표 health, 가능 시간 30분, 운동 빈도 주 4회, 생활패턴 busy office worker, 추가 맥락 b...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 식단 제약(갑각류, 땅콩, busy office worker, health)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(42세, 성별 female, 체중 66kg, 운동 수준 intermediate, 목표 health, 가능 시간 30분, 운동 빈도 주 4회, 생활패턴 busy office worker, 추가 맥락 b...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 식단 제약(갑각류, 땅콩, busy office worker, health)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -3114,7 +3114,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "프로필 제약과 충돌할 수 있는 항목이 있어서 이 플랜은 그대로 진행하지 않을게요.\n운동/식단 종류와 꼭 피해야 할 조건을 한 번만 더 알려주면 안전하게 다시 작성할게요.\n확인했습니다. 반영 범위는 캘린더에 들어갈 항목입니다. 항목별로 다시 정리하겠습니다.",
+      "response_excerpt": "확인했습니다.\n식단 플랜을 캘린더 기준으로 수정했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n반영 범위는 이 식단 플랜입니다.\n캘린더에 수정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -3141,9 +3141,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(42세, 성별 female, 체중 66kg, 운동 수준 intermediate, 목표 health, 가능 시간 30분, 운동 빈도 주 4회, 생활패턴 busy office worker, 추가 맥락 b...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 식단 제약(갑각류, 땅콩, busy office worker, health)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n",
+      "response_excerpt": "확인했습니다.\n오늘 식단 플랜을 캘린더 기준으로 정리했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n반영 범위는 이 식단 플랜입니다.\n캘린더에 작성할까요?",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "daily_manager",
@@ -3480,7 +3480,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(68세, 성별 male, 체중 78kg, 운동 수준 beginner, 목표 mobility, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 retired, morning walk, 추가 맥락 re...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(hypertension, heart disease, 고관절, retired, morning walk, mobility)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(68세, 성별 male, 체중 78kg, 운동 수준 beginner, 목표 mobility, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 retired, morning walk, 추가 맥락 re...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(hypertension, heart disease, 고관절, retired, morning walk, mobility)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 ",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -3636,7 +3636,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n좋아요, 운동과 식단은 밝게 나눠서 다시 맞춰볼게요.",
+      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -3663,9 +3663,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(68세, 성별 male, 체중 78kg, 운동 수준 beginner, 목표 mobility, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 retired, morning walk, 추가 맥락 re...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(hypertension, heart disease, 고관절, retired, morning walk, mobility)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세",
+      "response_excerpt": "오늘 식단 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n고관절 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "cheer_sis",
@@ -4002,7 +4002,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(17세, 성별 female, 체중 58kg, 운동 수준 beginner, 목표 healthy_habits, 가능 시간 25분, 운동 빈도 주 2회, 생활패턴 exam period, 추가 맥락 exam...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(exam period, healthy_habits)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:\n- 추",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(17세, 성별 female, 체중 58kg, 운동 수준 beginner, 목표 healthy_habits, 가능 시간 25분, 운동 빈도 주 2회, 생활패턴 exam period, 추가 맥락 exam...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(exam period, healthy_habits)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -4158,7 +4158,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
+      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 조정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -4185,9 +4185,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(17세, 성별 female, 체중 58kg, 운동 수준 beginner, 목표 healthy_habits, 가능 시간 25분, 운동 빈도 주 2회, 생활패턴 exam period, 추가 맥락 exam...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(exam period, healthy_habits)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:\n- 추",
+      "response_excerpt": "오늘 식단 플랜을 무리 없게 제안드립니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 작성해도 괜찮을까요?",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "soft_senior",
@@ -4524,7 +4524,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(55세, 성별 male, 체중 91kg, 운동 수준 intermediate, 목표 fat_loss, 가능 시간 30분, 운동 빈도 주 4회, 생활패턴 desk job, 추가 맥락 desk job, f...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(COPD, 허리, desk job, fat_loss)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:\n- ",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(55세, 성별 male, 체중 91kg, 운동 수준 intermediate, 목표 fat_loss, 가능 시간 30분, 운동 빈도 주 4회, 생활패턴 desk job, 추가 맥락 desk job, f...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(COPD, 허리, desk job, fat_loss)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -4915,7 +4915,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "지금은 승인 대기 중인 계획이 없어요.\n다음 행동: 먼저 계획을 제안받은 뒤 승인 요청을 해주세요.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
+      "response_excerpt": "지금은 승인 대기 중인 계획이 없어요.\n다음 행동: 먼저 계획을 제안받은 뒤 승인 요청을 해주세요.\n기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다. 이 구성으로 반영하겠습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -5046,7 +5046,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(34세, 성별 female, 체중 62kg, 운동 수준 beginner, 목표 health, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 pregnancy second trimester, 추가....\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(pregnancy, pregnancy second trimester, health)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(34세, 성별 female, 체중 62kg, 운동 수준 beginner, 목표 health, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 pregnancy second trimester, 추가....\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(pregnancy, pregnancy second trimester, health)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -5229,7 +5229,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(34세, 성별 female, 체중 62kg, 운동 수준 beginner, 목표 health, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 pregnancy second trimester, 추가....\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(pregnancy, pregnancy second trimester, health)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(34세, 성별 female, 체중 62kg, 운동 수준 beginner, 목표 health, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 pregnancy second trimester, 추가....\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(pregnancy, pregnancy second trimester, health)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는",
       "debug": {
         "action_intent": "care",
         "domain": "diet",
@@ -5307,7 +5307,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "지금은 승인 대기 중인 계획이 없어요.\n다음 행동: 먼저 계획을 제안받은 뒤 승인 요청을 해주세요.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
+      "response_excerpt": "지금은 승인 대기 중인 계획이 없어요.\n다음 행동: 먼저 계획을 제안받은 뒤 승인 요청을 해주세요.\n기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다. 이 구성으로 반영하겠습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -5568,7 +5568,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(72세, 성별 female, 체중 59kg, 운동 수준 beginner, 목표 mobility, 가능 시간 15분, 운동 빈도 주 2회, 생활패턴 lives alone, 추가 맥락 lives alon...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(osteoporosis, 허리, lives alone, mobility)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(72세, 성별 female, 체중 59kg, 운동 수준 beginner, 목표 mobility, 가능 시간 15분, 운동 빈도 주 2회, 생활패턴 lives alone, 추가 맥락 lives alon...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(osteoporosis, 허리, lives alone, mobility)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -5724,7 +5724,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n오케이, 괜찮아. 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "식단 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -5751,9 +5751,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(72세, 성별 female, 체중 59kg, 운동 수준 beginner, 목표 mobility, 가능 시간 15분, 운동 빈도 주 2회, 생활패턴 lives alone, 추가 맥락 lives alon...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(osteoporosis, 허리, lives alone, mobility)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘",
+      "response_excerpt": "오늘 식단 플랜 잡아봤어.\n괜찮아, 딱 이 정도로 같이 가보자.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n허리 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "playful_buddy",
@@ -6090,7 +6090,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(27세, 성별 female, 체중 53kg, 운동 수준 intermediate, 목표 muscle_gain, 가능 시간 40분, 운동 빈도 주 4회, 생활패턴 vegan designer, 추가 맥락....\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 식단 제약(유당, vegan designer, muscle_gain)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(27세, 성별 female, 체중 53kg, 운동 수준 intermediate, 목표 muscle_gain, 가능 시간 40분, 운동 빈도 주 4회, 생활패턴 vegan designer, 추가 맥락....\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 식단 제약(유당, vegan designer, muscle_gain)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -6246,7 +6246,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n확인했습니다. 반영 범위는 캘린더에 들어갈 항목입니다. 항목별로 다시 정리하겠습니다.",
+      "response_excerpt": "확인했습니다.\n식단 플랜을 캘린더 기준으로 수정했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 두부\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n반영 범위는 이 식단 플랜입니다.\n캘린더에 수정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -6273,9 +6273,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(27세, 성별 female, 체중 53kg, 운동 수준 intermediate, 목표 muscle_gain, 가능 시간 40분, 운동 빈도 주 4회, 생활패턴 vegan designer, 추가 맥락....\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 식단 제약(유당, vegan designer, muscle_gain)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:",
+      "response_excerpt": "확인했습니다.\n오늘 식단 플랜을 캘린더 기준으로 정리했습니다.\n반영 범위는 아래 항목입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 두부\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n반영 범위는 이 식단 플랜입니다.\n캘린더에 작성할까요?",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "daily_manager",
@@ -6612,7 +6612,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(45세, 성별 male, 체중 84kg, 운동 수준 beginner, 목표 fat_loss, 가능 시간 8분, 운동 빈도 주 2회, 생활패턴 severe overtime, 추가 맥락 severe ov...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(sleep deprivation, severe overtime, fat_loss)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 ",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(45세, 성별 male, 체중 84kg, 운동 수준 beginner, 목표 fat_loss, 가능 시간 8분, 운동 빈도 주 2회, 생활패턴 severe overtime, 추가 맥락 severe ov...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(sleep deprivation, severe overtime, fat_loss)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 ",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -6768,7 +6768,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n좋아요, 운동과 식단은 밝게 나눠서 다시 맞춰볼게요.",
+      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n좋아요, 이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -6795,9 +6795,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(45세, 성별 male, 체중 84kg, 운동 수준 beginner, 목표 fat_loss, 가능 시간 8분, 운동 빈도 주 2회, 생활패턴 severe overtime, 추가 맥락 severe ov...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(sleep deprivation, severe overtime, fat_loss)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 ",
+      "response_excerpt": "오늘 식단 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n좋아요, 이 식단 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "cheer_sis",
@@ -7134,7 +7134,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(21세, 성별 female, 체중 49kg, 운동 수준 beginner, 목표 health, 가능 시간 25분, 운동 빈도 주 2회, 생활패턴 irregular meals, 추가 맥락 irregula...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(anemia, irregular meals, health)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(21세, 성별 female, 체중 49kg, 운동 수준 beginner, 목표 health, 가능 시간 25분, 운동 빈도 주 2회, 생활패턴 irregular meals, 추가 맥락 irregula...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(anemia, irregular meals, health)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -7290,7 +7290,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n괜찮습니다. 무리 없게 나눠서 천천히 다시 정리해도 됩니다.",
+      "response_excerpt": "식단 플랜을 무리 없게 조정했습니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 조정할까요?",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -7317,9 +7317,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(21세, 성별 female, 체중 49kg, 운동 수준 beginner, 목표 health, 가능 시간 25분, 운동 빈도 주 2회, 생활패턴 irregular meals, 추가 맥락 irregula...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(anemia, irregular meals, health)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:",
+      "response_excerpt": "오늘 식단 플랜을 무리 없게 제안드립니다.\n지금 기준에서는 적절합니다.\n천천히 해도 됩니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 작성해도 괜찮을까요?",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "soft_senior",
@@ -7656,7 +7656,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(36세, 성별 male, 체중 79kg, 운동 수준 advanced, 목표 performance, 가능 시간 40분, 운동 빈도 주 4회, 생활패턴 CrossFit background, 추가 맥락 C...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(손목, CrossFit background, performance)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(36세, 성별 male, 체중 79kg, 운동 수준 advanced, 목표 performance, 가능 시간 40분, 운동 빈도 주 4회, 생활패턴 CrossFit background, 추가 맥락 C...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(손목, CrossFit background, performance)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -7812,7 +7812,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n핵심만 다시 잡자. 군더더기 없이 운동과 식단은 분리해. 무리는 빼.",
+      "response_excerpt": "식단 플랜.\n군더더기 빼고 다시 고쳤어.\n무리는 빼.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -7839,9 +7839,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(36세, 성별 male, 체중 79kg, 운동 수준 advanced, 목표 performance, 가능 시간 40분, 운동 빈도 주 4회, 생활패턴 CrossFit background, 추가 맥락 C...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(손목, CrossFit background, performance)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.",
+      "response_excerpt": "오늘 식단 플랜.\n안전 기준만 보고 이대로 가.\n무리는 빼.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n손목 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 가.\n작성할까?",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "strict_trainer",
@@ -8047,7 +8047,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
+      "response_excerpt": "운동 수정안 반영할게.\n기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다. 이 구성으로 반영하겠습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -8178,7 +8178,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(46세, 성별 female, 체중 73kg, 운동 수준 beginner, 목표 heart_health, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 desk job, 추가 맥락 desk job,...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(heart disease, desk job, heart_health)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(46세, 성별 female, 체중 73kg, 운동 수준 beginner, 목표 heart_health, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 desk job, 추가 맥락 desk job,...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(heart disease, desk job, heart_health)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 ",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -8334,7 +8334,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
+      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 수정할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -8361,9 +8361,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(46세, 성별 female, 체중 73kg, 운동 수준 beginner, 목표 heart_health, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 desk job, 추가 맥락 desk job,...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(heart disease, desk job, heart_health)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요",
+      "response_excerpt": "오늘 식단 플랜 구성입니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 작성할까요?\n근거는 일정과 부담입니다.",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "science_coach",
@@ -8439,7 +8439,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
+      "response_excerpt": "식단 수정안 반영할게.\n기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다. 이 구성으로 반영하겠습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",
@@ -8700,7 +8700,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(33세, 성별 nonbinary, 체중 63kg, 운동 수준 beginner, 목표 consistency, 가능 시간 12분, 운동 빈도 주 2회, 생활패턴 childcare, 추가 맥락 childc...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(childcare, consistency)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:\n- 추가 맥락(",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(33세, 성별 nonbinary, 체중 63kg, 운동 수준 beginner, 목표 consistency, 가능 시간 12분, 운동 빈도 주 2회, 생활패턴 childcare, 추가 맥락 childc...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(childcare, consistency)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:\n-",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -8856,7 +8856,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n오케이, 괜찮아. 운동이랑 식단은 나눠서 같이 다시 잡자.",
+      "response_excerpt": "식단 플랜 다시 잡았어.\n괜찮아, 부담 낮게 같이 가보자.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -8883,9 +8883,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(33세, 성별 nonbinary, 체중 63kg, 운동 수준 beginner, 목표 consistency, 가능 시간 12분, 운동 빈도 주 2회, 생활패턴 childcare, 추가 맥락 childc...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(childcare, consistency)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:\n- 추가 맥락(",
+      "response_excerpt": "오늘 식단 플랜 잡아봤어.\n괜찮아, 딱 이 정도로 같이 가보자.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n이 식단 플랜으로 가보자.\n괜찮아, 부담 낮게 가자.",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "playful_buddy",
@@ -9222,7 +9222,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(60세, 성별 male, 체중 90kg, 운동 수준 beginner, 목표 blood_pressure, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 dislikes gyms, 추가 맥락 disl...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(hypertension, dislikes gyms, blood_pressure)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(60세, 성별 male, 체중 90kg, 운동 수준 beginner, 목표 blood_pressure, 가능 시간 20분, 운동 빈도 주 2회, 생활패턴 dislikes gyms, 추가 맥락 disl...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(hypertension, dislikes gyms, blood_pressure)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -9744,7 +9744,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(30세, 성별 female, 체중 52kg, 운동 수준 advanced, 목표 performance, 가능 시간 45분, 운동 빈도 주 4회, 생활패턴 rock climber, 추가 맥락 rock c...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(손가락, rock climber, performance)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:\n",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(30세, 성별 female, 체중 52kg, 운동 수준 advanced, 목표 performance, 가능 시간 45분, 운동 빈도 주 4회, 생활패턴 rock climber, 추가 맥락 rock c...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(손가락, rock climber, performance)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -9900,7 +9900,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n좋아요, 운동과 식단은 밝게 나눠서 다시 맞춰볼게요.",
+      "response_excerpt": "식단 플랜을 밝게 다시 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 수정할까요?\n잘 맞춰볼게요.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -9927,9 +9927,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(30세, 성별 female, 체중 52kg, 운동 수준 advanced, 목표 performance, 가능 시간 45분, 운동 빈도 주 4회, 생활패턴 rock climber, 추가 맥락 rock c...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(손가락, rock climber, performance)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 계획의 일부로 둘게요.\n\n주의:\n",
+      "response_excerpt": "오늘 식단 플랜을 밝게 맞춰봤어요.\n부담 줄여서 가요.\n이 정도면 충분해요.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n손가락 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n좋아요, 이 식단 플랜으로 작성할까요?\n잘 맞춰볼게요.",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "cheer_sis",
@@ -10135,7 +10135,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동 수정안 반영할게.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
+      "response_excerpt": "운동 수정안 반영할게.\n기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다. 이 구성으로 반영하겠습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "workout",
@@ -10266,7 +10266,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(69세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 independence, 가능 시간 10분, 운동 빈도 주 2회, 생활패턴 balance fear, 추가 맥락 balan...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(vertigo history, 어지럼, balance fear, independence)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 ",
+      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(69세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 independence, 가능 시간 10분, 운동 빈도 주 2회, 생활패턴 balance fear, 추가 맥락 balan...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준부터 잡는 편이 안전합니다.\n\n근거 요약: 건강 제약(vertigo history, 어지럼, balance fear, independence)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면",
       "debug": {
         "action_intent": "care",
         "domain": "general",
@@ -10422,7 +10422,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "운동/식단 구분이 섞여서 이 플랜은 확정하지 않을게요. 운동 플랜인지 식단 플랜인지 나눠서 다시 작성할게요.\n선택 기준을 분리해서 다시 확인하겠습니다. 근거는 안전성과 지속 가능성입니다.",
+      "response_excerpt": "식단 플랜을 수정했습니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 수정할까요?\n근거는 일정과 부담입니다.",
       "debug": {
         "action_intent": "modify",
         "domain": "diet",
@@ -10449,9 +10449,9 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "못 한 게 문제가 아니라 다시 시작할 수 있게 부담을 줄이는 게 우선이에요.\n\n근거:\n- 사용자 프로필(69세, 성별 female, 체중 64kg, 운동 수준 beginner, 목표 independence, 가능 시간 10분, 운동 빈도 주 2회, 생활패턴 balance fear, 추가 맥락 balan...\n- 오늘은 운동이나 식단을 완벽히 맞추기보다 5~10분 산책, 물 한 컵, 한 끼 균형처럼 낮은 기준으로 충분해요.\n\n근거 요약: 건강 제약(vertigo history, 어지럼, balance fear, independence)을 반영해 위험 요소를 낮췄어요.\n\n다음 행동: 오늘 할 일은 하나만 고르세요. 너무 버거우면 쉬는 것도 ",
+      "response_excerpt": "오늘 식단 플랜 구성입니다.\n기준은 안전성과 지속 가능성입니다.\n근거는 부담 조절입니다.\n- 2026-06-04 아침: 현미죽, 블루베리, 삶은 달걀\n- 2026-06-04 점심: 현미밥, 두부 스테이크, 구운 채소\n- 2026-06-04 저녁: 렌틸콩 수프, 고구마, 데친 채소\n어지럼 관련 통증이 생기면 즉시 중단하고 강도를 낮추세요.\n이 식단 플랜으로 작성할까요?\n근거는 일정과 부담입니다.",
       "debug": {
-        "action_intent": "care",
+        "action_intent": "create",
         "domain": "diet",
         "support_mode": "care",
         "resolved_persona_id": "science_coach",
@@ -10527,7 +10527,7 @@
         "profile_accuracy": 1.0
       },
       "issues": [],
-      "response_excerpt": "식단 수정안 반영할게.\n확인했습니다. 기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다.",
+      "response_excerpt": "식단 수정안 반영할게.\n기준은 안전성과 지속 가능성입니다. 근거는 반영 범위 안에 있습니다. 이 구성으로 반영하겠습니다.",
       "debug": {
         "action_intent": "approval",
         "domain": "diet",

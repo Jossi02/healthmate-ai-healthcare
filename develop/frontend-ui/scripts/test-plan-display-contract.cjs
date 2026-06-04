@@ -23,7 +23,13 @@ vm.runInNewContext(compiled.outputText, {
   console,
 });
 
-const { cleanDietPlanValue, classifyWorkoutGroup, getDietDisplay } = moduleContext.exports;
+const {
+  cleanDietPlanValue,
+  classifyWorkoutGroup,
+  getDietDisplay,
+  normalizeDietKcal,
+  splitCompoundDietText,
+} = moduleContext.exports;
 
 function assertNoEvidenceText(value) {
   const text = String(value || '').toLowerCase();
@@ -46,6 +52,18 @@ assert.equal(display.kcal, '420 kcal');
 assert.equal(display.subtitle, '');
 assertNoEvidenceText(display.title);
 assertNoEvidenceText(display.detail);
+
+const compoundDiet = splitCompoundDietText(
+  '아침: 잡곡밥 + 구운 고등어 + 시금치나물, 점심: 닭가슴살 샐러드, 현미밥, 저녁: 두부구이, 버섯볶음, 보리밥'
+);
+assert.deepEqual(
+  Array.from(compoundDiet, (item) => item.type),
+  ['Breakfast', 'Lunch', 'Dinner']
+);
+assert.equal(compoundDiet[0].name, '잡곡밥 + 구운 고등어 + 시금치나물');
+assert.equal(compoundDiet[1].name, '닭가슴살 샐러드, 현미밥');
+assert.equal(compoundDiet[2].name, '두부구이, 버섯볶음, 보리밥');
+assert.equal(normalizeDietKcal('0 kcal'), '');
 
 assert.equal(
   classifyWorkoutGroup({
@@ -70,4 +88,4 @@ assert.equal(
   'stretching'
 );
 
-console.log('[plan-display-contract] 5/5 passed');
+console.log('[plan-display-contract] 7/7 passed');

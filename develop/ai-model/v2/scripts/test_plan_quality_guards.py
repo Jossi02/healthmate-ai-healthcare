@@ -1821,6 +1821,67 @@ def test_weekly_diet_plan_expands_for_real_korean_chi_request() -> None:
     assert_true(days[-1] == (today + timedelta(days=6)).isoformat(), "weekly diet request should end after seven days")
 
 
+def test_weekly_diet_daily_rows_split_into_meal_slots() -> None:
+    today = date.fromisoformat(kst_today_iso())
+    daily_details = [
+        "\ud604\ubbf8\ubc25, \uc0bc\uce58\uad6c\uc774, \ub450\ubd80\ubd80\uce68, \uc2dc\uae08\uce58\ub098\ubb3c, \ub9d1\uc740 \ucf69\ub098\ubb3c\uad6d (650kcal)",
+        "\uadc0\ub9ac\ubc25, \uc18c\uace0\uae30 \ubc84\uc12f\ubcf6\uc74c, \uad6c\uc6b4 \uac00\uc9c0\uc640 \ud638\ubc15, \uc0c1\ucd94\uc308, \ubb34\uad6d (680kcal)",
+        "\uc7a1\uace1\ubc25, \ub2ed\uc548\uc2ec \uc624\ube10\uad6c\uc774, \ud1a0\ub9c8\ud1a0 \ube0c\ub85c\ucf5c\ub9ac \uc0d0\ub7ec\ub4dc, \uc800\uc5fc \uc544\ubcf4\uce74\ub3c4 \ub4dc\ub808\uc2f1 (620kcal)",
+        "\ud604\ubbf8\uc7a1\uace1\ubc25, \uad6c\uc6b4 \uc5f0\uc5b4, \ubd80\ucd94\ubb34\uce68, \uc591\ubc30\ucd94\uc308, \uc800\uc5fc \uc30c\uc7a5 (640kcal)",
+        "\ubcf4\ub9ac\ubc25, \ud6c8\uc81c\uc624\ub9ac \uad6c\uc774, \uba38\uc26c\ub8f8 \uc0d0\ub7ec\ub4dc, \uc62c\ub9ac\ube0c \uc624\uc77c \ub4dc\ub808\uc2f1 (670kcal)",
+        "\ud604\ubbf8\ubc25, \ub9c8\ud30c\ub450\ubd80, \ucc10 \ub2e8\ud638\ubc15, \ud30c\ud504\ub9ac\uce74 \ubc84\uc12f\ubcf6\uc74c (610kcal)",
+        "\uadc0\ub9ac\ubc25, \uc870\uae30\uad6c\uc774, \uc560\ud638\ubc15\ub098\ubb3c, \ube0c\ub85c\ucf5c\ub9ac \ub370\uce68, \uc0ac\uacfc \uc2ac\ub77c\uc774\uc2a4 (630kcal)",
+    ]
+    base_plan = [
+        {
+            "name": f"{offset + 1}\uc77c\ucc28 \uac74\uac15 \uc2dd\ub2e8",
+            "detail": detail,
+            "day": (today + timedelta(days=offset)).isoformat(),
+            "ex_list": [],
+        }
+        for offset, detail in enumerate(daily_details)
+    ]
+
+    expanded = _expand_long_range_plan_if_requested(
+        {"user_message": "\uc77c\uc8fc\uc77c\uce58 \uc2dd\ub2e8 \uc9dc\uc918"},
+        base_plan,
+        "diet",
+    )
+    preview = _render_plan_preview_from_items(expanded)
+
+    assert_true(len(expanded) == 21, "weekly daily diet rows should split into three meal slots per day")
+    for offset in range(7):
+        current_day = (today + timedelta(days=offset)).isoformat()
+        names = [item["name"] for item in expanded if item["day"] == current_day]
+        assert_true(names == ["\uc544\uce68", "\uc810\uc2ec", "\uc800\ub141"], "each split diet day should keep breakfast/lunch/dinner order")
+
+    assert_true("\uc544\uce68:" in preview and "\uc810\uc2ec:" in preview and "\uc800\ub141:" in preview, "weekly diet preview should expose meal slots")
+    assert_true("1\uc77c\ucc28 \uac74\uac15 \uc2dd\ub2e8" not in preview, "weekly diet preview should not show daily bundle names")
+    assert_true("kcal" not in preview.lower(), "daily total calories should not be copied into each meal detail")
+
+
+def test_single_meal_diet_request_does_not_split_food_list() -> None:
+    today = date.fromisoformat(kst_today_iso())
+    base_plan = [
+        {
+            "name": "\uac74\uac15 \uc2dd\ub2e8",
+            "detail": "\ud604\ubbf8\ubc25, \ub2ed\uac00\uc2b4\uc0b4, \uad6c\uc6b4 \ucc44\uc18c",
+            "day": today.isoformat(),
+            "ex_list": [],
+        }
+    ]
+
+    normalized = _expand_long_range_plan_if_requested(
+        {"user_message": "\uc810\uc2ec \uc2dd\ub2e8 \ucd94\ucc9c\ud574\uc918"},
+        base_plan,
+        "diet",
+    )
+
+    assert_true(len(normalized) == 1, "single-meal diet requests should not be split into three meal slots")
+    assert_true(normalized[0]["name"] == "\uac74\uac15 \uc2dd\ub2e8", "non-slot single-meal name should remain unchanged")
+    assert_true("\ud604\ubbf8\ubc25" in normalized[0]["detail"], "single-meal food detail should remain intact")
+
+
 def test_weekly_diet_preview_groups_by_calendar_day() -> None:
     today = date.fromisoformat(kst_today_iso())
     expanded = []
@@ -3268,6 +3329,8 @@ def main() -> None:
         test_week_workout_plan_expands_from_one_day_request,
         test_seven_day_diet_plan_expands_by_calendar_day,
         test_weekly_diet_plan_expands_for_real_korean_chi_request,
+        test_weekly_diet_daily_rows_split_into_meal_slots,
+        test_single_meal_diet_request_does_not_split_food_list,
         test_weekly_diet_preview_groups_by_calendar_day,
         test_weekly_workout_plan_expands_for_real_korean_chi_request,
         test_week_plan_without_start_date_aligns_to_today,
