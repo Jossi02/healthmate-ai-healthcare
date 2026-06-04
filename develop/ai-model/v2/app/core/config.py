@@ -10,10 +10,10 @@ ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 class Settings(BaseSettings):
     # Gemini Flash (응답 생성)
     GEMINI_API_KEY: str
-    GEMINI_MODEL_NAME: str = "gemini-2.5-flash"
+    GEMINI_MODEL_NAME: str = "gemini-3.5-flash"
     # Gemini Flash-Lite (의도 분석 · 검색 평가)
     ROUTER_API_KEY: str
-    ROUTER_MODEL_NAME: str = "gemini-2.5-flash-lite"
+    ROUTER_MODEL_NAME: str = "gemini-3.5-flash"
     # Pinecone
     PINECONE_API_KEY: str
     PINECONE_INDEX_NAME: str

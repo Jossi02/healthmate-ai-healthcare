@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 api_key = os.getenv("GEMINI_API_KEY")
-model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-flash")
+model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-3.5-flash")
 
 if not api_key:
     raise RuntimeError("GEMINI_API_KEY not found in .env")
