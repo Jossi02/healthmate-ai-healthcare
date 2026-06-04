@@ -1453,6 +1453,87 @@ def test_semantic_failure_recovers_with_safe_plan_fallback() -> None:
     )
 
 
+def test_semantic_failure_preserves_valid_weekly_diet_plan() -> None:
+    today = date.fromisoformat(kst_today_iso())
+    plan = []
+    for offset in range(7):
+        current_day = (today + timedelta(days=offset)).isoformat()
+        plan.extend(
+            [
+                {"name": "\uc544\uce68", "detail": "\ud604\ubbf8\uc8fd, \ube14\ub8e8\ubca0\ub9ac, \uc0b6\uc740 \ub2ec\uac40", "day": current_day, "ex_list": []},
+                {"name": "\uc810\uc2ec", "detail": "\ud604\ubbf8\ubc25, \ub450\ubd80 \uc2a4\ud14c\uc774\ud06c, \uc800\uc5fc \uad6c\uc6b4 \ucc44\uc18c", "day": current_day, "ex_list": []},
+                {"name": "\uc800\ub141", "detail": "\ub450\ubd80 \ucc44\uc18c\ubcf6\uc74c, \uace0\uad6c\ub9c8, \uc800\uc5fc \ub370\uce5c \ucc44\uc18c", "day": current_day, "ex_list": []},
+            ]
+        )
+    preview = _render_plan_preview_from_items(plan)
+    report = {
+        "passed": False,
+        "requires_retry": True,
+        "semantic_judge": {"mode": "blocking", "issue_count": 1},
+        "issues": [
+            {
+                "severity": "critical",
+                "code": "semantic_profile_conflict",
+                "message": "judge incorrectly reported range mismatch",
+                "retry": True,
+                "detail": {"source": "semantic_judge", "mode": "blocking"},
+            }
+        ],
+    }
+
+    recovered = _safe_plan_fallback_for_semantic_failure(
+        report,
+        {
+            "response": f"\uc77c\uc8fc\uc77c \uc2dd\ub2e8 \ud50c\ub79c\uc744 \uc81c\uc548\ud574\uc694.\n{preview}\n\uc774 \uc2dd\ub2e8 \ud50c\ub79c\uc73c\ub85c \uc791\uc131\ud560\uae4c\uc694?",
+            "draft_response": f"\uc77c\uc8fc\uc77c \uc2dd\ub2e8 \ud50c\ub79c\uc744 \uc81c\uc548\ud574\uc694.\n{preview}\n\uc774 \uc2dd\ub2e8 \ud50c\ub79c\uc73c\ub85c \uc791\uc131\ud560\uae4c\uc694?",
+            "draft_components": {
+                "core_message": "\uc77c\uc8fc\uc77c \uc2dd\ub2e8 \ud50c\ub79c\uc744 \uc81c\uc548\ud574\uc694.",
+                "plan_preview": preview,
+                "approval_question": "\uc774 \uc2dd\ub2e8 \ud50c\ub79c\uc73c\ub85c \uc791\uc131\ud560\uae4c\uc694?",
+            },
+            "intent": INTENT_PLAN,
+            "action_intent": "create",
+            "domain": "diet",
+            "proposed_plan_type": "diet",
+            "proposed_plan_action": "create",
+            "proposed_plan": plan,
+            "user_message": "\uc77c\uc8fc\uc77c \uce58 \uc2dd\ub2e8 \uc9dc\uc918",
+        },
+    )
+
+    assert_true(recovered is not None, "valid weekly diet plan should be preserved after semantic-only failure")
+    assert_true(len(recovered["proposed_plan"]) == 21, "semantic recovery must not collapse weekly diet plans to one day")
+    assert_true(len({item["day"] for item in recovered["proposed_plan"]}) == 7, "semantic recovery should keep all seven days")
+    assert_true(
+        recovered["generation_quality_flags"]["semantic_existing_plan_preserved"] is True,
+        "semantic recovery should mark that the existing valid plan was preserved",
+    )
+    assert_true(today.isoformat() in recovered["response"], "preserved response should keep the original plan preview")
+
+
+def test_validator_blocks_short_weekly_diet_plan_range() -> None:
+    today = date.fromisoformat(kst_today_iso()).isoformat()
+    report = _validate_state(
+        {
+            "response": "\uc77c\uc8fc\uc77c \uc2dd\ub2e8 \ud50c\ub79c\uc744 \uc81c\uc548\ud574\uc694.",
+            "intent": INTENT_PLAN,
+            "action_intent": "create",
+            "domain": "diet",
+            "proposed_plan_type": "diet",
+            "proposed_plan": [
+                {"name": "\uc544\uce68", "detail": "\ud604\ubbf8\uc8fd, \ube14\ub8e8\ubca0\ub9ac, \uc0b6\uc740 \ub2ec\uac40", "day": today, "ex_list": []},
+                {"name": "\uc810\uc2ec", "detail": "\ud604\ubbf8\ubc25, \ub450\ubd80 \uc2a4\ud14c\uc774\ud06c, \uc800\uc5fc \uad6c\uc6b4 \ucc44\uc18c", "day": today, "ex_list": []},
+                {"name": "\uc800\ub141", "detail": "\ub450\ubd80 \ucc44\uc18c\ubcf6\uc74c, \uace0\uad6c\ub9c8, \uc800\uc5fc \ub370\uce5c \ucc44\uc18c", "day": today, "ex_list": []},
+            ],
+            "user_message": "\uc77c\uc8fc\uc77c \uce58 \uc2dd\ub2e8 \uc9dc\uc918",
+        }
+    )
+    codes = {issue["code"] for issue in report["issues"]}
+
+    assert_true(report["passed"] is False, "one-day diet plan should fail deterministic validation for weekly request")
+    assert_true("requested_plan_range_too_short" in codes, "weekly request should require seven calendar days")
+
+
 def test_validator_handles_malformed_state_containers() -> None:
     malformed_state = {
         "response": "Plan proposal text with enough detail for validation.",
@@ -3319,6 +3400,8 @@ def main() -> None:
         test_mixed_active_proposal_is_sanitized,
         test_conversation_state_helpers_sanitize_malformed_inputs,
         test_semantic_failure_recovers_with_safe_plan_fallback,
+        test_semantic_failure_preserves_valid_weekly_diet_plan,
+        test_validator_blocks_short_weekly_diet_plan_range,
         test_validator_handles_malformed_state_containers,
         test_langsmith_quality_tracks_fallback_recovery,
         test_langsmith_quality_tracks_evidence_and_profile_coverage,

@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import time
 import re
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from app.core.diet_safety_rules import (
@@ -423,11 +423,12 @@ def _build_safe_diet_fallback_items(state: GraphState) -> list[dict[str, Any]]:
     elif muscle:
         lunch = f"{lunch}, 삶은 병아리콩"
 
-    return [
+    items = [
         {"name": "아침", "detail": breakfast, "day": today, "ex_list": []},
         {"name": "점심", "detail": lunch, "day": today, "ex_list": []},
         {"name": "저녁", "detail": dinner, "day": today, "ex_list": []},
     ]
+    return _expand_fallback_plan_for_requested_range(state, items, "diet")
 
 
 def _safe_plan_fallback_for_semantic_failure(
@@ -449,6 +450,10 @@ def _safe_plan_fallback_for_semantic_failure(
         return None
 
     plan_type = state.get("proposed_plan_type") or state.get("domain")
+    preserved = _preserve_existing_plan_for_semantic_failure(report, state, str(plan_type or ""), critical)
+    if preserved:
+        return preserved
+
     if plan_type == "diet":
         proposed_plan = _build_safe_diet_fallback_items(state)
         core_message = "?앸떒 ?뚮옖???쒖븞?댁슂."
@@ -530,6 +535,67 @@ def _safe_plan_fallback_for_semantic_failure(
     }
 
 
+def _preserve_existing_plan_for_semantic_failure(
+    report: dict[str, Any],
+    state: GraphState,
+    plan_type: str,
+    critical: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    if plan_type not in {"workout", "diet"}:
+        return None
+
+    proposed_plan = _safe_list(state.get("proposed_plan"))
+    if not proposed_plan:
+        return None
+
+    deterministic_report = _validate_state({**state, "proposed_plan": proposed_plan, "proposed_plan_type": plan_type})
+    if not deterministic_report.get("passed"):
+        return None
+
+    recovered_codes = [str(issue.get("code") or "") for issue in critical]
+    recovered_report = _recovered_validation_report(
+        report,
+        recovered_codes=recovered_codes,
+        recovery_code="semantic_existing_plan_preserved",
+        recovery_message="Semantic judge failure was recovered by preserving the deterministic valid plan.",
+    )
+    recovered_report["issues"].append(
+        {
+            "severity": "warning",
+            "code": "semantic_existing_plan_revalidated",
+            "message": "Existing proposed_plan passed deterministic contract validation before preservation.",
+            "retry": False,
+            "detail": {
+                "deterministic_issue_count": len(deterministic_report.get("issues") or []),
+                "proposed_plan_count": len(proposed_plan),
+                "requested_days": _requested_plan_days_for_validation(state),
+            },
+        }
+    )
+
+    flags = dict(state.get("generation_quality_flags") or {})
+    flags["semantic_fallback_applied"] = True
+    flags["semantic_existing_plan_preserved"] = True
+    flags["semantic_fallback_recovered_codes"] = sorted(set(recovered_codes))
+    flags["semantic_fallback_revalidated"] = True
+    flags["semantic_fallback_revalidation_issue_count"] = len(deterministic_report.get("issues") or [])
+
+    return {
+        "validation_report": recovered_report,
+        "response": state.get("response"),
+        "draft_response": state.get("draft_response"),
+        "draft_components": state.get("draft_components"),
+        "proposed_plan": proposed_plan,
+        "proposed_plan_type": plan_type,
+        "proposed_plan_action": state.get("proposed_plan_action") or "create",
+        "awaiting_plan_confirmation": True,
+        "generation_quality_flags": flags,
+        "force_regenerate": False,
+        "needs_clarification": False,
+        "self_eval_failure_reason": None,
+    }
+
+
 def _build_safe_workout_fallback_items(state: GraphState) -> list[dict[str, Any]]:
     today = kst_today_iso()
     profile = _effective_user_profile(state)
@@ -555,6 +621,131 @@ def _build_safe_workout_fallback_items(state: GraphState) -> list[dict[str, Any]
             ],
         },
     ]
+
+
+def _expand_fallback_plan_for_requested_range(
+    state: GraphState,
+    plan_items: list[dict[str, Any]],
+    plan_type: str,
+) -> list[dict[str, Any]]:
+    target_days = _requested_plan_days_for_validation(state)
+    if not target_days or not plan_items:
+        return plan_items
+
+    start_day = _plan_start_day(plan_items)
+    if plan_type == "diet":
+        daily_pattern = [
+            dict(item, ex_list=[])
+            for item in plan_items
+            if isinstance(item, dict)
+        ][:3]
+        if not daily_pattern:
+            return plan_items
+        expanded: list[dict[str, Any]] = []
+        for offset in range(target_days):
+            current_day = (start_day + timedelta(days=offset)).isoformat()
+            for item in daily_pattern:
+                copied = dict(item)
+                copied["day"] = current_day
+                copied["ex_list"] = []
+                expanded.append(copied)
+        return expanded or plan_items
+
+    return plan_items
+
+
+def _requested_plan_days_for_validation(state: GraphState) -> int | None:
+    message = _resolved_validation_message(state)
+    compact = re.sub(r"\s+", "", message.lower())
+    spaced = message.lower()
+
+    if any(
+        marker in compact
+        for marker in (
+            "한달",
+            "한달치",
+            "한개월",
+            "한개월치",
+            "1달",
+            "1달치",
+            "1개월",
+            "1개월치",
+            "월간",
+            "monthly",
+            "onemonth",
+        )
+    ):
+        return 30
+    if re.search(r"30\s*(?:일|날|days?)", spaced):
+        return 30
+
+    if any(
+        marker in compact
+        for marker in (
+            "일주일",
+            "일주일치",
+            "한주",
+            "한주치",
+            "이번주",
+            "이번주치",
+            "7일",
+            "7일치",
+            "weekly",
+            "oneweek",
+            "1week",
+        )
+    ):
+        return 7
+
+    week_match = re.search(r"(\d+)\s*(?:주|weeks?)", spaced)
+    if week_match:
+        weeks = int(week_match.group(1))
+        if 1 <= weeks <= 6:
+            return min(weeks * 7, 31)
+
+    day_match = re.search(r"(\d+)\s*(?:일|날|days?)", spaced)
+    if day_match:
+        days = int(day_match.group(1))
+        if 7 <= days <= 31:
+            return days
+
+    month_match = re.search(r"(\d+)\s*(?:개월|달|months?)", spaced)
+    if month_match and int(month_match.group(1)) >= 1:
+        return 30
+
+    return None
+
+
+def _resolved_validation_message(state: GraphState) -> str:
+    resolution = state.get("context_resolution") or {}
+    resolved_text = str(resolution.get("resolved_text") or "").strip()
+    resolved_reference = resolution.get("resolved_reference")
+    confidence = _safe_float(resolution.get("confidence"))
+    if resolved_reference and resolved_reference != "none" and resolved_text and confidence >= 0.6:
+        return resolved_text
+    return str(state.get("user_message") or "")
+
+
+def _plan_unique_days(plan_items: list[dict[str, Any]]) -> set[str]:
+    days: set[str] = set()
+    for item in plan_items:
+        day = str(item.get("day") or "").strip()[:10]
+        if _is_iso_date(day):
+            days.add(day)
+    return days
+
+
+def _plan_start_day(plan_items: list[dict[str, Any]]) -> date:
+    parsed_days: list[date] = []
+    for item in plan_items:
+        day = str(item.get("day") or "").strip()[:10]
+        if not _is_iso_date(day):
+            continue
+        try:
+            parsed_days.append(date.fromisoformat(day))
+        except ValueError:
+            continue
+    return min(parsed_days) if parsed_days else date.fromisoformat(kst_today_iso())
 
 
 def _recovered_validation_report(
@@ -608,9 +799,40 @@ def _contains_any(text: str, markers: tuple[str, ...]) -> bool:
 
 
 def _format_simple_plan_preview(plan: list[dict[str, Any]]) -> str:
+    grouped_diet = _format_grouped_diet_preview(plan)
+    if grouped_diet:
+        return grouped_diet
+
     lines = []
     for item in plan:
         lines.append(f"- {item.get('day')} {item.get('name')}: {item.get('detail')}")
+    return "\n".join(lines)
+
+
+def _format_grouped_diet_preview(plan: list[dict[str, Any]]) -> str:
+    valid_items = [item for item in plan if isinstance(item, dict) and not item.get("ex_list")]
+    unique_days = _plan_unique_days(valid_items)
+    if len(valid_items) <= 7 or len(unique_days) < 2:
+        return ""
+
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for item in valid_items:
+        day = str(item.get("day") or "").strip()[:10]
+        if _is_iso_date(day):
+            grouped.setdefault(day, []).append(item)
+
+    lines: list[str] = []
+    for day in sorted(grouped)[:7]:
+        meals = [
+            f"{item.get('name')}: {item.get('detail')}".strip()
+            for item in grouped[day][:3]
+            if item.get("name") or item.get("detail")
+        ]
+        lines.append(f"- {day}: {'; '.join(meals)}")
+
+    remaining_days = len(grouped) - 7
+    if remaining_days > 0:
+        lines.append(f"- 외 {remaining_days}일 식단 항목")
     return "\n".join(lines)
 
 
@@ -654,6 +876,7 @@ def _validate_state(state: GraphState) -> dict[str, Any]:
 
     if proposed_plan:
         _validate_plan_write_contract(issues, proposed_plan, proposed_plan_type)
+        _validate_requested_plan_range(issues, state, proposed_plan, proposed_plan_type)
         _validate_plan_domain(issues, state, proposed_plan, proposed_plan_type)
         _validate_profile_conflicts(issues, proposed_plan, proposed_plan_type, profile_constraints)
         _validate_profile_fit_details(issues, state, proposed_plan, proposed_plan_type, profile_constraints)
@@ -1121,6 +1344,70 @@ def _is_iso_date(value: str) -> bool:
     except ValueError:
         return False
     return True
+
+
+def _validate_requested_plan_range(
+    issues: list[dict[str, Any]],
+    state: GraphState,
+    proposed_plan: list[dict],
+    proposed_plan_type: str | None,
+) -> None:
+    if proposed_plan_type not in {"workout", "diet"}:
+        return
+
+    target_days = _requested_plan_days_for_validation(state)
+    if not target_days:
+        return
+
+    unique_days = _plan_unique_days([item for item in proposed_plan if isinstance(item, dict)])
+    expected_days = min(target_days, 31)
+    if len(unique_days) < expected_days:
+        _issue(
+            issues,
+            "critical",
+            "requested_plan_range_too_short",
+            f"요청한 {expected_days}일 플랜보다 날짜 수가 부족합니다.",
+            retry=True,
+            detail={"expected_days": expected_days, "actual_days": len(unique_days)},
+        )
+        return
+
+    if proposed_plan_type != "diet":
+        return
+
+    expected_meals = expected_days * 3
+    meal_items = [
+        item
+        for item in proposed_plan
+        if isinstance(item, dict) and not item.get("ex_list")
+    ]
+    if len(meal_items) < expected_meals:
+        _issue(
+            issues,
+            "critical",
+            "requested_diet_meal_slots_too_short",
+            f"요청한 {expected_days}일 식단에는 최소 {expected_meals}개 식사 항목이 필요합니다.",
+            retry=True,
+            detail={"expected_meals": expected_meals, "actual_meals": len(meal_items)},
+        )
+        return
+
+    for day in unique_days:
+        day_meals = [
+            str(item.get("name") or "").strip()
+            for item in meal_items
+            if str(item.get("day") or "").strip()[:10] == day
+        ]
+        if not {"아침", "점심", "저녁"}.issubset(set(day_meals)):
+            _issue(
+                issues,
+                "critical",
+                "requested_diet_meal_slots_missing",
+                "식단 플랜의 날짜별 아침/점심/저녁 구성이 부족합니다.",
+                retry=True,
+                detail={"day": day, "meal_names": day_meals},
+            )
+            return
 
 
 def _is_weak_diet_detail(detail: str) -> bool:
@@ -1884,6 +2171,20 @@ def _safe_int(value: object) -> int | None:
         return int(float(value))
     except (TypeError, ValueError):
         return None
+
+
+def _safe_float(value: object) -> float:
+    try:
+        if value is None or value == "":
+            return 0.0
+        if isinstance(value, str):
+            match = re.search(r"-?\d+(?:\.\d+)?", value)
+            if not match:
+                return 0.0
+            value = match.group(0)
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _issue(
