@@ -25,8 +25,10 @@ import {
   redirectToLoginForExpiredSession,
 } from "@/lib/auth";
 import {
+  AI_PERSONAS,
   PERSONA_CHAT_STARTERS,
-  resolveVisiblePersona as resolvePersonaConversation,
+  type AiPersonaId,
+  resolveVisiblePersona,
 } from "@/lib/personas";
 import { usePlan } from "../context/PlanContext";
 
@@ -83,108 +85,6 @@ const FEEDBACK_REASON_OPTIONS: { code: FeedbackReasonCode; label: string }[] = [
   { code: "tone_issue", label: "말투가 별로예요" },
   { code: "unsafe", label: "위험하거나 불편해요" },
 ];
-
-const AI_PERSONAS = [
-  {
-    id: "cheer_sis",
-    name: "응원 누나",
-    shortLabel: "응원",
-    description: "밝게 밀어주는 치어 코치",
-    tone: "칭찬과 에너지",
-    imageSrc: "/personas/cheer_sis.jpg",
-    imageAlt: "밝은 치어 코치 스타일의 응원 누나 아바타",
-    accent: "from-rose-400 to-amber-400",
-    selectedClass: "border-rose-300 bg-rose-50 text-rose-700",
-  },
-  {
-    id: "soft_senior",
-    name: "다정 선배",
-    shortLabel: "다정",
-    description: "무리하지 않게 챙기는 선배",
-    tone: "안심과 회복",
-    imageSrc: "/personas/soft_senior.jpg",
-    imageAlt: "부드럽게 챙겨주는 다정 선배 아바타",
-    accent: "from-teal-400 to-emerald-500",
-    selectedClass: "border-emerald-300 bg-emerald-50 text-emerald-700",
-  },
-  {
-    id: "strict_trainer",
-    name: "직진 PT쌤",
-    shortLabel: "직진",
-    description: "짧고 단호한 실행 코치",
-    tone: "명확한 지시",
-    imageSrc: "/personas/strict_trainer.jpg",
-    imageAlt: "헤드셋을 낀 단호한 직진 PT쌤 아바타",
-    accent: "from-slate-700 to-zinc-500",
-    selectedClass: "border-slate-300 bg-slate-100 text-slate-800",
-  },
-  {
-    id: "science_coach",
-    name: "분석 코치",
-    shortLabel: "분석",
-    description: "이유와 근거를 차분히 설명",
-    tone: "납득과 효율",
-    imageSrc: "/personas/science_coach.jpg",
-    imageAlt: "안경과 차트가 있는 분석 코치 아바타",
-    accent: "from-sky-500 to-cyan-400",
-    selectedClass: "border-sky-300 bg-sky-50 text-sky-700",
-  },
-  {
-    id: "playful_buddy",
-    name: "운동 메이트",
-    shortLabel: "메이트",
-    description: "가볍게 같이 움직이는 친구",
-    tone: "친근한 동행",
-    imageSrc: "/personas/playful_buddy.jpg",
-    imageAlt: "캐주얼한 운동 메이트 아바타",
-    accent: "from-violet-500 to-fuchsia-400",
-    selectedClass: "border-violet-300 bg-violet-50 text-violet-700",
-  },
-  {
-    id: "daily_manager",
-    name: "생활 매니저",
-    shortLabel: "관리",
-    description: "루틴과 일정을 깔끔하게 정리",
-    tone: "체계적인 관리",
-    imageSrc: "/personas/daily_manager.jpg",
-    imageAlt: "체크리스트를 든 생활 매니저 아바타",
-    accent: "from-lime-500 to-green-500",
-    selectedClass: "border-lime-300 bg-lime-50 text-lime-700",
-  },
-] as const satisfies readonly {
-  id: string;
-  name: string;
-  shortLabel: string;
-  description: string;
-  tone: string;
-  imageSrc: string;
-  imageAlt: string;
-  accent: string;
-  selectedClass: string;
-}[];
-
-type AiPersona = (typeof AI_PERSONAS)[number];
-type AiPersonaId = AiPersona["id"];
-
-const LEGACY_PERSONA_ALIASES: Record<string, AiPersonaId> = {
-  default: "cheer_sis",
-  warm: "soft_senior",
-  spartan: "strict_trainer",
-  evidence: "science_coach",
-  buddy: "playful_buddy",
-};
-
-function resolveVisiblePersona(personaId?: string | null): AiPersona {
-  const normalizedId =
-    personaId && personaId in LEGACY_PERSONA_ALIASES
-      ? LEGACY_PERSONA_ALIASES[personaId]
-      : personaId;
-
-  return (
-    AI_PERSONAS.find((persona) => persona.id === normalizedId) ||
-    AI_PERSONAS[0]
-  );
-}
 
 function getApiBaseUrl() {
   const raw =
@@ -264,7 +164,7 @@ export default function ChatPage() {
   const pendingSyncTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const selectedPersona = resolveVisiblePersona(userData?.selected_ai_persona);
   const showFeedbackControls = true;
-  const personaConversation = resolvePersonaConversation(
+  const personaConversation = resolveVisiblePersona(
     userData?.selected_ai_persona
   );
   const hasUserStartedConversation = messages.some(
