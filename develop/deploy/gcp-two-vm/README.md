@@ -113,11 +113,11 @@ docker compose up -d --build
 Set these values in `develop/deploy/gcp-two-vm/ai/.env.ai`:
 
 - `WAS_BASE_URL=https://<your-backend-domain>`
-- `PINECONE_API_KEY`
-- `PINECONE_INDEX_NAME`
 - `GEMINI_API_KEY`
-- `ROUTER_API_KEY`
 - `INTERNAL_API_KEY`
+- `ROUTER_API_KEY` only if it should differ from `GEMINI_API_KEY`
+- `ENABLE_RAG_MEMORY=false` for the fast demo flow
+- `PINECONE_API_KEY` and `PINECONE_INDEX_NAME` only when `ENABLE_RAG_MEMORY=true`
 
 AI health checks:
 

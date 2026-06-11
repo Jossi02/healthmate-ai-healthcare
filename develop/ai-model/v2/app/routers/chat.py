@@ -132,6 +132,10 @@ def _build_initial_state(req: ChatRequest) -> GraphState:
         "modify_plan_context": None,
         "profile_constraints": None,
         "retrieval_decision": None,
+        "fast_intent_contract": None,
+        "target_resource_context": None,
+        "acsm_boundary": None,
+        "diet_boundary": None,
         "search_results": [],
         "search_quality": "ok",
         "search_retry_count": 0,
@@ -285,7 +289,7 @@ def _resolve_plan_write_fields(result: GraphState) -> tuple[list[dict] | None, s
     active_proposal = _safe_dict(result.get("active_proposal"))
     if not proposed_plan and active_proposal.get("items"):
         proposed_plan = active_proposal.get("items")
-    if proposed_plan_type not in {"workout", "diet"} and active_proposal.get("domain") in {"workout", "diet"}:
+    if proposed_plan_type not in {"workout", "diet", "bundle"} and active_proposal.get("domain") in {"workout", "diet", "bundle"}:
         proposed_plan_type = active_proposal.get("domain")
     if proposed_plan_action not in {"create", "update"} and active_proposal.get("write_mode") in {"create", "update"}:
         proposed_plan_action = active_proposal.get("write_mode")
@@ -479,12 +483,12 @@ def _hydrate_active_proposal(saved_values: dict[str, Any], *, current_turn: int)
 
     proposed_plan = saved_values.get("proposed_plan") or []
     proposed_plan_type = saved_values.get("proposed_plan_type")
-    if not isinstance(proposed_plan, list) or not proposed_plan or proposed_plan_type not in {"workout", "diet"}:
+    if not isinstance(proposed_plan, list) or not proposed_plan or proposed_plan_type not in {"workout", "diet", "bundle"}:
         return None
     if not all(isinstance(item, dict) for item in proposed_plan):
         return None
-    if active_proposal_is_mixed_domain({"items": proposed_plan}):
-        return None
+    if active_proposal_is_mixed_domain({"domain": proposed_plan_type, "items": proposed_plan}):
+        proposed_plan_type = "bundle"
 
     return {
         "domain": proposed_plan_type,
@@ -499,7 +503,7 @@ def _sanitize_active_proposal(active_proposal: object, *, current_turn: int) -> 
     if not isinstance(active_proposal, dict) or active_proposal_is_mixed_domain(active_proposal):
         return None
     domain = str(active_proposal.get("domain") or "")
-    if domain not in {"workout", "diet"}:
+    if domain not in {"workout", "diet", "bundle"}:
         return None
     items = active_proposal.get("items")
     if not isinstance(items, list) or not items or not all(isinstance(item, dict) for item in items):
@@ -741,6 +745,10 @@ def _checkpoint_cleanup_updates(result: GraphState) -> dict[str, Any]:
         "modify_plan_context": None,
         "profile_constraints": None,
         "retrieval_decision": None,
+        "fast_intent_contract": None,
+        "target_resource_context": None,
+        "acsm_boundary": None,
+        "diet_boundary": None,
         "search_results": [],
         "search_quality": "ok",
         "search_retry_count": 0,

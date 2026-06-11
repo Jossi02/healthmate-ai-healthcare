@@ -527,11 +527,6 @@ export default function RecommendPage() {
                     }
                     className={`relative w-full rounded-2xl p-5 text-left shadow-[0_4px_16px_-6px_rgba(0,0,0,0.06)] border flex items-center hover:shadow-[0_8px_24px_-6px_rgba(37,99,235,0.12)] hover:-translate-y-1 transition-all duration-300 group ${isHighlighted ? 'bg-rose-50/70 border-rose-200 ring-2 ring-rose-200' : 'bg-white border-gray-100'}`}
                   >
-                    {isHighlighted && (
-                      <span className="absolute right-4 top-3 rounded-full bg-rose-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
-                        새로 반영됨
-                      </span>
-                    )}
                     <div className={`w-14 h-14 rounded-2xl border ${groupMeta.panelClass} flex items-center justify-center text-orange-500 shadow-inner flex-shrink-0`}>
                       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -543,7 +538,7 @@ export default function RecommendPage() {
                         <span className={`text-[10px] font-bold border px-2.5 py-1 rounded-full shadow-sm ${groupMeta.badgeClass}`}>
                           {groupMeta.shortLabel}
                         </span>
-                        <h3 className="font-bold text-gray-900 text-[17px] pr-20">{group.label}</h3>
+                        <h3 className="font-bold text-gray-900 text-[17px]">{group.label}</h3>
                       </div>
                       <p className="text-xs font-semibold text-gray-500">{compactText(preview, 48)}</p>
                       <div className="mt-2 flex items-center space-x-3 text-xs font-semibold text-gray-500">
@@ -604,11 +599,6 @@ export default function RecommendPage() {
                     }
                     className={`relative rounded-2xl p-5 flex flex-col items-center text-center shadow-[0_4px_16px_-6px_rgba(0,0,0,0.06)] border hover:shadow-[0_8px_24px_-6px_rgba(37,99,235,0.12)] transition-all shrink-0 cursor-pointer ${isHighlighted ? 'bg-rose-50/70 border-rose-200 ring-2 ring-rose-200' : 'bg-white border-gray-100'} ${isCompleted ? 'opacity-50 grayscale bg-gray-50/50' : ''}`}
                   >
-                    {isHighlighted && (
-                      <span className="absolute right-3 top-3 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
-                        새로 반영됨
-                      </span>
-                    )}
                     <div className="text-xs font-bold text-[#2563eb] bg-blue-50 px-3 py-1 rounded-full mb-3">
                       {display.mealLabel}
                     </div>
@@ -751,11 +741,6 @@ export default function RecommendPage() {
                               </span>
                             </div>
                           </div>
-                          {isHighlighted && (
-                            <span className="mr-2 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                              새로 반영됨
-                            </span>
-                          )}
                           <span className="text-[11px] font-bold text-orange-600">{completedCount}/{group.items.length}</span>
                         </button>
                       );
@@ -807,11 +792,6 @@ export default function RecommendPage() {
                               <span className="block truncate text-xs font-semibold text-gray-500">{display.subtitle || display.kcal}</span>
                             </div>
                           </div>
-                          {isHighlighted && (
-                            <span className="mr-2 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                              새로 반영됨
-                            </span>
-                          )}
                           <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-300" />
                         </button>
                       );
@@ -877,11 +857,6 @@ export default function RecommendPage() {
                             </span>
                             <h4 className={`font-bold text-gray-900 ${isCompleted ? 'text-gray-400 line-through' : ''}`}>{item.title}</h4>
                           </div>
-                          {isHighlighted && (
-                            <span className="shrink-0 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                              새로 반영됨
-                            </span>
-                          )}
                         </div>
                         <div className="mb-4 flex flex-wrap gap-2 text-xs font-semibold text-gray-500">
                           <span className="rounded-lg bg-gray-50 px-2 py-1">{item.time}</span>
@@ -930,11 +905,6 @@ export default function RecommendPage() {
                               </span>
                               <h4 className={`font-bold text-gray-900 ${isCompleted ? 'text-gray-400 line-through' : ''}`}>{display.title}</h4>
                             </div>
-                            {isHighlighted && (
-                              <span className="shrink-0 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                                새로 반영됨
-                              </span>
-                            )}
                           </div>
                           <p className="mb-3 rounded-2xl bg-green-50/60 p-3 text-sm font-semibold leading-relaxed text-gray-700">
                             {display.detail}

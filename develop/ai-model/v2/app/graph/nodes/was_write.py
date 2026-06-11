@@ -87,6 +87,8 @@ async def execute_was_writes(
     applied_profile_changes: dict[str, Any] | None = None
     failed_write_types: list[str] = []
     succeeded_write_ids: list[str] = []
+    mixed_delete_attempted = False
+    mixed_delete_succeeded = False
 
     if intent == INTENT_RECORD and profile_changes:
         if record_type == "plan_check":
@@ -107,20 +109,15 @@ async def execute_was_writes(
                     pending.append(write)
                     failed_write_types.append("plan_check")
         elif record_type == "plan_delete":
-            plan_type = profile_changes.get("plan_type")
-            target_scope = profile_changes.get("target_scope")
-            target_dates = profile_changes.get("target_dates") or []
-            if plan_type and (target_scope == "all" or target_dates):
-                write = _make_pending_write(user_id, "plan_delete", profile_changes)
-                try:
-                    await deps.was.delete_plan(user_id, write["payload"])
-                    logger.info("plan_delete WAS write succeeded: %s %s %s", plan_type, target_scope, target_dates)
-                    write_succeeded = True
-                    succeeded_write_ids.append(write["write_id"])
-                except ExternalServiceError as exc:
-                    logger.warning("plan_delete WAS write failed: %s", exc)
-                    pending.append(write)
-                    failed_write_types.append("plan_delete")
+            delete_succeeded = await _execute_plan_delete_write(
+                deps=deps,
+                user_id=user_id,
+                payload=profile_changes,
+                pending=pending,
+                failed_write_types=failed_write_types,
+                succeeded_write_ids=succeeded_write_ids,
+            )
+            write_succeeded = delete_succeeded
         elif record_type == "profile":
             write = _make_pending_write(user_id, "profile", profile_changes)
             try:
@@ -133,6 +130,17 @@ async def execute_was_writes(
                 logger.warning("profile WAS write failed: %s", exc)
                 pending.append(write)
                 failed_write_types.append("profile")
+
+    if intent == INTENT_APPROVAL and record_type == "plan_delete" and profile_changes:
+        mixed_delete_attempted = True
+        mixed_delete_succeeded = await _execute_plan_delete_write(
+            deps=deps,
+            user_id=user_id,
+            payload=profile_changes,
+            pending=pending,
+            failed_write_types=failed_write_types,
+            succeeded_write_ids=succeeded_write_ids,
+        )
 
     if intent == INTENT_APPROVAL and proposed_plan:
         resolved_plan_type = proposed_plan_type or modify_target or "workout"
@@ -221,7 +229,8 @@ async def execute_was_writes(
                 pending.append(write)
                 failed_write_types.append(write_type)
 
-        write_succeeded = successful_writes == len(plan_payloads) and successful_writes > 0
+        plan_write_succeeded = successful_writes == len(plan_payloads) and successful_writes > 0
+        write_succeeded = plan_write_succeeded and (not mixed_delete_attempted or mixed_delete_succeeded)
 
     return {
         "pending": pending,
@@ -230,6 +239,34 @@ async def execute_was_writes(
         "failed_write_types": sorted(set(failed_write_types)),
         "succeeded_write_ids": succeeded_write_ids,
     }
+
+
+async def _execute_plan_delete_write(
+    *,
+    deps: NodeDeps,
+    user_id: str,
+    payload: dict[str, Any],
+    pending: list[PendingWrite],
+    failed_write_types: list[str],
+    succeeded_write_ids: list[str],
+) -> bool:
+    plan_type = payload.get("plan_type")
+    target_scope = payload.get("target_scope")
+    target_dates = payload.get("target_dates") or []
+    if not plan_type or (target_scope != "all" and not target_dates):
+        return False
+
+    write = _make_pending_write(user_id, "plan_delete", payload)
+    try:
+        await deps.was.delete_plan(user_id, write["payload"])
+        logger.info("plan_delete WAS write succeeded: %s %s %s", plan_type, target_scope, target_dates)
+        succeeded_write_ids.append(write["write_id"])
+        return True
+    except ExternalServiceError as exc:
+        logger.warning("plan_delete WAS write failed: %s", exc)
+        pending.append(write)
+        failed_write_types.append("plan_delete")
+        return False
 
 
 def _make_pending_write(user_id: str, write_type: str, payload: dict[str, Any]) -> PendingWrite:

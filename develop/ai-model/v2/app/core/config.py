@@ -12,11 +12,13 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str
     GEMINI_MODEL_NAME: str = "gemini-3.5-flash"
     # Gemini Flash-Lite (의도 분석 · 검색 평가)
-    ROUTER_API_KEY: str
+    ROUTER_API_KEY: Optional[str] = None
     ROUTER_MODEL_NAME: str = "gemini-3.5-flash"
-    # Pinecone
-    PINECONE_API_KEY: str
-    PINECONE_INDEX_NAME: str
+    # Pinecone/RAG is disabled in the fast demo flow. Keep these optional for
+    # legacy scripts or future RAG reactivation.
+    PINECONE_API_KEY: Optional[str] = None
+    PINECONE_INDEX_NAME: str = "capstone-v2"
+    ENABLE_RAG_MEMORY: bool = False
     # WAS
     WAS_BASE_URL: str
     WAS_TIMEOUT: float = 10.0

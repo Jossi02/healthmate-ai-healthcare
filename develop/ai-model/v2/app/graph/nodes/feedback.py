@@ -39,6 +39,15 @@ async def execute_feedback(
     emotion_label: str,
     emotion_intensity: float,
 ) -> None:
+    if deps.embed is None or deps.pinecone is None:
+        logger.info(
+            "EMOTION_LOG | user_id=%s | label=%s | intensity=%.2f | memory=disabled",
+            user_id,
+            emotion_label,
+            emotion_intensity,
+        )
+        return
+
     """피드백 루프 및 능동 메모리 매니저 실행."""
 
     # ── 1. should_save_episode (감정 에피소드 저장) ─────────────────────────────

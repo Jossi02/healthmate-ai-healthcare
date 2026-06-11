@@ -98,24 +98,30 @@ async def lifespan(app: FastAPI):
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
 
-    embed_client = EmbeddingClient(api_key=settings.GEMINI_API_KEY)
-    logger.info("EmbeddingClient initialized (dim=%d)", EMBEDDING_DIM)
+    embed_client = None
+    pinecone_client = None
+    app.state._pinecone_control = None
+    if settings.ENABLE_RAG_MEMORY and settings.PINECONE_API_KEY:
+        embed_client = EmbeddingClient(api_key=settings.GEMINI_API_KEY)
+        logger.info("EmbeddingClient initialized (dim=%d)", EMBEDDING_DIM)
 
-    pc = PineconeAsyncio(api_key=settings.PINECONE_API_KEY)
-    app.state._pinecone_control = pc
+        pc = PineconeAsyncio(api_key=settings.PINECONE_API_KEY)
+        app.state._pinecone_control = pc
 
-    if not await pc.has_index(settings.PINECONE_INDEX_NAME):
-        await pc.create_index(
-            name=settings.PINECONE_INDEX_NAME,
-            dimension=EMBEDDING_DIM,
-            metric="cosine",
-            spec=ServerlessSpec(cloud="aws", region="us-east-1"),
-        )
+        if not await pc.has_index(settings.PINECONE_INDEX_NAME):
+            await pc.create_index(
+                name=settings.PINECONE_INDEX_NAME,
+                dimension=EMBEDDING_DIM,
+                metric="cosine",
+                spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+            )
 
-    description = await pc.describe_index(settings.PINECONE_INDEX_NAME)
-    index = pc.IndexAsyncio(host=description.host)
-    pinecone_client = PineconeClient(index)
-    logger.info("Pinecone initialized (index=%s)", settings.PINECONE_INDEX_NAME)
+        description = await pc.describe_index(settings.PINECONE_INDEX_NAME)
+        index = pc.IndexAsyncio(host=description.host)
+        pinecone_client = PineconeClient(index)
+        logger.info("Pinecone initialized (index=%s)", settings.PINECONE_INDEX_NAME)
+    else:
+        logger.info("Pinecone/RAG memory disabled for fast demo flow")
 
     gemini_client = GeminiClient(
         api_key=settings.GEMINI_API_KEY,
@@ -123,8 +129,9 @@ async def lifespan(app: FastAPI):
     )
     logger.info("GeminiClient initialized (model=%s)", settings.GEMINI_MODEL_NAME)
 
+    router_api_key = settings.ROUTER_API_KEY or settings.GEMINI_API_KEY
     router_client = GeminiClient(
-        api_key=settings.ROUTER_API_KEY,
+        api_key=router_api_key,
         model_name=settings.ROUTER_MODEL_NAME,
     )
     logger.info("RouterClient initialized (model=%s)", settings.ROUTER_MODEL_NAME)
@@ -205,6 +212,7 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.warning("Failed to close checkpointer: %s", exc)
     logging.getLogger().removeHandler(app.state._trace_log_handler)
-    await app.state._pinecone_control.close()
+    if app.state._pinecone_control is not None:
+        await app.state._pinecone_control.close()
     await app.state._was_http_client.aclose()
     logger.info("Shutdown complete")

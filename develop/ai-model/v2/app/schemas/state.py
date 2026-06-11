@@ -74,7 +74,7 @@ class ContextResolution(TypedDict):
 
 
 class ActiveProposal(TypedDict):
-    domain: Literal["workout", "diet"]
+    domain: Literal["workout", "diet", "bundle"]
     write_mode: WriteMode
     items: list[dict[str, Any]]
     summary: str
@@ -143,6 +143,10 @@ class GraphState(TypedDict):
     modify_plan_context: Optional[dict[str, Any]]
     profile_constraints: Optional[dict[str, Any]]
     retrieval_decision: Optional[dict[str, Any]]
+    fast_intent_contract: NotRequired[Optional[dict[str, Any]]]
+    target_resource_context: NotRequired[Optional[dict[str, Any]]]
+    acsm_boundary: NotRequired[Optional[dict[str, Any]]]
+    diet_boundary: NotRequired[Optional[dict[str, Any]]]
 
     search_results: list[dict[str, Any]]
     search_quality: str

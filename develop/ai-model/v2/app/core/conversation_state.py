@@ -324,14 +324,15 @@ def build_active_proposal(state: GraphState) -> ActiveProposal | None:
     proposed_plan = _safe_plan_items(state.get("proposed_plan"))
     if not proposed_plan:
         return None
-    if plan_items_are_mixed_domain(proposed_plan):
-        return None
 
     proposed_plan_type = state.get("proposed_plan_type")
-    if proposed_plan_type not in {"workout", "diet"}:
+    if proposed_plan_type not in {"workout", "diet", "bundle"}:
+        if plan_items_are_mixed_domain(proposed_plan):
+            proposed_plan_type = "bundle"
+    if proposed_plan_type not in {"workout", "diet", "bundle"}:
         inferred = state.get("domain")
         proposed_plan_type = inferred if inferred in {"workout", "diet"} else infer_domain(state.get("user_message"))
-    if proposed_plan_type not in {"workout", "diet"}:
+    if proposed_plan_type not in {"workout", "diet", "bundle"}:
         proposed_plan_type = "workout"
 
     write_mode = "update" if state.get("proposed_plan_action") == "update" else "create"
@@ -346,7 +347,7 @@ def build_active_proposal(state: GraphState) -> ActiveProposal | None:
 
 
 def sync_proposal_fields(active_proposal: ActiveProposal | None) -> dict[str, Any]:
-    if not active_proposal or active_proposal_is_mixed_domain(active_proposal):
+    if not active_proposal:
         return {
             "active_proposal": None,
             "awaiting_plan_confirmation": False,
@@ -372,7 +373,7 @@ def evolve_active_proposal(previous: ActiveProposal | None, state: GraphState) -
     if _should_clear_active_proposal(state):
         return None
 
-    if not previous or active_proposal_is_mixed_domain(previous):
+    if not previous:
         return None
 
     if _is_explicit_cancel(str(state.get("user_message") or "")):
@@ -398,6 +399,8 @@ def evolve_active_proposal(previous: ActiveProposal | None, state: GraphState) -
 def active_proposal_is_mixed_domain(active_proposal: object) -> bool:
     if not isinstance(active_proposal, dict):
         return False
+    if active_proposal.get("domain") == "bundle":
+        return False
     return plan_items_are_mixed_domain(active_proposal.get("items") or [])
 
 
@@ -410,6 +413,11 @@ def plan_items_are_mixed_domain(items: object) -> bool:
 
 
 def _infer_plan_item_domain(item: dict[str, Any]) -> str | None:
+    explicit_type = str(item.get("plan_type") or item.get("type") or "").strip().lower()
+    if explicit_type in {"workout", "exercise", "training", "routine"}:
+        return "workout"
+    if explicit_type in {"diet", "meal", "food", "menu", "nutrition"}:
+        return "diet"
     if item.get("ex_list") or item.get("exercises") or item.get("exercise_name"):
         return "workout"
     if item.get("food_name") or item.get("meal_name") or item.get("foods"):
@@ -442,6 +450,9 @@ def _infer_plan_item_domain(item: dict[str, Any]) -> str | None:
 
 
 def _should_clear_active_proposal(state: GraphState) -> bool:
+    if state.get("record_type") == "plan_delete":
+        return True
+
     if _profile_changes_affect_active_proposal(state.get("profile_changes")):
         return True
 

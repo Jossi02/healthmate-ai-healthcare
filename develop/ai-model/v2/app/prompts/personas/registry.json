@@ -9,7 +9,7 @@
       "fallback": "cheer_sis"
     },
     "soft_senior": {
-      "label": "다정 선배",
+      "label": "다정 동생",
       "prompt_file": "soft_senior.md",
       "avatar_file": "/personas/soft_senior.jpg",
       "active": true,
@@ -23,7 +23,7 @@
       "fallback": "cheer_sis"
     },
     "science_coach": {
-      "label": "분석 코치",
+      "label": "루틴 장인",
       "prompt_file": "science_coach.md",
       "avatar_file": "/personas/science_coach.jpg",
       "active": true,
@@ -59,7 +59,7 @@
       "label": "Warm Coach",
       "prompt_file": "warm.md",
       "active": false,
-      "fallback": "soft_senior"
+      "fallback": "cheer_sis"
     },
     "evidence": {
       "label": "Evidence Coach",

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createRequire } = require('module');
+const path = require('path');
 
 const requireFromHere = createRequire(__filename);
 const PLAN_UPDATE_STORAGE_KEY = 'capstone.planUpdates.v1';
@@ -8,11 +9,25 @@ const HOME_HIGHLIGHT_STORAGE_KEY = 'capstone.homeRecommendationHighlights.v1';
 function loadPlaywright() {
   try {
     return requireFromHere('playwright');
-  } catch {
-    throw new Error(
-      'Playwright is required for this smoke test. Install it in this package or run with NODE_PATH pointing to a node_modules that contains playwright.'
-    );
+  } catch {}
+
+  const candidates = [
+    process.env.PLAYWRIGHT_NODE_MODULES,
+    process.env.NODE_PATH,
+    process.env.APPDATA
+      ? path.join(process.env.APPDATA, 'npm', 'node_modules', '@playwright', 'cli', 'node_modules')
+      : null,
+  ].filter(Boolean);
+
+  for (const base of candidates) {
+    try {
+      return require(path.join(base, 'playwright'));
+    } catch {}
   }
+
+  throw new Error(
+    'Playwright is required for this smoke test. Install it locally or set NODE_PATH/PLAYWRIGHT_NODE_MODULES to a node_modules containing playwright.'
+  );
 }
 
 function kstDate() {

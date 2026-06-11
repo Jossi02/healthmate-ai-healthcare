@@ -90,8 +90,6 @@ async function main() {
       'WAS_BASE_URL',
       'INTERNAL_API_KEY',
       'GEMINI_API_KEY',
-      'PINECONE_API_KEY',
-      'PINECONE_INDEX_NAME',
     ]),
     checkKeys('frontend-env', frontendEnv, ['NEXT_PUBLIC_BACKEND_URL']),
   ];

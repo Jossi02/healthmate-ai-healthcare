@@ -87,6 +87,7 @@ class WASPlanItem(BaseModel):
     name: str
     detail: Optional[str] = None
     day: Optional[str] = None
+    calories: Optional[int] = None
     ex_list: list[WASExerciseItem] = Field(default_factory=list)
     completed: bool = False
 
@@ -308,6 +309,7 @@ def _normalize_plan_item(item: Any, plan_type: str) -> dict[str, Any] | None:
         name=name,
         detail=detail,
         day=day,
+        calories=_normalize_optional_int(item.get("calories", item.get("kcal", item.get("total_calories")))),
         ex_list=ex_list,
     )
     return normalized.model_dump(exclude_none=True)
@@ -492,6 +494,12 @@ def _workout_category_from_text(text: str) -> str | None:
 def _infer_item_plan_type(item: Any, default_plan_type: str) -> str:
     if not isinstance(item, dict):
         return default_plan_type
+
+    explicit_type = str(item.get("plan_type") or item.get("type") or "").strip().lower()
+    if explicit_type in {"workout", "exercise", "training", "routine"}:
+        return "workout"
+    if explicit_type in {"diet", "meal", "food", "menu", "nutrition"}:
+        return "diet"
 
     name = _first_non_empty(
         item.get("name"),
