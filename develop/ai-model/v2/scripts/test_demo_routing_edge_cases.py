@@ -34,6 +34,15 @@ def _slots(action: dict[str, Any]) -> list[str]:
     return list((action.get("target") or {}).get("meal_slots") or [])
 
 
+def _scope(action: dict[str, Any]) -> str | None:
+    return (action.get("target") or {}).get("scope")
+
+
+def _rolling_week_dates() -> list[str]:
+    today = fast_flow._today()  # noqa: SLF001
+    return [(today + timedelta(days=offset)).isoformat() for offset in range(7)]
+
+
 def _this_weekday(weekday: int) -> str:
     today = fast_flow._today()  # noqa: SLF001
     return (today - timedelta(days=today.weekday()) + timedelta(days=weekday)).isoformat()
@@ -162,6 +171,28 @@ CASES: list[dict[str, Any]] = [
             ],
         },
     },
+    {
+        "label": "bare_week_all_delete_range",
+        "message": "\uc77c\uc8fc\uc77c\uce58\ubaa8\ub450 \uc0ad\uc81c\ud574\uc918",
+        "expect": {
+            "operation": "plan.delete",
+            "domain": "all",
+            "dates": _rolling_week_dates(),
+            "scope": "range",
+            "commit": True,
+        },
+    },
+    {
+        "label": "this_week_all_delete_range",
+        "message": "\uc774\ubc88 \uc8fc \ubaa8\ub450 \uc0ad\uc81c\ud574\uc918",
+        "expect": {
+            "operation": "plan.delete",
+            "domain": "all",
+            "dates": _rolling_week_dates(),
+            "scope": "range",
+            "commit": True,
+        },
+    },
 ]
 
 
@@ -215,6 +246,8 @@ def _check_case(case: dict[str, Any]) -> dict[str, Any]:
             failures.append(f"{key}={action.get(source_key)} expected={expect[key]}")
     if "dates" in expect and _dates(action) != expect["dates"]:
         failures.append(f"dates={_dates(action)} expected={expect['dates']}")
+    if "scope" in expect and _scope(action) != expect["scope"]:
+        failures.append(f"scope={_scope(action)} expected={expect['scope']}")
     if "date_count" in expect and len(_dates(action)) != expect["date_count"]:
         failures.append(f"date_count={len(_dates(action))} expected={expect['date_count']}")
     if "meal_slots" in expect and _slots(action) != expect["meal_slots"]:

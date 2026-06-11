@@ -98,6 +98,13 @@ EXPECTED_LABELS: dict[str, dict[str, Any]] = {
         "meal_slots_per_day": 3,
         "taxonomy": "workout_and_diet_separated",
     },
+    "delete_week_range": {
+        "operation": "plan.delete",
+        "domain": "all",
+        "target": "rolling_week_dates",
+        "was_reflection": "workout_and_diet_empty",
+        "state": "active_proposal_cleared",
+    },
     "delete_all_calendar": {
         "operation": "plan.delete",
         "domain": "all",
@@ -206,6 +213,7 @@ TURNS: list[dict[str, str]] = [
     {"label": "workout_followup_question", "message": "이 강도로 괜찮아?"},
     {"label": "workout_approval_write", "message": "좋아 적용해줘"},
     {"label": "bundle_week_create", "message": "운동이랑 식단 둘 다 일주일치 짜줘"},
+    {"label": "delete_week_range", "message": "\uc77c\uc8fc\uc77c\uce58\ubaa8\ub450 \uc0ad\uc81c\ud574\uc918"},
     {"label": "delete_all_calendar", "message": "모두 제거해줘 캘린더 내용"},
 ]
 
@@ -496,9 +504,18 @@ def evaluate_turn(
         add("bundle_has_7_workouts", sum(1 for item in proposed if item.get("plan_type") == "workout") == 7)
         add("bundle_has_21_diets", sum(1 for item in proposed if item.get("plan_type") == "diet") == 21)
         add("three_slots_each_day", diet_slots_complete(proposed))
-    elif label == "delete_all_calendar":
+    elif label in {"delete_week_range", "delete_all_calendar"}:
         add("record_delete", state.get("action_intent") == "record" and state.get("record_type") == "plan_delete")
-        add("delete_payload_all", (state.get("profile_changes") or {}).get("plan_type") == "all" and (state.get("profile_changes") or {}).get("target_scope") == "all")
+        if label == "delete_week_range":
+            payload = state.get("profile_changes") or {}
+            add(
+                "delete_payload_week_range",
+                payload.get("plan_type") == "all"
+                and payload.get("target_scope") == "range"
+                and len(payload.get("target_dates") or []) == 7,
+            )
+        else:
+            add("delete_payload_all", (state.get("profile_changes") or {}).get("plan_type") == "all" and (state.get("profile_changes") or {}).get("target_scope") == "all")
         add("write_succeeded", write_result.get("write_succeeded") is True)
         add("was_empty", len(was.workout_items) == 0 and len(was.diet_items) == 0)
         add("active_cleared", state.get("active_proposal") is None)

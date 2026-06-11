@@ -172,6 +172,38 @@ SAFETY_KEYWORDS = ("죽고", "자해", "가슴 통증", "실신", "호흡곤란"
 CARE_KEYWORDS = ("힘들", "지쳤", "우울", "불안", "무기력", "스트레스", "위로")
 INFO_KEYWORDS = ("왜", "이유", "근거", "어떻게", "괜찮", "충분", "설명", "?")
 ALL_SCOPE_KEYWORDS = ("모든", "모두", "전체", "다", "전부", "캘린더 내용", "현재 캘린더")
+DELETE_TARGET_KEYWORDS = (
+    "\uce98\ub9b0\ub354",
+    "\ud50c\ub79c",
+    "\uacc4\ud68d",
+    "\ub0b4\uc5ed",
+    "\uae30\ub85d",
+    "\uc77c\uc815",
+)
+DELETE_DATE_SCOPE_KEYWORDS = (
+    "\uc624\ub298",
+    "\ub0b4\uc77c",
+    "\uc5b4\uc81c",
+    "\ubaa8\ub808",
+    "\uc77c\uc8fc\uc77c",
+    "\uc77c\uc8fc\uc77c\uce58",
+    "\ud55c\uc8fc",
+    "\ud55c \uc8fc",
+    "\uc8fc\uac04",
+    "\uc774\ubc88\uc8fc",
+    "\uc774\ubc88 \uc8fc",
+    "\ub2e4\uc74c\uc8fc",
+    "\ub2e4\uc74c \uc8fc",
+    "1\uc8fc",
+    "7\uc77c",
+    "\uc6d4\uc694\uc77c",
+    "\ud654\uc694\uc77c",
+    "\uc218\uc694\uc77c",
+    "\ubaa9\uc694\uc77c",
+    "\uae08\uc694\uc77c",
+    "\ud1a0\uc694\uc77c",
+    "\uc77c\uc694\uc77c",
+)
 
 
 def make_fast_router_node(deps: NodeDeps):
@@ -499,8 +531,7 @@ def _route_message(message: str, state: GraphState) -> dict[str, Any]:
             domain = "all" if _has_any(normalized, ALL_SCOPE_KEYWORDS) or len(domains) > 1 else "all"
         else:
             domain = domains[0]
-        scope = "all" if _has_any(normalized, ALL_SCOPE_KEYWORDS) else "day"
-        dates = [] if scope == "all" else _extract_dates(message)
+        scope, dates = _delete_scope_and_dates(message, normalized)
         return {
             "route_kind": "single",
             "needs_clarification": False,
@@ -1395,9 +1426,27 @@ def _delete_payload_from_action(action: dict[str, Any]) -> dict[str, Any]:
 
 
 def _looks_like_delete(normalized: str) -> bool:
-    return _has_any(normalized, DELETE_KEYWORDS) and (
-        _has_any(normalized, WORKOUT_KEYWORDS + DIET_KEYWORDS) or "캘린더" in normalized or "플랜" in normalized or "내역" in normalized
+    if not _has_any(normalized, DELETE_KEYWORDS):
+        return False
+    return (
+        _has_any(normalized, WORKOUT_KEYWORDS + DIET_KEYWORDS)
+        or _has_any(normalized, DELETE_TARGET_KEYWORDS)
+        or _has_any(normalized, ALL_SCOPE_KEYWORDS)
+        or _has_delete_date_scope(normalized)
     )
+
+
+def _delete_scope_and_dates(message: str, normalized: str) -> tuple[str, list[str]]:
+    if _has_delete_date_scope(normalized):
+        dates = _extract_dates(message)
+        return ("range" if len(dates) > 1 else "day", dates)
+    if _has_any(normalized, ALL_SCOPE_KEYWORDS):
+        return "all", []
+    return "day", _extract_dates(message)
+
+
+def _has_delete_date_scope(normalized: str) -> bool:
+    return _has_any(normalized, DELETE_DATE_SCOPE_KEYWORDS) or _has_explicit_date_signal(normalized)
 
 
 def _looks_like_modify(normalized: str) -> bool:
