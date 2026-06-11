@@ -73,7 +73,7 @@ EXPECTED_LABELS: dict[str, dict[str, Any]] = {
         "domain": "workout",
         "items": 7,
         "profile_fit": "no_forbidden_workout",
-        "taxonomy": "stretching_must_not_be_cardio",
+        "taxonomy": "stretching_cooldown_only",
     },
     "workout_knee_modify": {
         "operation": "plan.modify",
@@ -484,11 +484,15 @@ def evaluate_turn(
         add("type_workout", state.get("proposed_plan_type") == "workout")
         add("workout_item_count_7", len(proposed) == 7)
         add("no_forbidden_workout", no_forbidden_terms(proposed, constraints.get("workout_forbidden_terms") or []))
-        add("stretching_not_cardio", stretching_not_cardio(proposed))
+        add("no_standalone_stretching", no_standalone_stretching(proposed))
+        add("rest_days_blank", rest_days_blank(proposed))
+        add("cooldown_only_on_main_days", cooldown_only_on_main_days(proposed))
     elif label == "workout_knee_modify":
         add("action_modify", state.get("action_intent") == "modify")
         add("item_count_preserved", len(proposed) == 7)
         add("no_forbidden_workout", no_forbidden_terms(proposed, constraints.get("workout_forbidden_terms") or []))
+        add("no_standalone_stretching", no_standalone_stretching(proposed))
+        add("rest_days_blank", rest_days_blank(proposed))
     elif label == "workout_followup_question":
         add("info_turn", state.get("action_intent") == "info")
         add("active_proposal_remains", bool(state.get("active_proposal") or previous_active))
@@ -537,12 +541,29 @@ def no_forbidden_terms(items: list[dict[str, Any]], forbidden_terms: list[str]) 
     return not any(term and term in text for term in forbidden_terms)
 
 
-def stretching_not_cardio(items: list[dict[str, Any]]) -> bool:
+def no_standalone_stretching(items: list[dict[str, Any]]) -> bool:
     for item in items:
         if item.get("plan_type") != "workout":
             continue
-        text = f"{item.get('name')} {item.get('detail')}"
-        if "스트레칭" in text and item.get("name") == "유산소":
+        if item.get("name") == "스트레칭":
+            return False
+    return True
+
+
+def rest_days_blank(items: list[dict[str, Any]]) -> bool:
+    rest_items = [item for item in items if item.get("plan_type") == "workout" and item.get("name") == "휴식"]
+    return bool(rest_items) and all(not item.get("detail") and not item.get("ex_list") for item in rest_items)
+
+
+def cooldown_only_on_main_days(items: list[dict[str, Any]]) -> bool:
+    for item in items:
+        if item.get("plan_type") != "workout":
+            continue
+        text = f"{item.get('detail')} {item.get('ex_list')}"
+        has_stretching = "스트레칭" in text
+        if item.get("name") == "휴식" and has_stretching:
+            return False
+        if item.get("name") != "휴식" and has_stretching and "마무리 스트레칭" not in text:
             return False
     return True
 

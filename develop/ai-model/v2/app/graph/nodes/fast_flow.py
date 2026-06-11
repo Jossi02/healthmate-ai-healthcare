@@ -863,19 +863,20 @@ def build_acsm_boundary(profile: dict[str, Any], constraints: dict[str, Any]) ->
     else:
         session = "extended"
 
-    preferred = ["걷기", "가벼운 근력", "스트레칭"]
+    preferred = ["걷기", "가벼운 근력", "회복"]
     if any(token in goal for token in ("감량", "체중", "weight")):
         preferred = ["걷기", "자전거", "전신 근력"]
     elif any(token in goal for token in ("근육", "증가", "muscle")):
         preferred = ["상체 근력", "하체 근력", "코어"]
     elif any(token in goal for token in ("유지", "건강", "health")):
-        preferred = ["유산소", "근력", "스트레칭"]
+        preferred = ["유산소", "근력", "회복"]
 
     return {
         "rpe_range": rpe,
         "set_range": sets,
         "session_size": session,
-        "allowed_categories": list(WORKOUT_CATEGORIES),
+        "allowed_categories": [category for category in WORKOUT_CATEGORIES if category != "stretching"],
+        "flexibility_rule": "stretching_is_cooldown_only",
         "preferred_modalities": preferred,
         "forbidden_patterns": constraints.get("workout_forbidden_terms") or [],
     }
@@ -927,6 +928,7 @@ def _build_workout_items(
     for index, day in enumerate(dates):
         category = categories[index % len(categories)]
         exercises = _exercises_for_category(category, boundary, constraints)
+        exercises = _with_cooldown_stretch(category, exercises, constraints)
         items.append(
             {
                 "plan_type": "workout",
@@ -942,29 +944,31 @@ def _build_workout_items(
 def _workout_pattern_for_request(dates: list[str], constraints: dict[str, Any], instruction: str) -> list[str]:
     normalized = _normalize_text(instruction)
     if "스트레칭" in normalized and not any(token in normalized for token in ("상체", "하체", "유산소", "근력")):
-        return ["stretching"]
+        return ["rest"]
     if "유산소" in normalized and "스트레칭" not in normalized:
         return ["cardio"]
     if "상체" in normalized:
-        return ["upper", "stretching"] if len(dates) > 1 else ["upper"]
+        return ["upper", "rest"] if len(dates) > 1 else ["upper"]
     if "하체" in normalized:
-        return ["lower", "stretching"] if len(dates) > 1 else ["lower"]
+        return ["lower", "rest"] if len(dates) > 1 else ["lower"]
 
     injury_text = " ".join(_safe_str_list(constraints.get("injuries")) + _safe_str_list(constraints.get("medical_conditions")))
     knee_sensitive = any(token in injury_text.lower() for token in ("무릎", "knee"))
     if knee_sensitive:
-        return ["upper", "stretching", "cardio", "core", "upper", "stretching", "cardio"]
+        return ["upper", "rest", "cardio", "core", "upper", "rest", "cardio"]
     goal = str(constraints.get("goal") or "").lower()
     if any(token in goal for token in ("근육", "증가", "muscle")):
-        return ["upper", "lower", "stretching", "upper", "lower", "core", "cardio"]
+        return ["upper", "lower", "rest", "upper", "lower", "core", "cardio"]
     if any(token in goal for token in ("감량", "체중", "weight")):
-        return ["cardio", "upper", "cardio", "lower", "stretching", "cardio", "core"]
-    return ["upper", "cardio", "stretching", "lower", "full_body", "cardio", "stretching"]
+        return ["cardio", "upper", "cardio", "lower", "rest", "cardio", "core"]
+    return ["upper", "cardio", "rest", "lower", "full_body", "cardio", "rest"]
 
 
 def _exercises_for_category(category: str, boundary: dict[str, Any], constraints: dict[str, Any]) -> list[dict[str, Any]]:
+    if category == "stretching":
+        category = "rest"
     set_range = boundary.get("set_range") if isinstance(boundary.get("set_range"), list) else [2, 3]
-    sets = int(set_range[0] if category == "stretching" else set_range[-1])
+    sets = int(set_range[-1])
     library = {
         "cardio": [
             {"exercise_name": "빠른 걷기", "duration_minutes": 20, "calories": 90},
@@ -995,12 +999,21 @@ def _exercises_for_category(category: str, boundary: dict[str, Any], constraints
             {"exercise_name": "밴드 로우", "sets": sets, "calories": 35},
             {"exercise_name": "데드버그", "sets": sets, "calories": 25},
         ],
-        "rest": [
-            {"exercise_name": "가벼운 전신 스트레칭", "sets": 1, "calories": 15},
-        ],
+        "rest": [],
     }
     forbidden = _safe_str_list(constraints.get("workout_forbidden_terms"))
     return [_safe_exercise(exercise, forbidden) for exercise in library.get(category, library["full_body"])]
+
+
+def _with_cooldown_stretch(category: str, exercises: list[dict[str, Any]], constraints: dict[str, Any]) -> list[dict[str, Any]]:
+    if category in {"rest", "stretching"} or not exercises:
+        return exercises
+    cooldown = _safe_exercise(
+        {"exercise_name": "마무리 스트레칭 5분", "duration_minutes": 5, "calories": 10},
+        _safe_str_list(constraints.get("workout_forbidden_terms")),
+    )
+    names = {str(item.get("exercise_name") or "") for item in exercises}
+    return exercises if cooldown["exercise_name"] in names else [*exercises, cooldown]
 
 
 def _safe_exercise(exercise: dict[str, Any], forbidden: list[str]) -> dict[str, Any]:
@@ -1098,7 +1111,7 @@ def _modify_workout_items(
         should_change = _workout_item_matches_target(copied, target, normalized)
         if should_change:
             if "스트레칭" in normalized:
-                category = "stretching"
+                category = "rest"
             elif "유산소" in normalized:
                 category = "cardio"
             elif "상체" in normalized:
@@ -1106,10 +1119,11 @@ def _modify_workout_items(
             elif "하체" in normalized:
                 category = "lower"
             elif "부담" in normalized or "무릎" in normalized or "가볍" in normalized:
-                category = "stretching" if copied.get("name") == "하체" else _category_key_from_label(str(copied.get("name") or "")) or "stretching"
+                category = "rest" if copied.get("name") == "하체" else _category_key_from_label(str(copied.get("name") or "")) or "rest"
             else:
                 category = _category_key_from_label(str(copied.get("name") or "")) or "full_body"
             exercises = _exercises_for_category(category, boundary, constraints)
+            exercises = _with_cooldown_stretch(category, exercises, constraints)
             copied.update(
                 {
                     "name": WORKOUT_CATEGORIES[category],
@@ -1188,6 +1202,8 @@ def validate_plan(items: list[dict[str, Any]], contract: dict[str, Any], constra
             issues.append({"severity": "critical", "code": "forbidden_workout", "message": str(item)})
         if item.get("plan_type") == "workout" and item.get("name") == "유산소" and "스트레칭" in text and "걷기" not in text:
             issues.append({"severity": "critical", "code": "stretching_as_cardio", "message": str(item)})
+        if item.get("plan_type") == "workout" and _category_key_from_label(str(item.get("name") or "")) == "stretching":
+            issues.append({"severity": "critical", "code": "standalone_stretching_day", "message": str(item)})
 
     return {"passed": not any(issue["severity"] == "critical" for issue in issues), "issues": issues}
 
@@ -1199,10 +1215,17 @@ def repair_plan(items: list[dict[str, Any]], constraints: dict[str, Any]) -> lis
         if copied.get("plan_type") == "diet":
             copied["detail"] = _clean_food_text(str(copied.get("detail") or ""), _safe_str_list(constraints.get("food_forbidden_terms")))
         elif copied.get("plan_type") == "workout":
-            category = _category_key_from_label(str(copied.get("name") or "")) or "stretching"
+            category = _category_key_from_label(str(copied.get("name") or "")) or "rest"
+            if category == "stretching":
+                category = "rest"
             copied["ex_list"] = [_safe_exercise(ex, _safe_str_list(constraints.get("workout_forbidden_terms"))) for ex in _safe_list(copied.get("ex_list"))]
             copied["name"] = WORKOUT_CATEGORIES[category]
-            copied["detail"] = ", ".join(str(ex.get("exercise_name")) for ex in copied["ex_list"] if ex.get("exercise_name"))
+            if category == "rest":
+                copied["ex_list"] = []
+                copied["detail"] = ""
+            else:
+                copied["ex_list"] = _with_cooldown_stretch(category, copied["ex_list"], constraints)
+                copied["detail"] = ", ".join(str(ex.get("exercise_name")) for ex in copied["ex_list"] if ex.get("exercise_name"))
         repaired.append(copied)
     return repaired
 
