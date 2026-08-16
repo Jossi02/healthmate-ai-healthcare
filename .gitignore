@@ -3,6 +3,13 @@ CLAUDE.md
 develop/deploy/gcp-two-vm/deploy_key
 develop/deploy/gcp-two-vm/deploy_key.pub
 
+# Local environment and credentials
+.env
+.env.local
+.env.*
+!.env.example
+!*.env.example
+
 # Dependency installs
 node_modules/
 **/node_modules/
