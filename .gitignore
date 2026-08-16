@@ -2,3 +2,10 @@ CLAUDE.md
 .deploy-package.tar.gz
 develop/deploy/gcp-two-vm/deploy_key
 develop/deploy/gcp-two-vm/deploy_key.pub
+
+# Environment files (all directories); keep safe templates tracked.
+**/.env
+**/.env.local
+**/.env.*
+!**/.env.example
+!**/*.env.example
