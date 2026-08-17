@@ -27,7 +27,8 @@ __pycache__/
 **/.pytest_cache/
 
 # Local deploy bundles and scratch packages
-*.tar.gz
+/v2-deploy.tar.gz
+/develop/ai-model/v2/v2-deploy.tar.gz
 *.tgz
 develop/backend-api/supabase/.temp/
 
