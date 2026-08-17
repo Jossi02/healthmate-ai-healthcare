@@ -9,3 +9,7 @@ develop/deploy/gcp-two-vm/deploy_key.pub
 **/.env.*
 !**/.env.example
 !**/*.env.example
+
+# Generated deployment archives
+/v2-deploy.tar.gz
+/develop/ai-model/v2/v2-deploy.tar.gz
