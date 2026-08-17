@@ -1,1 +1,12 @@
 CLAUDE.md
+
+# Generated deployment archives
+/v2-deploy.tar.gz
+/develop/ai-model/v2/v2-deploy.tar.gz
+
+# Environment files (all directories); keep safe templates tracked.
+**/.env
+**/.env.local
+**/.env.*
+!**/.env.example
+!**/*.env.example
