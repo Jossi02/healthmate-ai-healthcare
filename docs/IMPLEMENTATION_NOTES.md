@@ -95,12 +95,19 @@ AI v2의 활성 통합 경로는 `/chat`과 `/home/recommendations...` 계열입
 ## 6. 기술부채와 보안상 주의점
 
 - 백엔드 CORS 설정은 현재 모든 origin을 허용합니다. 환경변수 예시에 있는 `CLIENT_URL`이 실제 허용 목록으로 사용되지는 않습니다.
-- JWT 서명키에 개발용 fallback이 남아 있어 운영 환경에서는 강한 별도 값을 반드시 설정해야 합니다.
-- 내부 API 인증은 `INTERNAL_API_KEY`가 설정되지 않았을 때 보호 수준이 약해질 수 있으므로 통합 환경에서는 양쪽 서비스에 같은 강한 값을 설정해야 합니다.
-- `test/all`, `test-1`, `codex/persona-chatbot-avatars` 브랜치에서 백엔드 `.env`가 추적된 이력이 확인되었습니다. 이번 일반 변경에서는 세 브랜치 모두 현재 branch tip에서 해당 파일을 제거하는 변경을 준비했으며, 기존에 노출된 Supabase·데이터베이스·내부 API credential은 사용자가 교체·폐기했습니다. 과거 Git history에는 기존 값이 남아 있어 별도 정리가 필요하며, history rewrite는 이번 단계에서 수행하지 않습니다.
-- 일부 배포·smoke·브라우저 테스트 스크립트에는 고정된 테스트 계정 비밀번호가 남아 있습니다(`deployed_profile_smoke_5x20.js`, `e2e_intent_suite.py`, `approval_bottleneck.spec.js`). 외부 서비스 키로 확인된 값은 아니지만 공유·운영 데이터베이스에서 실행했다면 해당 테스트 계정을 삭제하거나 비밀번호를 교체해야 합니다.
+- JWT 서명키에 개발용 fallback이 남아 있습니다. 환경변수 주입이 누락되어도 서버가 fallback 값으로 실행될 수 있으므로, 실제 운영 환경에서는 중앙 설정 검증과 startup fail-fast 방식으로 보강하는 것이 바람직합니다.
+- 내부 API 인증은 `INTERNAL_API_KEY`가 설정되지 않았을 때 보호 수준이 약해질 수 있으므로 통합 환경에서는 Backend와 AI Server 양쪽에 동일한 강한 값을 명시적으로 설정해야 합니다.
+- 과거 `test/all`, `test-1`, `codex/persona-chatbot-avatars` 브랜치에서 Backend `.env`가 Git에 추적된 이력이 확인되었습니다. 현재 Fork의 해당 branch tip에서는 파일 제거와 ignore/example 정리를 완료했으며, 확인된 Supabase service-role credential, 데이터베이스 비밀번호, Backend–AI internal API key는 모두 교체·폐기했습니다.
+- 과거 배포용 `v2-deploy.tar.gz`와 `develop/ai-model/v2/v2-deploy.tar.gz`에는 환경파일과 외부 서비스 credential이 포함된 이력이 있었습니다. 해당 archive는 생성 산출물로 판단해 영향받는 Fork branch tip에서 제거했고 정확한 경로의 ignore 규칙을 적용했습니다.
+- `ai-model-langgraph2`에 남아 있던 테스트용 hardcoded Google API key도 제거했으며, 현재는 `GEMINI_API_KEY`와 `GEMINI_MODEL_NAME` 환경변수를 사용하는 방식으로 변경했습니다.
+- Google/Gemini, Pinecone, LangSmith를 포함해 이번 정리 과정에서 확인된 credential은 모두 교체·폐기했습니다.
+- Fork의 17개 current branch tip을 텍스트·binary blob과 추적 archive 내부까지 검사한 결과, 정리 완료 시점 기준 고신뢰 실제 credential finding은 0건이었습니다.
+- 폐기된 credential이 포함된 과거 commit과 blob은 Fork와 upstream의 Git history에 남아 있습니다. 다만 credential이 모두 폐기됐고 Fork current tip이 정리된 상태이며, Fork만 history rewrite하더라도 upstream의 동일 공개 history는 유지됩니다. 약 134개의 Fork descendant commit SHA 변경과 기존 clone 재동기화 비용을 고려해 **Fork 단독 history rewrite는 수행하지 않기로 결정했습니다.**
+- 향후 upstream 관리자와 전체 팀이 공동 history rewrite에 동의한다면 별도의 최신 감사와 협업 절차를 거쳐 다시 검토할 수 있습니다.
+- 원본 팀 저장소 `WinLike-dev/capstone_2team`에는 Fork에서 수행한 current-tip 정리가 자동 반영되지 않습니다. Upstream 정리는 저장소 관리자가 일반 fast-forward commit으로 별도 적용할 수 있도록 handoff 절차를 마련했습니다.
+- 일부 배포·smoke·브라우저 테스트 스크립트에는 synthetic 테스트 계정용 고정 비밀번호가 남아 있습니다. 현재 분석에서는 실제 사용자 계정 credential이 아닌 테스트 fixture로 분류했지만, 향후에는 실행별 무작위 비밀번호 생성, production endpoint 실행 차단, 테스트 계정 cleanup을 추가할 수 있습니다.
 - 저장소에 `LICENSE` 파일이 없어 재사용·배포 조건이 명시되어 있지 않습니다.
-- 생성 파일, 아카이브, 실험 자산과 여러 개발 브랜치가 함께 남아 있어 현재 기준 소스를 찾기 어렵습니다.
+- 여러 개발·실험 브랜치가 함께 남아 있어 처음 저장소를 보는 사람이 현재 기준 구현을 파악할 때 추가 설명이 필요합니다.
 
 실제 비밀값은 이 문서와 예제 파일에 기록하지 않습니다.
 
@@ -119,14 +126,16 @@ AI v2의 활성 통합 경로는 `/chat`과 `/home/recommendations...` 계열입
 
 ## 9. 현재 검증되지 않은 부분
 
-다음 항목은 코드만으로 결론을 내릴 수 없거나 이번 작업에서 실행 검증하지 않았습니다.
+다음 항목은 코드만으로 결론을 내릴 수 없거나 이번 문서 작업에서 실행 검증하지 않았습니다.
 
 - 현재 운영 중인 외부 서비스와 배포 URL: **확인 불가**
 - Supabase 프로젝트의 실제 스키마·마이그레이션 적용 상태: **확인 불가**
-- Gemini·Pinecone·LangSmith 계정과 모델 사용 가능 상태: **확인 불가**
+- Gemini·Pinecone·LangSmith 계정과 현재 모델 사용 가능 상태: **확인 불가**
 - 전체 의존성 설치, lint, build, 단위·통합·E2E 테스트의 현재 통과 여부: **확인 불가**
 - 논문 평가에 사용된 정확한 배포 스냅샷과 현재 `test/all` 코드의 완전한 동일성: **확인 불가**
 - DISC 4유형의 현재 런타임 처리 구현: **확인 불가**
 - 문서가 참조하는 일부 별도 실험 결과 파일의 보존 여부: 저장소에서 확인되지 않은 항목이 있음
+
+현재 Fork의 보안 정리는 current branch tip을 기준으로 완료했지만, 원본 팀 저장소의 current tip과 양쪽 저장소의 과거 Git history까지 변경한 것은 아닙니다.
 
 자세한 로컬 준비 절차는 [LOCAL_SETUP.md](LOCAL_SETUP.md)를 참고하세요.
