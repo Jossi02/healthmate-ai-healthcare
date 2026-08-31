@@ -4,7 +4,7 @@
 
 HealthMate는 건강 정보와 성향을 함께 고려해 운동·식단 코칭을 개인화하는 방법을 탐구한 **2026년 대학 심화캡스톤 팀 프로젝트**입니다.
 
-이 저장소의 `portfolio/integration-quality` 브랜치는 `portfolio/integration-security@35757ea60cc1e6d2647c527112d0e83be07d9f7b`에서 직접 시작해 Phase 2B-2 품질·tenant 경계·재현성 검증을 적용한 후보입니다. Frontend, Express Backend, Supabase migrations, FastAPI/LangGraph AI v2, deployment configuration이 함께 보존돼 있지만 완전히 검증된 운영 배포본을 뜻하지 않습니다.
+이 저장소의 `portfolio/integration-runtime` 브랜치는 `portfolio/integration-quality@8c5fe5cf66d1322dc85703dffb3aa722e9358c5a`에서 직접 시작해 Phase 2C-1 runtime privacy·observability·retention 경계를 적용한 후보입니다. Frontend, Express Backend, Supabase migrations, FastAPI/LangGraph AI v2, deployment configuration이 함께 보존돼 있지만 완전히 검증된 운영 배포본을 뜻하지 않습니다.
 
 ## 프로젝트 핵심 정보
 
@@ -75,6 +75,12 @@ flowchart LR
 - Frontend에는 Supabase client가 없고 사용자 요청은 service-role Backend를 통과합니다. 따라서 현재 tenant 경계는 Backend의 JWT·ownership filter이며, 이 구조에서 RLS 부재 자체를 구현 결함으로 보지는 않습니다.
 - Backend production dependency audit 9건은 현재 major 범위의 lockfile 갱신으로 0건이 됐습니다. AI Dockerfile 대상인 Python 3.11은 로컬에 없어 3.11 설치·lock 검증은 수행하지 않았습니다.
 
+### Phase 2C-1 runtime privacy·retention 경계 (현재 코드 범위)
+
+- AI TraceStore는 production/default에서 raw user/session identifier, message, request·response body, health profile, plan snapshot과 상세 event/log를 저장하지 않고 상태·시간·지연·count 중심 summary만 보존합니다. `TRACE_RETENTION_MINUTES` 기본값은 60분입니다. Development/local에서도 `ENABLE_DEBUG_ROUTES=true`를 명시해야 상세 trace가 활성화되며, nested object/list와 문자열 credential은 고정 `[REDACTED]` 값으로 치환됩니다.
+- Backend Winston 파일은 `error.log`와 `combined.log` 각각 5 MiB × 5개로 제한됩니다. Morgan은 method, query 없는 path, status, response time만 기록하고 Authorization/Cookie header는 기록하지 않습니다. Chat/home gateway와 공통 error handler는 raw upstream payload·stack·내부 message를 client에 반환하지 않습니다.
+- 기존 raw-key checkpoint는 저장 state에서 owner를 신뢰성 있게 증명할 수 없어 자동 fallback/rekey하지 않습니다. Upgrade 시 activity가 없던 row에는 새 72시간 만료 시계를 부여하고, cleanup은 live session lock을 건드리지 않으며 durable WAS outbox를 삭제하지 않습니다. Supabase 제품 데이터에는 retention migration을 추가하지 않았습니다.
+
 ## 주요 기능
 
 | 기능 | 현재 코드에서 확인되는 범위 |
@@ -116,13 +122,14 @@ FastAPI 구현 과정에서는 생성형 AI를 보조 도구로 사용했습니�
 
 ## 검증 상태
 
-Phase 2B-2에서는 credential 없이 안전하게 실행 가능한 범위에서 다음을 확인했습니다.
+Phase 2C-1에서는 credential·tracing·RAG를 끄고 네트워크가 차단된 disposable AI copy에서 다음을 확인했습니다.
 
 - Frontend: clean `npm ci`, lint 오류 0·기존 경고 2, production build, display contract 7/7 통과
-- Backend: clean `npm ci`, contracts 21/21, security 33/33, tenant 8/8, JavaScript 구문 37/37, production audit 0건
-- AI: Python 구문 101/101, metadata 44/44, intent 57/57, routing 12/12, fast plan 110/110, quality 2/2, quality guards 94/94, mixed WAS edge case, chat E2E와 security 13/13 통과
+- Backend: clean `npm ci`, contracts 21/21, security 33/33, tenant 8/8, logging privacy, JavaScript 구문 38/38, production audit 0건
+- AI: Python 3.12.13 구문 103/103, metadata 44/44, intent 57/57, routing 12/12, fast plan 110/110, quality 3/3, quality guards 94/94, mixed WAS edge case, chat E2E와 security 13/13 통과
+- 신규 runtime privacy/retention 검사는 3개 entrypoint·5개 top-level case/scenario로 구성되며 TraceStore 3/3, Backend logging 1/1, SQLite checkpoint retention 1/1이 통과했습니다. Checkpoint 검사는 정확한 72시간 경계, live lock, pending outbox, activity 없는 legacy row, 1,001개 초과 배치 삭제를 포함합니다.
 
-Backend 8개와 AI 동일 공개 session A/B 격리 1개를 합쳐 tenant 회귀 시나리오 9/9가 통과했습니다. AI 검사는 credential을 비우고 tracing·RAG를 끈 Python 3.12.13 격리 환경에서 실행해 실제 Supabase·Gemini·Pinecone·LangSmith 또는 운영 endpoint를 호출하지 않았습니다. Dockerfile 대상 Python 3.11은 이 환경에 없어 3.11 결과나 lock을 주장하지 않습니다. Frontend home recommendation browser smoke는 설치된 browser executable이 없어 `NOT RUN`이며, 나머지 상세 결과는 [구현 상세 노트](docs/IMPLEMENTATION_NOTES.md)에 기록합니다. 재현 명령은 [로컬 실행 가이드](docs/LOCAL_SETUP.md)에 있습니다.
+Backend 8개와 AI 동일 공개 session A/B 격리 1개를 합쳐 tenant 회귀 시나리오 9/9가 유지됐습니다. 실제 Supabase·Gemini·Pinecone·LangSmith 또는 운영 endpoint는 호출하지 않았습니다. Dockerfile 대상 Python 3.11은 이 환경에 없어 3.11 결과나 lock을 주장하지 않습니다. Frontend home recommendation browser smoke는 설치된 browser executable이 없어 `NOT RUN`이며, 나머지 상세 결과는 [구현 상세 노트](docs/IMPLEMENTATION_NOTES.md)에 기록합니다. 재현 명령은 [로컬 실행 가이드](docs/LOCAL_SETUP.md)에 있습니다.
 
 ## 논문 평가 결과
 
@@ -150,11 +157,11 @@ Backend 8개와 AI 동일 공개 session A/B 격리 1개를 합쳐 tenant 회귀
 
 ## 현재 한계
 
-- 이 브랜치는 quality integration candidate이며 운영 준비 완료를 의미하지 않습니다.
+- 이 브랜치는 runtime integration candidate이며 운영 준비 완료를 의미하지 않습니다.
 - 논문 시점의 시스템과 현재 코드 스냅샷은 배포 환경, AI 그래프, 기억 경로 등에서 차이가 있습니다.
 - AI v2 의존성은 하한 버전 중심이고 Python 3.11에서 검증한 lockfile이 없어 설치 시점별 차이가 생길 수 있습니다.
-- Tenant-scoped checkpoint key로 전환하면서 이전 raw `session_id` checkpoint는 보안상 fallback하지 않습니다. Upgrade 전에 생성된 미완료 제안·pending write의 이행 또는 세션 종료 정책이 필요합니다.
-- trace/log에는 대화·프로필·플랜 health data가 남을 수 있어 redaction·retention·rotation 정책을 운영 전에 보강해야 합니다.
+- Tenant-scoped checkpoint key로 전환하기 전에 생성된 raw `session_id` checkpoint는 보안상 fallback·자동 migration하지 않으며 72시간 activity TTL 또는 명시적 offline purge로 제거합니다. 그 세션의 자동 연속성은 제공하지 않습니다.
+- Product DB의 chat/profile/plan lifecycle과 운영 중앙 로그 수집·삭제 정책은 이번 local runtime hardening 범위 밖이며 별도 정책이 필요합니다.
 - Frontend browser smoke는 이 검증 환경에 Playwright browser executable이 없어 실행하지 못했습니다.
 - Supabase 프로젝트의 실제 migration 적용 상태와 외부 서비스의 현재 가용성은 저장소만으로 확인할 수 없습니다.
 - GCP 배포 설정은 보존돼 있지만 현재 라이브 서비스나 배포 성공을 보장하지 않습니다.

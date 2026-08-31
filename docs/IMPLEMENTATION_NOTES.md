@@ -10,6 +10,7 @@
 
 | 브랜치 | 확인되는 범위 | 현재 관계 |
 | --- | --- | --- |
+| `portfolio/integration-runtime` | Phase 2C-1 runtime trace·log privacy, bounded retention, checkpoint TTL 검증 | `portfolio/integration-quality@8c5fe5cf66d1322dc85703dffb3aa722e9358c5a`에서 직접 시작한 runtime 후보 |
 | `portfolio/integration-quality` | Phase 2B-2 AI 품질 계약, tenant ownership, dependency·artifact 검증 | `portfolio/integration-security@35757ea60cc1e6d2647c527112d0e83be07d9f7b`에서 직접 시작한 품질 후보 |
 | `portfolio/integration-security` | Phase 2B-1 fail-closed auth, public/debug surface, CORS/readiness/rate-limit 경계 | `portfolio/integration-candidate@3ab3c4f8fe3b728bdf9aa7d7c69902bad23f91d0`에서 직접 시작한 보안 후보 |
 | `portfolio/integration-candidate` | Frontend, Express Backend, Supabase migrations, AI v1/v2, GCP 배포 설정 | `test/all@5714945eab8379a875d8c536414b13fb2db0f47e`에서 직접 시작한 통합 후보. 완성본 아님 |
@@ -107,12 +108,20 @@ Phase 2B-2 tenant data flow 감사에서는 Frontend에 Supabase client/direct D
 
 Backend API 8개와 AI checkpoint A/B 격리 1개, 총 9개 외부 서비스 없는 tenant 회귀 시나리오가 통과했습니다. 현재 구조에서는 RLS 부재 자체를 구현 결함으로 분류하지 않습니다. Browser/direct Supabase access가 없고 service role은 RLS를 우회하므로 실제 경계는 application auth·ownership입니다. 향후 browser 또는 user-context DB 접근을 추가할 때 RLS를 별도 blocker로 올려야 합니다.
 
-Trace/log read-only 감사에서는 AI memory trace가 user message, user/session ID, request payload, WAS request/response와 profile·plan snapshot을 최대 trace 120개·global log 1,200개·trace별 120개까지 보관하며 일반 TTL/redaction이 없음을 확인했습니다. SQLite checkpoint는 disk에 기록되고 기본 72시간 activity TTL을 사용합니다. Backend Winston은 `logs/error.log`와 `logs/combined.log`에 rotation/redaction 제한 없이 기록하고 Morgan은 URL을 남깁니다. 현재 auth header나 실제 credential을 trace payload에 기록하는 경로는 확인되지 않았지만 health-data retention·redaction·rotation은 Phase 2C 전 hardening 후보입니다.
+Phase 2B-2의 read-only 감사에서는 AI memory trace가 user message, user/session ID, request payload, WAS request/response와 profile·plan snapshot을 최대 trace 120개·global log 1,200개·trace별 120개까지 보관하면서 일반 TTL/redaction이 없고, Backend Winston과 Morgan도 file bound·query 제거가 없음을 확인했습니다.
+
+Phase 2C-1은 이 경계를 다음처럼 좁혔습니다.
+
+- TraceStore는 기본 summary mode이며 raw identifier, message, request/response, profile·plan snapshot, WAS body와 상세 event/log content를 보존하지 않습니다. 보존 field는 trace ID·kind·status·timestamp, duration, intent/domain 등 allowlist state, quality grade/count와 WAS method/status/count입니다. `TRACE_RETENTION_MINUTES` 기본값 60분을 access-time deterministic cleanup에 적용하면서 trace 120개, global log 1,200개, trace별 log 120개의 기존 count cap도 유지합니다.
+- 상세 trace는 `APP_ENV`가 development/local이고 `ENABLE_DEBUG_ROUTES=true`인 경우에만 활성화됩니다. Production은 설정 실수로 상세 mode가 켜지지 않습니다. Debug에서도 Authorization, Cookie, password/hash, token, API key, JWT, secret, service-role 계열을 대소문자·snake/camel 변형과 nested dict/list까지 `[REDACTED]`로 치환합니다.
+- Winston file transport는 `error.log`와 `combined.log` 각각 5 MiB, 5 files, tailable로 제한합니다. 공통 logger는 credential-bearing string/object/Error를 sanitize하고 Error의 arbitrary request/response property는 직렬화하지 않습니다. Morgan format은 `:method :safe-path :status :response-time ms`이며 query와 header를 남기지 않습니다. Chat/home gateway와 공통 handler의 client response에는 raw upstream payload, provider detail, stack 또는 5xx internal message가 없습니다.
+
+Checkpoint schema 감사 결과 persisted channel에서 `user_id`가 제거되고 `session_activity`에도 owner가 없어 legacy raw-key row의 tenant owner를 신뢰성 있게 판정할 수 없습니다. 따라서 raw-key fallback·automatic rekey는 금지하고 세션 연속성보다 tenant isolation을 우선합니다. Upgrade 시 activity가 없던 checkpoint/write thread에는 현재 시각을 넣어 기본 `CHECKPOINT_TTL_HOURS=72` 안에 만료시키며, 필요하면 AI Server를 중지한 뒤 backup에서 확인한 정확한 legacy `thread_id`만 `writes` → `checkpoints` → `session_activity` 순으로 transaction purge합니다. 값을 추정하거나 hash key로 복사하지 않습니다. Cleanup은 startup 직후와 이후 매시간 실행되고 `BEGIN IMMEDIATE`와 120초 live lock 제외 조건을 사용합니다. Pending durable `was_outbox`는 checkpoint cleanup과 분리해 보존합니다. Credential 없는 SQLite regression에서 73시간 row 삭제, 71시간 row 보존, live lock 해제 전후, activity 없는 legacy row의 새 만료 시계, pending outbox 보존과 1,001개 초과 expired activity의 batched deletion을 실제 확인했습니다.
 
 다음 항목은 여전히 promotion 전 별도 검토가 필요한 deferred blocker입니다.
 
-- trace·log·debug 결과와 관리 통계의 민감 데이터 보존 경계
-- tenant-scoped checkpoint 전환 전 raw-key active session의 drain/migration 또는 명시적 만료 정책
+- 운영 중앙 로그 수집기와 관리 통계의 별도 보존·삭제 정책
+- Supabase chat/profile/plan 제품 데이터 lifecycle 정책
 - non-root container user 미설정과 배포 SSH host-key 신뢰 방식
 - GCP/실제 deployment의 secret injection, network, TLS, firewall 및 운영 차이
 
@@ -174,6 +183,16 @@ Phase 2B-2 검증 결과는 다음과 같습니다. 모든 AI 검사는 credenti
 | Frontend | clean `npm ci`, lint 오류 0·기존 경고 2, production build, display contract 7/7 |
 | Backend | clean `npm ci`, internal contracts 21/21, security 33/33, tenant 8/8, JavaScript 구문 37/37, production audit 0 |
 | AI | Python 3.12.13 구문 101/101, metadata 44/44, intent 57/57, routing 12/12, fast plan 110/110, quality 2/2, quality guards 94/94, mixed WAS edge·chat E2E·security 13/13 통과 |
+
+Phase 2C-1 최종 검증 결과는 다음과 같습니다. AI는 credential·tracing·RAG를 끈 network-blocked disposable copy에서 실행했습니다.
+
+| 영역 | 결과 |
+| --- | --- |
+| Frontend | clean `npm ci`, lint 오류 0·기존 경고 2, production build, display contract 7/7 |
+| Backend | clean `npm ci`, contracts 21/21, security 33/33, tenant 8/8, logging privacy 1/1, JavaScript 구문 38/38, production audit 0 |
+| AI | Python 3.12.13 구문 103/103, metadata 44/44, intent 57/57, routing 12/12, fast plan 110/110, quality 3/3, quality guards 94/94, mixed WAS edge·chat E2E·security 13/13, TraceStore privacy 3/3, checkpoint retention 1/1 통과 |
+
+신규 runtime privacy/retention 검사는 3개 entrypoint·5개 top-level case/scenario입니다. 실제 Supabase·Gemini·Pinecone·LangSmith 또는 production endpoint는 호출하지 않았습니다.
 
 기존 AI 실패 3건의 최종 판정과 상태는 다음과 같습니다.
 

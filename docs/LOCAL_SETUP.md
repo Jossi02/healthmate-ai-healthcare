@@ -1,13 +1,13 @@
 # HealthMate 로컬 실행 가이드
 
-이 문서는 `portfolio/integration-quality` 브랜치에 함께 보존된 Frontend, Backend / WAS, AI Server를 로컬에서 준비하는 방법을 설명합니다. 저장소 루트에는 세 서비스를 한 번에 실행하는 script나 통합 Compose가 없습니다.
+이 문서는 `portfolio/integration-runtime` 브랜치에 함께 보존된 Frontend, Backend / WAS, AI Server를 로컬에서 준비하는 방법을 설명합니다. 저장소 루트에는 세 서비스를 한 번에 실행하는 script나 통합 Compose가 없습니다.
 
-## 1. Quality candidate 직접 복제
+## 1. Runtime candidate 직접 복제
 
 다음 명령은 복제 후 별도 branch switch 없이 candidate를 checkout합니다.
 
 ```bash
-git clone --branch portfolio/integration-quality --single-branch https://github.com/Jossi02/healthmate-ai-healthcare.git
+git clone --branch portfolio/integration-runtime --single-branch https://github.com/Jossi02/healthmate-ai-healthcare.git
 cd healthmate-ai-healthcare
 ```
 
@@ -88,10 +88,13 @@ PowerShell에서는 `Copy-Item .env.example .env`를 사용할 수 있습니다.
 npm run test:contracts
 npm run test:security
 npm run test:tenant
+npm run test:logging
 npm audit --omit=dev
 ```
 
 위 보안 검사는 외부 service 호출 없이 설정·인증 계약을 확인합니다. `/api/v1/ai` legacy 경로는 현재 callsite가 없고 AI v2 계약과 달라 정적 `410`을 반환합니다. `/api/v1/admin`은 role source가 아직 없어 정적 `404`를 반환합니다.
+
+Backend file log는 `logs/error.log`와 `logs/combined.log` 각각 5 MiB × 5 files로 제한됩니다. Morgan은 `method path status response-time`만 기록하며 path에서 query를 제거하고 Authorization/Cookie header를 포함하지 않습니다. 공통 logger는 credential을 `[REDACTED]`로 치환하고 Axios/Error의 raw request·response object를 직렬화하지 않습니다.
 
 ## 6. AI Server
 
@@ -132,11 +135,13 @@ PowerShell에서는 `Copy-Item .env.example .env`를 사용할 수 있습니다.
 | `WAS_BASE_URL` | Backend base URL |
 | `INTERNAL_API_KEY` | Backend와 같은 shared local key |
 | `CHECKPOINT_DB_PATH` | local SQLite checkpoint path |
+| `CHECKPOINT_TTL_HOURS` | checkpoint activity TTL. 기본 72시간 |
 | `ENABLE_RAG_MEMORY` | 선택적 Pinecone RAG 활성화 여부. 기본 false |
 | `APP_ENV` | AI 실행 환경. 예제 기본값은 `development` |
 | `ENABLE_DEBUG_ROUTES` | debug/observability route 명시적 opt-in. 기본 false |
+| `TRACE_RETENTION_MINUTES` | in-memory trace/log TTL. 기본 60분 |
 
-`INTERNAL_API_KEY`는 Backend와 동일한 non-blank/non-placeholder 값을 사용해야 하며 production에서는 최소 32자여야 합니다. Development/test에서는 짧은 명시적 값이 허용되지만 placeholder는 허용되지 않습니다. `ENABLE_DEBUG_ROUTES`는 기본 false이고 `APP_ENV`가 `development` 또는 `local`일 때만 true로 설정할 수 있습니다. Production에서는 debug/observability route가 mount되지 않습니다. Debug HTML에는 service key를 넣지 않으므로 기존 browser submit은 보호된 `/chat` 인증을 우회하지 않습니다. `ROUTER_API_KEY`는 선택 사항이며 비어 있으면 Gemini key를 사용하는 코드 경로가 있습니다. 사용하는 account/API가 예제 model name을 실제 지원하는지 별도로 확인해야 합니다.
+`INTERNAL_API_KEY`는 Backend와 동일한 non-blank/non-placeholder 값을 사용해야 하며 production에서는 최소 32자여야 합니다. Development/test에서는 짧은 명시적 값이 허용되지만 placeholder는 허용되지 않습니다. `ENABLE_DEBUG_ROUTES`는 기본 false이고 `APP_ENV`가 `development` 또는 `local`일 때만 true로 설정할 수 있습니다. Production에서는 debug/observability route가 mount되지 않고 TraceStore도 summary mode를 강제합니다. Summary mode에는 raw 대화·profile·plan·WAS body가 없으며 `TRACE_RETENTION_MINUTES` 기본값은 60분입니다. Development/local debug trace도 nested credential을 `[REDACTED]`로 치환합니다. Debug HTML에는 service key를 넣지 않으므로 기존 browser submit은 보호된 `/chat` 인증을 우회하지 않습니다. `ROUTER_API_KEY`는 선택 사항이며 비어 있으면 Gemini key를 사용하는 코드 경로가 있습니다. 사용하는 account/API가 예제 model name을 실제 지원하는지 별도로 확인해야 합니다.
 
 AI 보안 경계 검사:
 
@@ -144,7 +149,7 @@ AI 보안 경계 검사:
 python scripts/test_security_boundaries.py
 ```
 
-외부 credential 없이 실행 가능한 Phase 2B-2 AI 회귀 검사:
+외부 credential 없이 실행 가능한 Phase 2C-1 AI 회귀 검사:
 
 ```bash
 python scripts/test_pinecone_metadata_lint.py
@@ -156,9 +161,11 @@ python scripts/test_plan_quality_guards.py
 python scripts/test_demo_mixed_was_edge_cases.py
 python scripts/test_chat_e2e.py
 python scripts/test_security_boundaries.py
+python scripts/test_trace_privacy.py
+python scripts/test_checkpoint_retention.py
 ```
 
-실행 전 Gemini·Pinecone·LangSmith credential을 비우고 `ENABLE_RAG_MEMORY=false`, tracing 비활성 상태를 확인하세요. 일부 quality script는 report 파일을 갱신하므로 결과를 commit하기 전 diff와 provenance를 검토해야 합니다.
+실행 전 실제 Gemini·Pinecone·LangSmith credential을 설정하지 말고 `ENABLE_RAG_MEMORY=false`, tracing 비활성 상태를 확인하세요. 일부 quality script는 report 파일을 갱신하므로 결과를 commit하기 전 diff와 provenance를 검토해야 합니다.
 
 ## 7. Frontend
 
@@ -209,7 +216,7 @@ Pinecone RAG는 기본 비활성입니다. 활성화할 때만 AI `.env.example`
 - `PINECONE_API_KEY`
 - `PINECONE_INDEX_NAME`
 
-LangSmith tracing과 quality export도 선택 사항이며 기본 비활성입니다. 관련 변수는 `LANGCHAIN_*`, `LANGSMITH_*` prefix로 AI `.env.example`에 정리돼 있습니다. 실제 key를 문서나 commit에 넣지 마세요.
+LangSmith tracing과 quality export도 선택 사항이며 기본 비활성입니다. 관련 변수는 `LANGCHAIN_*`, `LANGSMITH_*` prefix로 AI `.env.example`에 정리돼 있습니다. Production에서 명시적으로 export를 켜더라도 TraceStore가 제공하는 summary field만 대상으로 하며 raw 대화·profile·plan·WAS body는 존재하지 않습니다. 실제 key를 문서나 commit에 넣지 마세요.
 
 ## 10. Docker와 deployment configuration
 
@@ -219,8 +226,21 @@ Container 내부의 `localhost`는 다른 container나 VM을 가리키지 않습
 
 ## 11. 검증 범위와 알려진 blocker
 
-Phase 2B-2에서는 Frontend install/lint/build/display, Backend contracts 21/21·security 33/33·tenant 8/8·구문 37/37·production audit 0, AI 구문과 offline suite를 재검증했습니다. 기존 AI 실패 3건의 test drift/contract mismatch를 현재 architecture에 맞춰 정리했고 관련 regression은 모두 통과합니다. 상세 결과는 [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)에 기록합니다.
+Phase 2C-1에서는 Frontend install/lint/build/display, Backend contracts 21/21·security 33/33·tenant 8/8·logging privacy·구문 38/38·production audit 0, AI 구문 103/103과 요구된 offline 회귀군을 재검증했습니다. 신규 runtime privacy/retention 검사는 3개 entrypoint·5개 top-level case/scenario이며 TraceStore 3/3, Backend logging 1/1, checkpoint retention 1/1이 통과했습니다. 상세 결과는 [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)에 기록합니다.
 
 Python 3.11 clean install·lock 검증은 runtime 부재로 `NOT RUN`입니다. Frontend `smoke:home-recommendation-ux`도 이 검증 환경에 Playwright browser executable이 없어 `NOT RUN`이었습니다. 실제 Supabase mutation, Gemini·Pinecone·LangSmith 요청, production endpoint probe는 실행하지 않습니다.
 
-Phase 2B-2부터 AI 내부 checkpoint key가 tenant-scoped hash로 바뀌었습니다. 이전 raw `session_id` checkpoint를 fallback하면 cross-user 경계를 다시 열 수 있어 자동 호환하지 않습니다. 기존 환경을 upgrade할 때는 미완료 active session을 먼저 종료하거나, owner를 검증하는 별도 migration을 운영 절차로 준비해야 합니다.
+Phase 2B-2부터 AI chat 내부 checkpoint key가 tenant-scoped hash로 바뀌었습니다. 이전 raw `session_id` row에는 신뢰 가능한 owner가 없어 fallback·automatic rekey하지 않습니다. Phase 2C-1 startup은 activity row가 없던 기존 checkpoint/write에 현재 시각을 한 번 기록하므로 기본 72시간 TTL 뒤 삭제됩니다. Cleanup은 startup 직후와 이후 매시간 실행되며 live session lock을 제외하고, durable pending `was_outbox`는 삭제하지 않습니다.
+
+즉시 purge가 필요하면 AI Server를 중지하고 SQLite 파일을 backup한 뒤, 확인된 정확한 legacy raw thread ID마다 다음 maintenance transaction을 실행합니다. Owner를 추정하거나 새 hash key로 복사하지 말고 `was_outbox`와 Supabase 제품 table은 이 절차에서 수정하지 않습니다.
+
+```sql
+.parameter init
+.parameter set :legacy_thread_id '확인된-정확한-legacy-thread-id'
+BEGIN IMMEDIATE;
+DELETE FROM writes WHERE thread_id = :legacy_thread_id;
+DELETE FROM checkpoints WHERE thread_id = :legacy_thread_id;
+DELETE FROM session_activity WHERE thread_id = :legacy_thread_id;
+COMMIT;
+VACUUM;
+```
