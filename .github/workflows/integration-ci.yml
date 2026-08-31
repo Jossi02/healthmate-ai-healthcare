@@ -1,0 +1,295 @@
+name: Integration CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "portfolio/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: develop/frontend-ui
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: develop/frontend-ui/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Display contract
+        run: npm run test:display-contract
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Home recommendation browser smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./node_modules/.bin/next start --hostname 127.0.0.1 --port 3100 > /tmp/healthmate-frontend.log 2>&1 &
+          server_pid=$!
+          cleanup() {
+            kill "${server_pid}" >/dev/null 2>&1 || true
+            wait "${server_pid}" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          ready=false
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3100/ >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "${ready}" != true ]; then
+            tail -n 80 /tmp/healthmate-frontend.log
+            exit 1
+          fi
+          npm run smoke:home-recommendation-ux -- --url http://127.0.0.1:3100
+
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: develop/backend-api
+    env:
+      NODE_ENV: test
+      SUPABASE_URL: https://example.invalid
+      SUPABASE_SERVICE_ROLE_KEY: ci-fixture-service-role
+      FASTAPI_URL: http://127.0.0.1:8000
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:3000
+      INTERNAL_API_KEY: ci-fixture-internal-key-000000000000
+      JWT_SECRET: ci-fixture-jwt-secret-00000000000000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: develop/backend-api/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Contracts
+        run: npm run test:contracts
+      - name: Security
+        run: npm run test:security
+      - name: Tenant boundaries
+        run: npm run test:tenant
+      - name: Logging privacy
+        run: npm run test:logging
+      - name: JavaScript syntax
+        shell: bash
+        run: find . -path ./node_modules -prune -o -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Production dependency audit
+        run: npm audit --omit=dev
+
+  ai:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: develop/ai-model/v2
+    env:
+      APP_ENV: development
+      ENABLE_DEBUG_ROUTES: "true"
+      ENABLE_RAG_MEMORY: "false"
+      GEMINI_API_KEY: ci-fixture-gemini-key
+      WAS_BASE_URL: http://was.test
+      INTERNAL_API_KEY: ci-fixture-internal-key-000000000000
+      CHECKPOINT_DB_PATH: /tmp/healthmate-ci-checkpoints.sqlite
+      LANGCHAIN_TRACING_V2: "false"
+      LANGSMITH_TRACING: "false"
+      LANGSMITH_QUALITY_ENABLED: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: develop/ai-model/v2/requirements.txt
+      - name: Clean dependency install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip check
+      - name: Import and syntax
+        run: |
+          python -c "import app.main"
+          python -m compileall -q app scripts
+      - name: Offline regression suite
+        run: |
+          python scripts/test_pinecone_metadata_lint.py
+          python scripts/test_intent_matrix.py
+          python scripts/test_demo_routing_edge_cases.py
+          python scripts/test_fast_plan_flow_suite.py
+          python scripts/test_quality_evaluation.py
+          python scripts/test_plan_quality_guards.py
+          python scripts/test_demo_mixed_was_edge_cases.py
+          python scripts/test_chat_e2e.py
+          python scripts/test_security_boundaries.py
+          python scripts/test_trace_privacy.py
+          python scripts/test_checkpoint_retention.py
+
+  containers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build application images
+        run: |
+          docker build --tag healthmate-backend:ci develop/backend-api
+          docker build --tag healthmate-ai:ci develop/ai-model/v2
+      - name: Verify non-root and writable boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          backend_uid="$(docker run --rm --entrypoint id healthmate-backend:ci -u)"
+          ai_uid="$(docker run --rm --entrypoint id healthmate-ai:ci -u)"
+          test "${backend_uid}" -eq 1000
+          test "${ai_uid}" -eq 10001
+          docker run --rm --entrypoint sh healthmate-backend:ci -c \
+            'test -w /usr/src/app/logs && test ! -w /usr/src/app/src'
+          docker run --rm --entrypoint sh healthmate-ai:ci -c \
+            'test -w /app/data && test ! -w /app/app'
+          echo "Backend runtime UID: ${backend_uid}"
+          echo "AI runtime UID: ${ai_uid}"
+      - name: Local-only container health
+        shell: bash
+        run: |
+          set -euo pipefail
+          cleanup() {
+            docker rm -f healthmate-backend-ci healthmate-ai-ci >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker run -d --name healthmate-backend-ci \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m,mode=1777 \
+            --tmpfs /usr/src/app/logs:rw,nosuid,nodev,size=64m,uid=1000,gid=1000,mode=0750 \
+            -p 127.0.0.1:18080:8080 \
+            -e PORT=8080 \
+            -e NODE_ENV=production \
+            -e SUPABASE_URL=https://example.invalid \
+            -e SUPABASE_SERVICE_ROLE_KEY=ci-fixture-service-role \
+            -e FASTAPI_URL=http://127.0.0.1:18000 \
+            -e CORS_ALLOWED_ORIGINS=http://127.0.0.1:3000 \
+            -e INTERNAL_API_KEY=ci-fixture-internal-key-000000000000 \
+            -e JWT_SECRET=ci-fixture-jwt-secret-00000000000000 \
+            healthmate-backend:ci
+
+          docker run -d --name healthmate-ai-ci \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m,mode=1777 \
+            --tmpfs /app/data:rw,nosuid,nodev,size=64m,uid=10001,gid=10001,mode=0750 \
+            -p 127.0.0.1:18000:8000 \
+            -e APP_ENV=production \
+            -e ENABLE_RAG_MEMORY=false \
+            -e GEMINI_API_KEY=ci-fixture-gemini-key \
+            -e WAS_BASE_URL=http://127.0.0.1:18080 \
+            -e INTERNAL_API_KEY=ci-fixture-internal-key-000000000000 \
+            -e CHECKPOINT_DB_PATH=/app/data/checkpoints.sqlite \
+            -e LANGCHAIN_TRACING_V2=false \
+            -e LANGSMITH_TRACING=false \
+            healthmate-ai:ci
+
+          backend_ready=false
+          ai_ready=false
+          for _ in $(seq 1 120); do
+            if [ "${backend_ready}" != true ] && curl -fsS http://127.0.0.1:18080/api/health >/dev/null; then
+              backend_ready=true
+            fi
+            if [ "${ai_ready}" != true ] && curl -fsS http://127.0.0.1:18000/health >/dev/null; then
+              ai_ready=true
+            fi
+            if [ "${backend_ready}" = true ] && [ "${ai_ready}" = true ]; then
+              break
+            fi
+            sleep 1
+          done
+          if [ "${backend_ready}" != true ] || [ "${ai_ready}" != true ]; then
+            docker logs --tail 80 healthmate-backend-ci
+            docker logs --tail 80 healthmate-ai-ci
+            exit 1
+          fi
+      - name: Compose configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          cat > develop/deploy/gcp-two-vm/backend/.env.backend <<'EOF'
+          BACKEND_DOMAIN=api.example.com
+          PORT=8080
+          NODE_ENV=production
+          SUPABASE_URL=https://example.invalid
+          SUPABASE_SERVICE_ROLE_KEY=ci-fixture-service-role
+          CORS_ALLOWED_ORIGINS=https://frontend.example.com
+          TRUST_PROXY_HOPS=1
+          FASTAPI_URL=http://192.0.2.10:8000
+          INTERNAL_API_KEY=ci-fixture-internal-key-000000000000
+          JWT_SECRET=ci-fixture-jwt-secret-00000000000000
+          EOF
+          cat > develop/deploy/gcp-two-vm/ai/.env.ai <<'EOF'
+          AI_BIND_ADDRESS=127.0.0.1
+          APP_ENV=production
+          GEMINI_API_KEY=ci-fixture-gemini-key
+          WAS_BASE_URL=https://api.example.com
+          INTERNAL_API_KEY=ci-fixture-internal-key-000000000000
+          ENABLE_RAG_MEMORY=false
+          EOF
+          chmod 600 \
+            develop/deploy/gcp-two-vm/backend/.env.backend \
+            develop/deploy/gcp-two-vm/ai/.env.ai
+          docker compose \
+            --env-file develop/deploy/gcp-two-vm/backend/.env.backend \
+            -f develop/deploy/gcp-two-vm/backend/docker-compose.yml config --quiet
+          docker compose \
+            --env-file develop/deploy/gcp-two-vm/ai/.env.ai \
+            -f develop/deploy/gcp-two-vm/ai/docker-compose.yml config --quiet
+      - name: Caddy configuration
+        run: |
+          docker run --rm \
+            -e BACKEND_DOMAIN=api.example.com \
+            -v "${PWD}/develop/deploy/gcp-two-vm/backend/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2-alpine \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Deployment script static checks
+        run: |
+          bash -n develop/deploy/gcp-two-vm/scripts/bootstrap_and_deploy.sh
+          bash develop/deploy/gcp-two-vm/scripts/bootstrap_and_deploy.sh --self-test
+          python3 -m py_compile develop/deploy/gcp-two-vm/scripts/smoke_deployment.py
+          python3 develop/deploy/gcp-two-vm/scripts/smoke_deployment.py --self-test
+      - name: Remove fixture environment files
+        if: always()
+        run: |
+          rm -f \
+            develop/deploy/gcp-two-vm/backend/.env.backend \
+            develop/deploy/gcp-two-vm/ai/.env.ai
