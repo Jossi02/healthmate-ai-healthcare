@@ -1,34 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-const { createRequire } = require('module');
-const path = require('path');
-
-const requireFromHere = createRequire(__filename);
+const { chromium } = require('playwright');
 const PLAN_UPDATE_STORAGE_KEY = 'capstone.planUpdates.v1';
 const HOME_HIGHLIGHT_STORAGE_KEY = 'capstone.homeRecommendationHighlights.v1';
-
-function loadPlaywright() {
-  try {
-    return requireFromHere('playwright');
-  } catch {}
-
-  const candidates = [
-    process.env.PLAYWRIGHT_NODE_MODULES,
-    process.env.NODE_PATH,
-    process.env.APPDATA
-      ? path.join(process.env.APPDATA, 'npm', 'node_modules', '@playwright', 'cli', 'node_modules')
-      : null,
-  ].filter(Boolean);
-
-  for (const base of candidates) {
-    try {
-      return require(path.join(base, 'playwright'));
-    } catch {}
-  }
-
-  throw new Error(
-    'Playwright is required for this smoke test. Install it locally or set NODE_PATH/PLAYWRIGHT_NODE_MODULES to a node_modules containing playwright.'
-  );
-}
 
 function kstDate() {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -466,7 +439,6 @@ async function runFailureScenario(browser, baseUrl, today) {
 }
 
 async function main() {
-  const { chromium } = loadPlaywright();
   const baseUrl = parseArg('--url', process.env.SMOKE_BASE_URL || 'http://localhost:3100');
   const today = kstDate();
   const browser = await chromium.launch({ headless: true });
