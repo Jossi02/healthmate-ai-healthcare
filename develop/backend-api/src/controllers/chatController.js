@@ -2,6 +2,7 @@ const axiosModule = require('axios');
 const supabase = require('../config/db');
 const logger = require('../utils/logger');
 const { buildDailySessionId } = require('../utils/kst');
+const { getSecurityConfig } = require('../config/security');
 const {
   deleteChatThread,
   listChatThreads,
@@ -12,7 +13,6 @@ const axios = axiosModule.default || axiosModule;
 
 const FASTAPI_URL = (process.env.FASTAPI_URL || 'http://localhost:8000').replace(/\/$/, '');
 const AI_TIMEOUT = parseInt(process.env.AI_REQUEST_TIMEOUT || '90000', 10);
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || '';
 const FEEDBACK_RATINGS = new Set(['up', 'down']);
 const FEEDBACK_REASON_CODES = new Set([
   'not_helpful',
@@ -24,15 +24,10 @@ const FEEDBACK_REASON_CODES = new Set([
 ]);
 
 function buildFastApiHeaders() {
-  const headers = {
+  return {
     'Content-Type': 'application/json',
+    'x-api-key': getSecurityConfig().internalApiKey,
   };
-
-  if (INTERNAL_API_KEY) {
-    headers['x-api-key'] = INTERNAL_API_KEY;
-  }
-
-  return headers;
 }
 
 function normalizeText(value) {

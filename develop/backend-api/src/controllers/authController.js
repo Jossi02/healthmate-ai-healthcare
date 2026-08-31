@@ -9,9 +9,8 @@ const {
     isValidBcryptHash,
     verifyPassword,
 } = require('../utils/passwordHash');
+const { getSecurityConfig } = require('../config/security');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'capstone_jwt_secret_key';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 const INVALID_CREDENTIALS_ERROR = '아이디 또는 비밀번호가 올바르지 않습니다.';
 
 // @route   POST /api/v1/auth/signup
@@ -139,7 +138,11 @@ exports.login = async (req, res) => {
             login_id: String(user.login_id)
         };
 
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        const security = getSecurityConfig();
+        const token = jwt.sign(payload, security.jwtSecret, {
+            algorithm: 'HS256',
+            expiresIn: security.jwtExpiresIn,
+        });
 
         const responseUser = {
             user_id: user.user_id,

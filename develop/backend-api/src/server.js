@@ -1,4 +1,9 @@
 require('dotenv').config();
+const { getSecurityConfig } = require('./config/security');
+
+// Refuse to open a port when required authentication configuration is unsafe.
+getSecurityConfig();
+
 const app = require('./app');
 const logger = require('./utils/logger');
 

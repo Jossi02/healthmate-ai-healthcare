@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import logging
+import secrets
 
 from fastapi import Header, HTTPException
 
 from app.core.config import get_settings
-
-logger = logging.getLogger(__name__)
 
 
 async def require_internal_api_key(x_api_key: str | None = Header(default=None)) -> None:
@@ -14,8 +12,9 @@ async def require_internal_api_key(x_api_key: str | None = Header(default=None))
     expected_api_key = settings.INTERNAL_API_KEY
 
     if not expected_api_key:
-        logger.warning("INTERNAL_API_KEY is not configured. Skipping FastAPI internal auth.")
-        return
+        raise HTTPException(status_code=503, detail="Internal authentication is unavailable")
 
-    if x_api_key != expected_api_key:
+    if not isinstance(x_api_key, str) or not secrets.compare_digest(
+        x_api_key.encode(), expected_api_key.encode()
+    ):
         raise HTTPException(status_code=403, detail="Forbidden: Invalid API Key")
