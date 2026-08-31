@@ -1,36 +1,67 @@
 # HealthMate
 
-**AI 기반 개인 건강 상태·성향 맞춤 생활 건강 코칭 서비스**
+**AI 기반 개인 건강 상태·성향 맞춤 비의료 생활 건강 코칭 프로토타입**
 
-HealthMate는 건강 정보와 성향을 함께 고려해 운동·식단 코칭을 개인화하는 방법을 탐구한 **2026년 대학 심화캡스톤 팀 프로젝트**입니다.
+HealthMate는 건강 상태, 목표, 활동 수준, 알레르기, 부상 이력과 성향 정보를 바탕으로 운동·식단 코칭을 개인화하는 방법을 탐구한 **2026년 대학 심화캡스톤 팀 프로젝트**입니다.
 
-이 저장소의 `main` 브랜치는 Frontend, Express Backend, Supabase migrations, FastAPI/LangGraph AI v2, deployment configuration을 함께 보존한 통합 코드 스냅샷입니다. 현재 코드와 CI로 검증한 범위는 아래에 구분해 기록하며, 실제 GCP 운영 배포를 재수행한 상태를 의미하지는 않습니다.
+사용자는 `프로필 입력 → 운동·식단 플랜 생성 → AI 채팅에서 수정·승인 → 캘린더 반영` 흐름으로 서비스를 이용합니다.
 
-## 프로젝트 핵심 정보
+> HealthMate는 의료 진단·처방 서비스가 아닙니다. AI 응답은 생활 건강 코칭을 위한 참고 정보이며, 의료적 판단이 필요하면 의료 전문가의 진료가 우선합니다.
 
-- 2026년 대학 심화캡스톤 팀 프로젝트
-- 한국정보기술학회 논문 경진대회 **은상** 수상(팀 연구 성과)
-- 저장소 소유자는 최종 논문 집필 담당 및 **제1저자**
-- LangGraph 멀티에이전트 구조 공동 설계, FastAPI AI 서버 구현 참여
-- Gemini 연동, 프롬프트 공동 설계, 평가 시나리오·테스트 방향·결과 분석
+## 한눈에 보기
+
+- **프로젝트:** AI 기반 개인 맞춤형 운동·식단 코칭 팀 프로젝트
+- **핵심 흐름:** 프로필 입력 → 플랜 생성 → 채팅 수정·승인 → 캘린더 반영
+- **캡스톤 당시 기여:** LangGraph 구조 공동 설계, FastAPI AI Server 구현 참여, Gemini 연동, 평가 설계·분석, 논문 집필
+- **이후 작업:** 보안, 사용자 데이터 격리, runtime privacy·retention, container·deployment·CI 하드닝
+- **성과:** 한국정보기술학회 논문 경진대회 은상 수상(팀 연구 성과), 논문 제1저자
+- **현재 `main`:** Frontend, Backend, Supabase migrations, AI v1/v2와 GCP 2-VM 배포 설정을 보존한 통합 코드 스냅샷
+
+논문에서 평가한 시스템과 현재 `main`의 코드는 배포 환경, AI 그래프, 기억 경로 등에서 차이가 있으며 완전히 동일한 배포본이 아닙니다.
+
+## 나의 기여
+
+> 캡스톤 당시 Frontend·Backend·AI 전체 시스템이나 AI 구조의 초기 설계와 최종 구현을 한 사람이 단독 수행한 프로젝트가 아닙니다. 전체 AI 구조의 초기 설계는 다른 팀원이 주도했고, 이후 LangGraph 구조와 FastAPI 구현은 공동으로 진행했습니다.
+
+### 캡스톤 당시 팀 기여
+
+- LangGraph 기반 멀티에이전트 구조 공동 설계
+- FastAPI 기반 AI Server 구현 참여
+- Gemini API 연동과 프롬프트 공동 설계
 - Pinecone/RAG 초기 구현 후 팀원에게 인계
+- 정상·위험·개인화 평가 시나리오와 판정 기준 설계
+- 테스트 진행 방향 수립과 결과 분석
+- 관련 연구·선행 사례 조사
+- 최종 논문 집필 및 제1저자
 
-> 연구 배경과 논문 평가 결과는 최종 논문을, 현재 구현 범위와 실행 방법은 `main`의 실제 코드와 설정을 기준으로 설명합니다. 논문에서 다룬 시스템과 이 코드 스냅샷은 완전히 동일한 배포본이 아닙니다.
+FastAPI 구현 과정에서는 생성형 AI를 개발 보조 도구로 활용했습니다.
 
-## 프로젝트 목적
+### 이후 개인 포트폴리오 하드닝
 
-논문이 인용한 선행 연구에서는 mHealth·피트니스 앱 사용자의 약 70%가 설치 후 100일 이내 이탈하는 문제가 보고되었습니다. 이는 HealthMate에서 직접 측정한 수치가 아니라 연구 배경으로 인용한 외부 연구 결과입니다.
+2026년 8월에는 캡스톤 당시 팀 작업과 구분되는 후속 커밋으로 다음을 정리했습니다.
 
-HealthMate는 단순 신체 정보 중심 추천을 넘어 다음을 탐구했습니다.
+- 추적된 runtime 환경파일·credential 포함 archive 제거와 안전한 template·ignore 규칙 정리
+- Backend–AI 인증의 fail-closed 처리와 public·debug surface 기본 제한
+- 사용자별 Backend ownership 경계, AI 채팅 checkpoint key 격리, feedback 소유권 검증
+- AI TraceStore 최소 수집·보존과 Backend 로그 sanitization·rotation
+- GCP 배포 구성의 non-root·read-only container와 SSH·secret 처리 가드레일
+- Frontend·Backend·AI·container를 다루는 non-deploy Integration CI 구성
+- 기존 팀 커밋과 작성자 이력을 보존한 통합 `main` 정리
 
-- 건강 상태, 목표, 활동 수준, 알레르기, 부상 이력을 반영한 운동·식단 코칭
-- MBTI와 DISC를 진단이 아닌 개인화 보조 신호로 활용하는 방법
-- 대화와 사용자 기록을 누적해 응답을 조정하는 점진적 개인화
-- 위험 운동, 극단 식단, 알레르기 충돌을 줄이기 위한 제약·검증 구조
+이 구분은 원래 캡스톤 구현 전체를 개인 작업으로 보이게 하지 않으면서, 이후 개인적으로 수행한 저장소 하드닝 범위를 보여주기 위한 것입니다.
 
-HealthMate는 의료 진단·처방 서비스가 아닙니다. AI 응답은 생활 건강 코칭 참고 정보이며, 의료적 판단이 필요하면 의료 전문가의 진료가 우선합니다.
+## 주요 기능
 
-## 아키텍처
+| 기능 | 현재 코드에서 확인되는 범위 |
+| --- | --- |
+| 계정·프로필 | 회원가입·로그인, JWT 인증, 건강 상태·목표·활동 수준·알레르기·부상·MBTI·AI persona 저장 |
+| 운동·식단 코칭 | 사용자 프로필 제약을 반영한 운동·식단 플랜 생성과 결과 검증 |
+| AI 채팅 | Express Backend를 경유하는 FastAPI `/chat` 연동과 LangGraph 상태 그래프 |
+| 플랜 수정·승인 | 채팅에서 AI 제안을 수정·승인한 뒤 Backend를 통해 저장 |
+| 홈·캘린더 | 운동·식단 추천, 수분·활동 위젯, 캘린더형 플랜 조회·수정 |
+| 기록·피드백 | 채팅 스레드 조회·삭제와 답변 좋아요·싫어요 피드백 저장 |
+
+## 아키텍처와 코드 범위
 
 ```mermaid
 flowchart LR
@@ -42,106 +73,38 @@ flowchart LR
     AI -. "선택적 · 기본 비활성" .-> RAG["Pinecone RAG"]
 ```
 
-기본 요청 흐름은 `Frontend → Express Backend → FastAPI/LangGraph → Gemini API`입니다. Backend는 인증과 데이터 경계를 담당하고, 사용자·프로필·채팅·플랜 데이터는 Supabase/PostgreSQL에 저장합니다. AI Server는 프로필 제약을 읽어 생성 전후 검증에 사용합니다.
+기본 요청 흐름은 `Frontend → Express Backend → FastAPI/LangGraph → Gemini API`입니다.
 
-현재 빠른 채팅 그래프는 프로필 제약과 결과 검증을 중심으로 동작합니다. 논문에 포함된 Pinecone 장기 기억 관련 코드와 평가 자산은 남아 있지만 RAG는 기본 비활성이고 현재 fast graph의 기본 경로와 동일하지 않습니다.
+Backend는 인증과 사용자 데이터 경계를 담당하고, AI Server는 프로필 제약을 읽어 생성 전후 검증에 사용합니다. Pinecone/RAG 관련 구현·코퍼스·평가 자산은 보존되어 있지만 기본 비활성이고, 현재 fast graph의 기본 실행 경로에는 연결되지 않습니다.
 
-## 현재 코드 범위
-
-| 영역 | 위치 | 확인되는 범위 |
+| 영역 | 위치 | 주요 기술과 역할 |
 | --- | --- | --- |
-| Frontend | [`develop/frontend-ui`](develop/frontend-ui) | Next.js 16, 인증·온보딩·홈·프로필·AI 채팅·캘린더형 플랜 |
-| Backend / WAS | [`develop/backend-api`](develop/backend-api) | Express, JWT, Supabase, 채팅·플랜 저장, AI 요청 중계 |
-| AI v2 | [`develop/ai-model/v2`](develop/ai-model/v2) | FastAPI, LangGraph, Gemini, 프로필 제약·검증, 평가 스크립트 |
-| AI v1 | [`develop/ai-model/v1`](develop/ai-model/v1) | 레거시 API와 초기 구현 이력 |
+| Frontend | [`develop/frontend-ui`](develop/frontend-ui) | Next.js 16, React 19, TypeScript 5, 인증·온보딩·홈·채팅·캘린더 |
+| Backend / WAS | [`develop/backend-api`](develop/backend-api) | Express 4, JWT, Supabase/PostgreSQL, 데이터 저장과 AI 요청 중계 |
+| AI v2 | [`develop/ai-model/v2`](develop/ai-model/v2) | Python 3.11 대상, FastAPI, LangGraph, Gemini, 프로필 제약·검증 |
 | Database | [`develop/backend-api/supabase/migrations`](develop/backend-api/supabase/migrations) | 추적된 Supabase SQL migrations |
-| Deployment | [`develop/deploy`](develop/deploy) | GCP 2-VM, Docker Compose, Caddy, GitHub Actions 설정 |
+| Deployment | [`develop/deploy/gcp-two-vm`](develop/deploy/gcp-two-vm) | Docker Compose, Caddy, GCP 2-VM 설정, GitHub Actions |
 
-저장소 루트에는 세 서비스를 한 번에 시작하는 명령이나 통합 Compose가 없습니다. 서비스별 준비와 실행은 [로컬 실행 가이드](docs/LOCAL_SETUP.md)를 따르세요.
+AI v1은 초기 구현 이력으로 보존하며, 현재 통합 경로의 기준은 AI v2입니다. 현재 모델명은 환경변수로 선택하므로 논문에서 사용한 Gemini 2.5 Flash와 동일하다고 간주하지 않습니다.
 
-### 보안 경계
+## 엔지니어링 검증 요약
 
-- Backend는 `JWT_SECRET`과 `INTERNAL_API_KEY`가 비어 있지 않고 example/placeholder 값이 아닌 경우에만 시작합니다. Production에서는 각 값이 최소 32자여야 합니다.
-- JWT는 중앙 `JWT_SECRET`로 HS256 서명·검증하고 browser 요청은 `Authorization: Bearer <JWT>`를 사용합니다. Backend와 AI Server는 같은 `INTERNAL_API_KEY`를 `x-api-key`로 공유하며 Backend→AI 호출에도 항상 전달합니다.
-- CORS는 정확한 쉼표 구분 origin allowlist를 사용하고 credentials는 허용하지 않습니다. Development/local에서 allowlist를 생략하면 localhost 기본값을 사용하며 production에서는 명시값이 필요합니다.
-- AI debug/observability route는 기본 비활성이고 development/local에서만 명시적으로 켤 수 있습니다. 현재 `/api/v1/ai` legacy 경로는 v2 계약과 현재 callsite가 없어 정적 410, role source가 없는 `/api/v1/admin`은 정적 404를 반환합니다. Readiness는 coarse/redacted 상태만 반환하며 rate limit은 signup/login에만 적용됩니다.
+| 영역 | 현재 `main`의 적용·검사 범위 | 상세 문서 |
+| --- | --- | --- |
+| 보안 경계 | JWT 기반 사용자 인증, Backend–AI `x-api-key`, 필수 secret fail-closed, 정확한 CORS allowlist, debug route 기본 비활성 | [구현 상세 노트](docs/IMPLEMENTATION_NOTES.md), [로컬 실행 가이드](docs/LOCAL_SETUP.md) |
+| 사용자 데이터 격리 | Backend JWT ownership filter, `user_id + session_id` 기반 AI 채팅 checkpoint key, 저장 message를 다시 조회하는 feedback 검증 | [구현 상세 노트](docs/IMPLEMENTATION_NOTES.md) |
+| Runtime privacy·retention | 기본 AI TraceStore에서 raw 건강·대화 payload를 보존하지 않고 제한된 summary만 유지, Backend 로그 sanitization·용량 제한, checkpoint 만료 정책 | [구현 상세 노트](docs/IMPLEMENTATION_NOTES.md) |
+| Container·Deployment·CI | GCP 배포 profile의 non-root·read-only container, capability drop, SSH host key 검증, secret 없는 non-deploy CI | [GCP 배포 문서](develop/deploy/gcp-two-vm/README.md), [Integration CI](.github/workflows/integration-ci.yml) |
 
-이 보안 경계는 운영 배포 완료나 운영 환경 검증을 선언하는 내용은 아닙니다.
+Integration CI의 Frontend browser 검사는 API를 mock하며, Backend와 AI도 contract·fixture·offline 회귀 중심입니다. 따라서 전체 `Frontend → Backend → AI → Supabase` 운영 E2E나 실제 서비스 배포를 입증하지 않습니다.
 
-### 품질·Tenant 경계
+실제 GCP deployment와 production smoke는 수행하지 않았습니다.
 
-- 기존 AI 실패 3건은 현재 fast graph와 계약을 기준으로 다시 판정했습니다. 삭제된 route import, 과거 응답 문자열 기대, 고정 과거 날짜 fixture는 test drift였고, 그 과정에서 발견한 malformed mixed proposal 재사용 결함은 shared state guard에서 수정했습니다.
-- 공개 `session_id`는 API 계약에 그대로 두되 AI checkpoint·lock key는 `user_id + session_id`의 opaque hash로 분리합니다. Backend feedback은 인증 사용자가 소유한 저장 message만 사용하므로 다른 사용자의 session/message 내용으로 피드백을 조작할 수 없습니다.
-- Frontend에는 Supabase client가 없고 사용자 요청은 service-role Backend를 통과합니다. 따라서 현재 tenant 경계는 Backend의 JWT·ownership filter이며, 이 구조에서 RLS 부재 자체를 구현 결함으로 보지는 않습니다.
-- Backend production dependency audit 9건은 현재 major 범위의 lockfile 갱신으로 0건이 됐습니다. AI는 Integration CI의 clean Python 3.11 environment에서 install·`pip check`·offline regression을 검증하지만 Python lock/constraints는 아직 없습니다.
+## 논문 평가와 현재 한계
 
-### Runtime Privacy & Retention
+### 논문 평가 결과
 
-- AI TraceStore는 production/default에서 raw user/session identifier, message, request·response body, health profile, plan snapshot과 상세 event/log를 저장하지 않고 상태·시간·지연·count 중심 summary만 보존합니다. `TRACE_RETENTION_MINUTES` 기본값은 60분입니다. Development/local에서도 `ENABLE_DEBUG_ROUTES=true`를 명시해야 상세 trace가 활성화되며, nested object/list와 문자열 credential은 고정 `[REDACTED]` 값으로 치환됩니다.
-- Backend Winston 파일은 `error.log`와 `combined.log` 각각 5 MiB × 5개로 제한됩니다. Morgan은 method, query 없는 path, status, response time만 기록하고 Authorization/Cookie header는 기록하지 않습니다. Chat/home gateway와 공통 error handler는 raw upstream payload·stack·내부 message를 client에 반환하지 않습니다.
-- 기존 raw-key checkpoint는 저장 state에서 owner를 신뢰성 있게 증명할 수 없어 자동 fallback/rekey하지 않습니다. Upgrade 시 activity가 없던 row에는 새 72시간 만료 시계를 부여하고, cleanup은 live session lock을 건드리지 않으며 durable WAS outbox를 삭제하지 않습니다. Supabase 제품 데이터에는 retention migration을 추가하지 않았습니다.
-
-### Container · Deployment · CI
-
-- Backend는 official Node `node` user(UID 1000), AI는 dedicated `app` user(UID 10001)로 실행합니다. 두 application container는 read-only root filesystem, `no-new-privileges`, 전체 capability drop을 사용하며 Backend log와 AI checkpoint만 release 밖 `/var/lib/healthmate` 경로에 씁니다.
-- GCP deployment workflow는 manual-only입니다. 같은 run에서 발견한 SSH key를 신뢰하지 않고 사전 검증한 `GCP_SSH_KNOWN_HOSTS`를 요구하며, 개인 username은 `GCP_SSH_USER` variable로 분리했습니다. Secret-bearing env/key/archive와 remote stage는 제한된 mode와 success/failure cleanup을 사용합니다.
-- AI 8000은 bootstrap이 확인한 실제 RFC1918 private interface에만 publish하며 GCP firewall도 Backend/private network ingress만 허용해야 합니다. 기존 TLS-disabled/debug-dependent live E2E는 제거하고 인증서·hostname을 검증하며 redirect를 거부하는 HTTPS health/readiness smoke로 대체했습니다.
-- Non-deploy Integration CI는 Frontend browser smoke, Backend security/tenant/logging/audit, Python 3.11 AI offline regressions, Docker builds/non-root/local health, Compose와 Caddy 정적 검증을 repository secret 없이 수행합니다.
-
-## 주요 기능
-
-| 기능 | 현재 코드에서 확인되는 범위 |
-| --- | --- |
-| 계정·프로필 | 회원가입·로그인, JWT 인증, 신체·건강·목표·MBTI 정보 저장 |
-| 홈 건강관리 | 운동·식단 추천, 수분·활동 위젯, 캘린더형 플랜 조회·수정 |
-| AI 채팅 | Express를 경유하는 FastAPI `/chat` 연동과 LangGraph 상태 그래프 |
-| 개인화·안전 | 알레르기·부상·질환·목표를 반영하는 프로필 제약과 플랜 검증 |
-| 플랜 반영 | AI 플랜 제안·수정·승인 후 Backend를 통한 저장 |
-| 기록·피드백 | 채팅 스레드 조회·삭제와 답변 좋아요/싫어요 피드백 저장 |
-
-## 나의 주요 기여
-
-> 팀 프로젝트이며 Frontend·Backend·AI 전체 시스템 또는 AI 아키텍처의 초기 설계와 최종 구현을 한 사람이 단독 수행한 프로젝트가 아닙니다.
-
-- LangGraph 기반 멀티에이전트 구조 공동 설계
-- FastAPI 기반 AI 서버 구현 참여
-- Gemini API 연동
-- 프롬프트 설계 공동 수행
-- Pinecone/RAG 초기 구현 담당 후 팀원에게 인계
-- 정상·위험·개인화 평가 시나리오 설계
-- 테스트 진행 방향 수립 및 결과 분석
-- 관련 연구 및 선행 사례 조사
-- 논문 집필 및 제1저자
-
-FastAPI 구현 과정에서는 생성형 AI를 보조 도구로 사용했습니다. 평가에서는 단일 정확도 수치 대신 정상 요청 수용, 위험 요청 거부, 성격별 응답 차이, 누적 정보 반영을 분리해 시나리오와 판정 기준을 구성했습니다.
-
-## 기술 스택
-
-| 영역 | 기술 |
-| --- | --- |
-| Frontend | Next.js 16, React 19, TypeScript 5, Tailwind CSS 4, Framer Motion |
-| Backend | Node.js, Express 4, Supabase/PostgreSQL, JWT, Axios |
-| AI | Python 3.11 대상, FastAPI, LangGraph, Gemini API, Pydantic, httpx |
-| Memory·관측 | SQLite Checkpointer, Pinecone(선택적), LangSmith(선택적) |
-| Infra | Docker, Docker Compose, Caddy, GitHub Actions, Vercel, GCP 배포 설정 |
-
-논문 평가에는 Gemini 2.5 Flash가 사용되었다고 보고되어 있지만 AI v2는 모델명을 환경변수로 설정합니다. 논문 시점과 현재 코드의 모델 구성을 동일한 것으로 간주하지 않습니다.
-
-## 검증 상태
-
-현재 non-deploy Integration CI의 명령 집합은 다음 범위를 검증합니다.
-
-- Frontend: clean `npm ci`, lint 오류 0·기존 경고 2, production build, display contract 7/7, explicit Playwright Chromium home-recommendation smoke
-- Backend: clean `npm ci`, contracts 21/21, security 33/33, tenant 8/8, logging privacy, JavaScript 구문 38/38, production audit 0건
-- AI: clean Python 3.11 install와 `pip check`, import·구문, metadata 44/44, intent 57/57, routing 12/12, fast plan 110/110, quality, quality guards 94/94, mixed WAS, offline chat E2E, security, trace privacy, checkpoint retention
-- Containers: Backend/AI image build, runtime UID 1000/10001, 제한된 writable path와 local-only health, Backend/AI Compose config, Caddyfile validation
-- 신규 runtime privacy/retention 검사는 3개 entrypoint·5개 top-level case/scenario로 구성되며 TraceStore 3/3, Backend logging 1/1, SQLite checkpoint retention 1/1이 통과했습니다. Checkpoint 검사는 정확한 72시간 경계, live lock, pending outbox, activity 없는 legacy row, 1,001개 초과 배치 삭제를 포함합니다.
-
-Backend 8개와 AI 동일 공개 session A/B 격리 1개를 합친 tenant 회귀 시나리오 9/9도 유지합니다. CI fixture는 실제 repository secret을 사용하지 않으며 Supabase·Gemini·Pinecone·LangSmith 또는 운영 endpoint를 호출하지 않습니다. Python 3.11에서 `requirements.txt`의 current resolve를 검증하지만 재설치 identity를 보장하는 lock/constraints는 아직 없습니다. 실제 GCP deployment와 production smoke는 `NOT RUN`입니다. 상세 결과는 [구현 상세 노트](docs/IMPLEMENTATION_NOTES.md), 재현 명령은 [로컬 실행 가이드](docs/LOCAL_SETUP.md)에 기록합니다.
-
-## 논문 평가 결과
-
-다음은 현재 코드의 회귀 테스트 결과가 아니라 **최종 논문에 보고된 제한된 사전 시나리오 기반 예비 평가**입니다.
+다음 수치는 현재 코드의 회귀 테스트가 아니라 **최종 논문에 보고된 제한된 사전 시나리오 기반 예비 평가**입니다.
 
 | 평가 항목 | 평가 범위 | 논문 보고 결과 |
 | --- | ---: | ---: |
@@ -151,35 +114,38 @@ Backend 8개와 AI 동일 공개 session A/B 격리 1개를 합친 tenant 회귀
 | 성격 차별화 | 외향형·내향형 각 2개 프롬프트 | 적합성 0.90 |
 | 누적 정보 반영 | 단일 시나리오 10턴 | 정확도 0.90 |
 
-이 결과는 임상적 안전성, 실제 건강 개선, 사용자 이탈률 감소 또는 다양한 사용자 집단에 대한 일반화 성능을 입증하지 않습니다.
-
-## 논문 및 성과
-
 - 조승훈, 박현민, 김찬, 박현성, 이유한, 김승호, 이한용, 「AI기반 개인 건강 상태 및 성향 맞춤 건강관리 서비스 ‘헬스메이트’ 개발」, 2026 한국정보기술학회 하계 종합학술대회 논문집, pp. 1193–1197
-- 저장소 소유자: 논문 집필 담당 및 제1저자
-- 한국정보기술학회 논문 경진대회 **은상** 수상(팀 연구 성과)
+- 한국정보기술학회 논문 경진대회 은상 수상(팀 연구 성과)
 
-## 실행 방법
+### 논문과 현재 코드의 차이
 
-환경변수, Supabase 요구사항, Frontend·Backend·AI Server의 개별 실행 순서는 [LOCAL_SETUP.md](docs/LOCAL_SETUP.md)를 참고하세요. 실제 secret은 커밋하지 말고 각 구성 요소의 `.env.example` placeholder를 로컬 환경파일에 복사해 교체해야 합니다.
+| 주제 | 논문에서 설명한 범위 | 현재 `main`에서 확인되는 상태 |
+| --- | --- | --- |
+| 배포 | Vercel Frontend와 Oracle Cloud 기반 서버 | Vercel·GCP 2-VM 대상 설정 보존 |
+| AI 구조 | 검색·답변 평가를 포함한 멀티에이전트 구조 | 프로필 제약과 결과 검증 중심의 fast graph |
+| 장기 기억 | Pinecone 기반 의미 검색 | 관련 자산은 남아 있으나 선택적·기본 비활성 |
+| 성향 모델 | MBTI와 DISC 결합 | MBTI와 선택형 AI persona는 확인되지만 명시적인 DISC 처리 경로는 확인되지 않음 |
+| 모델 | 논문 평가에서 Gemini 2.5 Flash | 환경변수로 모델을 선택하며 논문 시점과 동일성을 보장하지 않음 |
 
-## 현재 한계
+### 현재 한계
 
-- 현재 통합 snapshot은 실제 운영 배포 완료나 production-ready 선언을 의미하지 않습니다.
-- 논문 시점의 시스템과 현재 코드 스냅샷은 배포 환경, AI 그래프, 기억 경로 등에서 차이가 있습니다.
-- AI v2 의존성은 하한 버전 중심이고 Python 3.11에서 검증한 lockfile이 없어 설치 시점별 차이가 생길 수 있습니다.
-- Tenant-scoped checkpoint key로 전환하기 전에 생성된 raw `session_id` checkpoint는 보안상 fallback·자동 migration하지 않으며 72시간 activity TTL 또는 명시적 offline purge로 제거합니다. 그 세션의 자동 연속성은 제공하지 않습니다.
-- Product DB의 chat/profile/plan lifecycle과 운영 중앙 로그 수집·삭제 정책은 이번 local runtime hardening 범위 밖이며 별도 정책이 필요합니다.
-- Supabase 프로젝트의 실제 migration 적용 상태와 외부 서비스의 현재 가용성은 저장소만으로 확인할 수 없습니다.
-- GCP 배포 설정은 static/local CI까지만 검증됐으며 현재 라이브 서비스나 실제 배포 성공을 보장하지 않습니다.
-- MBTI 16유형 × DISC 4유형 전체, 모호한 경계 사례, 실제 리텐션 개선 RCT는 검증하지 못했습니다.
-- 저장소에는 `LICENSE` 파일이 없어 재사용·배포 조건이 명시되어 있지 않습니다.
+- 논문 평가는 제한된 사전 시나리오 기반 예비 평가이며 임상적 안전성이나 실제 건강 개선 효과를 입증하지 않습니다.
+- 논문 평가 시스템과 현재 공개 `main`은 AI 그래프·기억 경로·배포 환경에서 차이가 있습니다.
+- 현재 CI는 offline·contract·regression 검증 중심이며 실제 GCP production 배포와 전체 운영 E2E는 재검증하지 않았습니다.
+- 외부 서비스 가용성, 제품 데이터 lifecycle, 중앙 로그 retention 등은 실제 운영 정책과 별도의 검증이 필요합니다.
 
-## 상세 문서
+의존성 고정, legacy checkpoint, privacy·retention 범위, 외부 연동, 라이선스 등 세부 한계는 [구현 상세 노트](docs/IMPLEMENTATION_NOTES.md)에 기록했습니다.
 
-- [구현 상세 노트](docs/IMPLEMENTATION_NOTES.md): 브랜치 provenance, 논문–코드 차이, 보안 history, 기술부채와 미검증 항목
-- [로컬 실행 가이드](docs/LOCAL_SETUP.md): 서비스별 설정, placeholder 환경변수, Supabase와 선택적 외부 연동
+## 실행·상세 문서·provenance
 
-## 프로젝트 성격 / provenance
+저장소 루트에는 세 서비스를 한 번에 실행하는 통합 Compose나 실행 명령이 없습니다. 환경변수와 Frontend·Backend·AI Server의 실행 순서는 로컬 실행 가이드를 참고하세요.
 
-이 저장소는 [팀 원본 저장소](https://github.com/WinLike-dev/capstone_2team)를 개인 포트폴리오 관점에서 정리한 Fork입니다. 전체 AI 구조의 초기 설계는 다른 팀원이 주도했고, 이후 LangGraph 구조와 FastAPI 구현은 공동 작업으로 진행했습니다. API 연동은 각 팀원이 자신의 담당 영역에서 수행했습니다.
+- [구현 상세 노트](docs/IMPLEMENTATION_NOTES.md): 논문–코드 차이, 보안 이력, 사용자 데이터 경계, privacy·retention, 검증 범위와 기술부채
+- [로컬 실행 가이드](docs/LOCAL_SETUP.md): 서비스별 설정, 환경변수, Supabase 요구사항과 검사 명령
+- [GCP 2-VM 배포 문서](develop/deploy/gcp-two-vm/README.md): container·network·deployment contract
+- [Integration CI](.github/workflows/integration-ci.yml): non-deploy 검사 구성
+- [수동 배포 workflow](.github/workflows/gcp-two-vm-deploy.yml): 실제 배포를 위한 보호된 수동 workflow
+
+이 저장소는 [팀 원본 저장소](https://github.com/WinLike-dev/capstone_2team)를 개인 포트폴리오 관점에서 정리한 Fork입니다. `main`은 기존 팀 커밋과 작성자 이력을 유지하면서 이후 개인 포트폴리오 하드닝을 함께 보존합니다.
+
+현재 저장소에는 별도 오픈소스 라이선스를 부여하지 않았습니다.

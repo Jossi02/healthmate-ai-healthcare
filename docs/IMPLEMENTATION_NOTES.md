@@ -221,6 +221,12 @@ Frontend home recommendation browser smoke는 설치된 Playwright browser execu
 
 외부 Supabase·Gemini·Pinecone·LangSmith 연결, 실제 deployment, migration 적용 상태, production endpoint, 의료·임상 안전성은 검증하지 않습니다.
 
+추가 해석·운영 한계는 다음과 같습니다.
+
+- 논문이 인용한 mHealth·피트니스 앱 사용자의 약 70%·100일 이내 이탈 수치는 HealthMate에서 측정한 결과가 아니라 외부 선행 연구의 배경 수치입니다.
+- 제한된 사전 시나리오 평가는 실제 건강 개선, 사용자 이탈률 감소 또는 다양한 사용자 집단에 대한 일반화 성능을 입증하지 않습니다.
+- TraceStore의 privacy 정책은 TraceStore에 저장되는 데이터 범위를 제한하며, 모든 Python application log나 운영 중앙 로그의 수집·보존 정책까지 포괄하지 않습니다.
+
 ## 11. License와 재사용
 
 이 저장소에는 `LICENSE` 파일이 없습니다. 팀 프로젝트·Fork provenance와 권리 상태를 임의로 바꾸지 않기 위해 현재 `main`에 새 license를 추가하지 않았습니다. 명시적 허가 없이 재사용·배포 조건을 추정하면 안 됩니다.
