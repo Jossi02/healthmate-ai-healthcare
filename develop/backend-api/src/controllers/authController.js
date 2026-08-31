@@ -10,6 +10,7 @@ const {
     verifyPassword,
 } = require('../utils/passwordHash');
 const { getSecurityConfig } = require('../config/security');
+const logger = require('../utils/logger');
 
 const INVALID_CREDENTIALS_ERROR = '아이디 또는 비밀번호가 올바르지 않습니다.';
 
@@ -68,7 +69,7 @@ exports.signup = async (req, res) => {
         try {
             await bootstrapProfileRow(supabase, newUser.user_id);
         } catch (profileError) {
-            console.error('Signup profile bootstrap warning:', profileError);
+            logger.warn('Signup profile bootstrap warning.', profileError);
         }
 
         res.status(201).json({
@@ -77,7 +78,7 @@ exports.signup = async (req, res) => {
         });
 
     } catch (err) {
-        console.error('Signup Error:', err);
+        logger.error('Signup error.', err);
         res.status(500).json({ error: '회원가입 중 서버 에러가 발생했습니다.' });
     }
 };
@@ -108,7 +109,7 @@ exports.login = async (req, res) => {
         const isMatch = await verifyPassword(password, user.password_hash);
         if (!isMatch) {
             if (!isValidBcryptHash(user.password_hash)) {
-                console.warn(`Invalid password hash format for login_id=${user.login_id}`);
+                logger.warn('Invalid password hash format for login.', { login_id: user.login_id });
             }
             return res.status(401).json({ error: INVALID_CREDENTIALS_ERROR });
         }
@@ -124,12 +125,12 @@ exports.login = async (req, res) => {
                 .maybeSingle();
 
             if (profileError) {
-                console.warn(`Login profile lookup warning for login_id=${user.login_id}: ${profileError.message}`);
+                logger.warn('Login profile lookup warning.', profileError);
             } else {
                 hasHealthProfile = hasCompletedHealthProfile(profile || {});
             }
         } catch (profileError) {
-            console.warn(`Login profile status warning for login_id=${user.login_id}: ${profileError.message}`);
+            logger.warn('Login profile status warning.', profileError);
         }
 
         // 4. JWT 토큰 생성
@@ -159,7 +160,7 @@ exports.login = async (req, res) => {
         });
 
     } catch (err) {
-        console.error('Login Error:', err);
+        logger.error('Login error.', err);
         res.status(500).json({ error: '로그인 중 서버 에러가 발생했습니다.' });
     }
 };

@@ -84,7 +84,7 @@ exports.sendMessage = async (req, res) => {
         clientUserMessageId,
       });
     } catch (persistError) {
-      logger.error(`Chat log persistence error: ${persistError.message}`);
+      logger.error('Chat log persistence error.', persistError);
     }
 
     return res.json({
@@ -94,15 +94,12 @@ exports.sendMessage = async (req, res) => {
     });
   } catch (error) {
     const upstreamStatus = error.response?.status;
-    const upstreamPayload = error.response?.data;
 
-    logger.error(`Chat gateway error: ${error.message}`);
+    logger.error('Chat gateway error.', error);
 
     if (upstreamStatus) {
       return res.status(502).json({
-        error: 'FastAPI chat upstream error.',
-        upstream_status: upstreamStatus,
-        upstream_error: upstreamPayload || null,
+        error: 'Failed to process chat request.',
       });
     }
 
@@ -121,7 +118,7 @@ exports.listThreads = async (req, res) => {
     const threads = await listChatThreads(supabase, userId);
     return res.json({ threads });
   } catch (error) {
-    logger.error(`Chat thread list error: ${error.message}`);
+    logger.error('Chat thread list error.', error);
     return res.status(500).json({ error: 'Failed to load chat threads.' });
   }
 };
@@ -140,7 +137,7 @@ exports.getThread = async (req, res) => {
     const messages = await loadChatMessages(supabase, userId, sessionId);
     return res.json({ session_id: sessionId, messages });
   } catch (error) {
-    logger.error(`Chat thread load error: ${error.message}`);
+    logger.error('Chat thread load error.', error);
     return res.status(500).json({ error: 'Failed to load chat thread.' });
   }
 };
@@ -167,7 +164,7 @@ exports.deleteThread = async (req, res) => {
       session_id: sessionId,
     });
   } catch (error) {
-    logger.error(`Chat thread delete error: ${error.message}`);
+    logger.error('Chat thread delete error.', error);
     return res.status(500).json({ error: 'Failed to delete chat thread.' });
   }
 };
@@ -237,7 +234,7 @@ exports.submitFeedback = async (req, res) => {
       .single();
 
     if (error) {
-      logger.error(`Chat feedback save error: ${error.message}`);
+      logger.error('Chat feedback save error.', error);
       return res.status(500).json({ error: 'Failed to save chat feedback.' });
     }
 
@@ -246,7 +243,7 @@ exports.submitFeedback = async (req, res) => {
       feedback: data,
     });
   } catch (error) {
-    logger.error(`Chat feedback controller error: ${error.message}`);
+    logger.error('Chat feedback controller error.', error);
     return res.status(500).json({ error: 'Failed to save chat feedback.' });
   }
 };

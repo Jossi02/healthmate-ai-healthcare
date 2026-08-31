@@ -67,8 +67,13 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ─── HTTP 요청 로깅 (morgan) ──────────────────────────────────────────
-// 개발: 컬러 상세 로그, 프로덕션: 간결한 combined 포맷
-const morganFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
+// Keep access logs coarse: method, path (without query), status, and timing.
+morgan.token('safe-path', (req) => {
+  const requestPath = req.path || req.originalUrl || '/';
+  return requestPath.split('?')[0] || '/';
+});
+
+const morganFormat = ':method :safe-path :status :response-time ms';
 app.use(
   morgan(morganFormat, {
     stream: {

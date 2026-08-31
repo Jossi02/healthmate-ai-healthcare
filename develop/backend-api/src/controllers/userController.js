@@ -1,5 +1,6 @@
 const supabase = require('../config/db');
 const aiEventService = require('../services/aiEventService');
+const logger = require('../utils/logger');
 const {
   normalizeProfileRow,
   parseStoredArray,
@@ -234,7 +235,7 @@ exports.getProfile = async (req, res) => {
     const profile = await ensureUserHealthProfile(supabase, userId);
     return res.json(profile || normalizeProfileRow({ user_id: userId }));
   } catch (error) {
-    console.error(error);
+    logger.error('User profile load error.', error);
     return res.status(500).json({ error: 'Failed to load profile.' });
   }
 };
@@ -286,7 +287,7 @@ exports.saveProfile = async (req, res) => {
       bmi: normalized.bmi ?? null,
     });
   } catch (error) {
-    console.error(error);
+    logger.error('User profile save error.', error);
     return res.status(500).json({ error: 'Failed to save profile.' });
   }
 };
@@ -332,7 +333,7 @@ exports.updatePersonaSetting = async (req, res) => {
       setting: profile,
     });
   } catch (error) {
-    console.error(error);
+    logger.error('Persona setting update error.', error);
     return res.status(500).json({ error: 'Failed to update persona setting.' });
   }
 };
@@ -369,7 +370,7 @@ exports.getCalendar = async (req, res) => {
 
     return res.json(mapCalendarToGroupedResponse(exercises || [], meals || []));
   } catch (error) {
-    console.error(error);
+    logger.error('Calendar load error.', error);
     return res.status(500).json({ error: 'Failed to load calendar data.' });
   }
 };
@@ -467,7 +468,7 @@ exports.checkTodayPlanItem = async (req, res) => {
 
     return res.status(400).json({ error: 'Unsupported item type.' });
   } catch (error) {
-    console.error(error);
+    logger.error('Plan item check error.', error);
     return res.status(500).json({ error: 'Failed to check plan item.' });
   }
 };
@@ -494,7 +495,7 @@ exports.deletePlanItem = async (req, res) => {
       deleted,
     });
   } catch (error) {
-    console.error(error);
+    logger.error('Plan item delete error.', error);
     return res.status(500).json({ error: 'Failed to delete plan item.' });
   }
 };
@@ -542,7 +543,7 @@ exports.deletePlansForDates = async (req, res) => {
       deleted_count: deletedWorkoutCount + deletedDietCount,
     });
   } catch (error) {
-    console.error(error);
+    logger.error('Plan delete error.', error);
     return res.status(500).json({ error: 'Failed to delete plans.' });
   }
 };
@@ -581,7 +582,7 @@ exports.updateExerciseItem = async (req, res) => {
       parent_status: parentStatus,
     });
   } catch (error) {
-    console.error(error);
+    logger.error('Exercise item update error.', error);
     return res.status(500).json({ error: 'Failed to update exercise item.' });
   }
 };
@@ -617,7 +618,7 @@ exports.updateMealStatus = async (req, res) => {
       meal: updatedMeal,
     });
   } catch (error) {
-    console.error(error);
+    logger.error('Meal status update error.', error);
     return res.status(500).json({ error: 'Failed to update meal status.' });
   }
 };
@@ -719,7 +720,7 @@ exports.addRecommendedExercise = async (req, res) => {
       item,
     });
   } catch (error) {
-    console.error(error);
+    logger.error('Recommended exercise add error.', error);
     return res.status(500).json({ error: 'Failed to add recommended exercise.' });
   }
 };
@@ -803,7 +804,7 @@ exports.replaceRecommendedMeal = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
+    logger.error('Recommended meal replace error.', error);
     return res.status(500).json({ error: 'Failed to replace recommended meal.' });
   }
 };

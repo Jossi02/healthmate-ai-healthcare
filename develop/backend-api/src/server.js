@@ -21,14 +21,14 @@ const server = app.listen(PORT, () => {
 // ─── 예상치 못한 종료 처리 ────────────────────────────────────────────
 // 처리되지 않은 Promise rejection
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('처리되지 않은 Promise Rejection:', reason);
+  logger.error('처리되지 않은 Promise Rejection.', logger.errorMetadata(reason));
   // 서버 정상 종료 후 프로세스 재시작 (PM2 등 프로세스 매니저 활용 시)
   server.close(() => process.exit(1));
 });
 
 // 예상치 못한 예외
 process.on('uncaughtException', (error) => {
-  logger.error('처리되지 않은 예외:', error);
+  logger.error('처리되지 않은 예외.', logger.errorMetadata(error));
   server.close(() => process.exit(1));
 });
 

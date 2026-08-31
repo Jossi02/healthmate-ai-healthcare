@@ -5,17 +5,27 @@ const logger = require('../utils/logger');
  * express-validator 오류 및 일반 서버 오류를 통합 처리합니다.
  */
 const errorHandler = (err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  const message = err.message || '서버 내부 오류가 발생했습니다.';
+  const candidateStatus = Number(err?.statusCode);
+  const statusCode = Number.isInteger(candidateStatus)
+    && candidateStatus >= 400
+    && candidateStatus < 600
+    ? candidateStatus
+    : 500;
+  const message = statusCode === 404
+    ? '요청한 경로를 찾을 수 없습니다.'
+    : statusCode < 500
+      ? 'Request failed.'
+      : '서버 내부 오류가 발생했습니다.';
 
-  logger.error(`[${req.method}] ${req.path} >> StatusCode:: ${statusCode}, Message:: ${message}`, err);
+  logger.error(
+    `[${req.method}] ${req.path} >> StatusCode:: ${statusCode}`,
+    logger.errorMetadata(err)
+  );
 
   res.status(statusCode).json({
     success: false,
     statusCode,
     message,
-    // 개발 환경에서만 스택 트레이스 노출
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };
 
@@ -23,7 +33,7 @@ const errorHandler = (err, req, res, next) => {
  * 정의되지 않은 라우트 처리 (404)
  */
 const notFoundHandler = (req, res, next) => {
-  const error = new Error(`요청한 경로를 찾을 수 없습니다: ${req.originalUrl}`);
+  const error = new Error('요청한 경로를 찾을 수 없습니다.');
   error.statusCode = 404;
   next(error);
 };

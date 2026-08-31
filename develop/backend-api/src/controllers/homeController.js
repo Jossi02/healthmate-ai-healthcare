@@ -37,15 +37,12 @@ async function forwardRecommendations(req, res, scope) {
     return res.json(response.data);
   } catch (error) {
     const upstreamStatus = error.response?.status;
-    const upstreamPayload = error.response?.data;
 
-    logger.error(`Home recommendation gateway error: ${error.message}`);
+    logger.error('Home recommendation gateway error.', error);
 
     if (upstreamStatus) {
       return res.status(502).json({
-        error: 'FastAPI home recommendation upstream error.',
-        upstream_status: upstreamStatus,
-        upstream_error: upstreamPayload || null,
+        error: 'Failed to load home recommendations.',
       });
     }
 

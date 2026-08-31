@@ -1,5 +1,6 @@
 const axios = require('axios');
 const supabase = require('../config/db');
+const logger = require('../utils/logger');
 
 const FASTAPI_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
 const AI_TIMEOUT = parseInt(process.env.AI_REQUEST_TIMEOUT) || 90000;
@@ -36,7 +37,7 @@ exports.getPlans = async (req, res) => {
 
     res.json({ exercises: exercises || [], meals: meals || [] });
   } catch (err) {
-    console.error(err);
+    logger.error('Legacy AI plans error.', err);
     res.status(500).json({ error: '서버 에러가 발생했습니다.' });
   }
 };
@@ -74,7 +75,7 @@ exports.processMeal = async (req, res) => {
       const response = await axios.post(`${FASTAPI_URL}/process-meal`, payload, { timeout: AI_TIMEOUT });
       return res.json(response.data);
     } catch (aiError) {
-      console.error('AI 서버 통신 실패:', aiError.message);
+      logger.error('Legacy AI meal request failed.', aiError);
       return res.json({
         status: 'fallback',
         data: {
@@ -85,7 +86,7 @@ exports.processMeal = async (req, res) => {
     }
 
   } catch (err) {
-    console.error(err);
+    logger.error('Legacy AI meal processing error.', err);
     res.status(500).json({ error: '서버 에러가 발생했습니다.' });
   }
 };
@@ -120,7 +121,7 @@ exports.recommend = async (req, res) => {
       const response = await axios.post(`${FASTAPI_URL}/recommend`, payload, { timeout: AI_TIMEOUT });
       return res.json(response.data);
     } catch (aiError) {
-      console.error('AI 서버 통신 실패:', aiError.message);
+      logger.error('Legacy AI recommendation request failed.', aiError);
       return res.json({
         status: 'fallback',
         data: {
@@ -131,7 +132,7 @@ exports.recommend = async (req, res) => {
     }
 
   } catch (err) {
-    console.error(err);
+    logger.error('Legacy AI recommendation error.', err);
     res.status(500).json({ error: '서버 에러가 발생했습니다.' });
   }
 };
@@ -158,15 +159,14 @@ exports.saveInstruction = async (req, res) => {
       // AI 서버 측 응답을 클라이언트에게 그대로 전달
       return res.json(response.data);
     } catch (aiError) {
-      console.error('AI 서버 지시사항(instruction) 전달 실패:', aiError.message);
+      logger.error('Legacy AI instruction request failed.', aiError);
       return res.status(502).json({
         error: 'AI 서버로 지시사항을 전송하는데 실패했습니다.',
-        details: aiError.message
       });
     }
 
   } catch (err) {
-    console.error(err);
+    logger.error('Legacy AI instruction error.', err);
     res.status(500).json({ error: '서버 에러가 발생했습니다.' });
   }
 };

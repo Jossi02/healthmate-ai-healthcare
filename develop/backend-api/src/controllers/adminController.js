@@ -1,4 +1,5 @@
 const supabase = require('../config/db');
+const logger = require('../utils/logger');
 
 // @route   GET /api/v1/admin/stats
 // @desc    전체 이용 통계 조회 (관리자 전용)
@@ -25,7 +26,7 @@ exports.getStats = async (req, res) => {
     });
     
   } catch (err) {
-    console.error(err);
+    logger.error('Admin stats error.', err);
     res.status(500).json({ error: '서버 에러가 발생했습니다.' });
   }
 };

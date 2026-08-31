@@ -722,7 +722,7 @@ async function finishIdempotency(context, statusCode, responseBody) {
       logger.warn('Idempotency table is missing; completed response was not stored.');
       return;
     }
-    logger.warn(`Failed to store idempotency result: ${error.message}`);
+    logger.warn('Failed to store idempotency result.', logger.errorMetadata(error));
   }
 }
 
@@ -735,7 +735,7 @@ async function failIdempotency(context, error) {
     memoryIdempotencyStore.set(context.idempotencyKey, {
       ...existing,
       status: 'failed',
-      lastError: String(error?.message || error),
+      lastError: String(logger.errorMetadata(error).code || 'operation_failed'),
       updatedAt: Date.now(),
     });
     return;
@@ -744,13 +744,13 @@ async function failIdempotency(context, error) {
     .from('ai_was_idempotency_keys')
     .update({
       status: 'failed',
-      last_error: String(error?.message || error),
+      last_error: String(logger.errorMetadata(error).code || 'operation_failed'),
       updated_at: new Date().toISOString(),
     })
     .eq('idempotency_key', context.idempotencyKey);
 
   if (updateError && !isMissingIdempotencyTableError(updateError)) {
-    logger.warn(`Failed to mark idempotency failure: ${updateError.message}`);
+    logger.warn('Failed to mark idempotency failure.', logger.errorMetadata(updateError));
   }
 }
 
@@ -792,7 +792,7 @@ exports.getProfile = async (req, res) => {
       mbti: profile.mbti ?? null,
     });
   } catch (error) {
-    logger.error(`Internal getProfile error: ${error.message}`);
+    logger.error('Internal getProfile error.', logger.errorMetadata(error));
     return res.status(500).json({ error: 'Failed to load profile.' });
   }
 };
@@ -859,7 +859,7 @@ exports.getTodayPlan = async (req, res) => {
 
     return res.json(planItems);
   } catch (error) {
-    logger.error(`Internal getTodayPlan error: ${error.message}`);
+    logger.error('Internal getTodayPlan error.', logger.errorMetadata(error));
     return res.status(500).json({ error: 'Failed to load today plan.' });
   }
 };
@@ -921,7 +921,7 @@ exports.updateProfile = async (req, res) => {
     });
   } catch (error) {
     await failIdempotency(idempotency, error);
-    logger.error(`Internal updateProfile error: ${error.message}`);
+    logger.error('Internal updateProfile error.', logger.errorMetadata(error));
     return res.status(500).json({ error: 'Failed to update profile.' });
   }
 };
@@ -976,7 +976,7 @@ exports.createPlan = async (req, res) => {
     });
   } catch (error) {
     await failIdempotency(idempotency, error);
-    logger.error(`Internal createPlan error: ${error.message}`);
+    logger.error('Internal createPlan error.', logger.errorMetadata(error));
     return res.status(500).json({ error: 'Failed to create plan.' });
   }
 };
@@ -1017,7 +1017,7 @@ exports.updatePlan = async (req, res) => {
     });
   } catch (error) {
     await failIdempotency(idempotency, error);
-    logger.error(`Internal updatePlan error: ${error.message}`);
+    logger.error('Internal updatePlan error.', logger.errorMetadata(error));
     return res.status(500).json({ error: 'Failed to update plan.' });
   }
 };
@@ -1078,7 +1078,7 @@ exports.deletePlan = async (req, res) => {
     });
   } catch (error) {
     await failIdempotency(idempotency, error);
-    logger.error(`Internal deletePlan error: ${error.message}`);
+    logger.error('Internal deletePlan error.', logger.errorMetadata(error));
     return res.status(500).json({ error: 'Failed to delete plan.' });
   }
 };
@@ -1178,7 +1178,7 @@ exports.checkPlan = async (req, res) => {
     });
   } catch (error) {
     await failIdempotency(idempotency, error);
-    logger.error(`Internal checkPlan error: ${error.message}`);
+    logger.error('Internal checkPlan error.', logger.errorMetadata(error));
     return res.status(500).json({ error: 'Failed to check plan item.' });
   }
 };
@@ -1208,7 +1208,7 @@ exports.getFullWorkoutPlan = async (req, res) => {
       })),
     });
   } catch (error) {
-    logger.error(`Internal getFullWorkoutPlan error: ${error.message}`);
+    logger.error('Internal getFullWorkoutPlan error.', logger.errorMetadata(error));
     return res.status(500).json({ error: 'Failed to load workout plans.' });
   }
 };
@@ -1239,7 +1239,7 @@ exports.getFullDietPlan = async (req, res) => {
       })),
     });
   } catch (error) {
-    logger.error(`Internal getFullDietPlan error: ${error.message}`);
+    logger.error('Internal getFullDietPlan error.', logger.errorMetadata(error));
     return res.status(500).json({ error: 'Failed to load diet plans.' });
   }
 };

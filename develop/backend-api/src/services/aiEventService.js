@@ -39,11 +39,10 @@ exports.notifyProfileUpdated = async (userId, changedFields = [], profileVersion
     );
     return response.data;
   } catch (error) {
-    logger.error(
-      'Profile update event push failed: user_id=%s error=%s',
-      userId,
-      error.message
-    );
+    logger.error('Profile update event push failed.', {
+      user_id: userId,
+      ...logger.errorMetadata(error),
+    });
     return null;
   }
 };
