@@ -14,14 +14,17 @@ from app.routers.observability import router as observability_router
 from app.routers.profile_events import router as profile_events_router
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 app = FastAPI(title="AI Hub v2 (LangGraph)", lifespan=lifespan)
 
 app.include_router(chat_router)
-app.include_router(debug_router)
 app.include_router(home_router)
-app.include_router(observability_router)
 app.include_router(profile_events_router)
+
+if settings.APP_ENV.strip().casefold() in {"development", "local"} and settings.ENABLE_DEBUG_ROUTES:
+    app.include_router(debug_router)
+    app.include_router(observability_router)
 
 
 @app.exception_handler(AppError)

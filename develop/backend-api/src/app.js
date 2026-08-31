@@ -6,39 +6,59 @@ require('dotenv').config();
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 const supabase = require('./config/db');
-const internalController = require('./controllers/internalController');
+const rateLimitModule = require('express-rate-limit');
+const { getSecurityConfig } = require('./config/security');
+
+const rateLimit = rateLimitModule.rateLimit || rateLimitModule;
 
 const app = express();
+const securityConfig = getSecurityConfig();
+if (securityConfig.trustProxyHops > 0) {
+  app.set('trust proxy', securityConfig.trustProxyHops);
+}
 
 async function checkIdempotencyTable() {
-  const { error } = await supabase
-    .from('ai_was_idempotency_keys')
-    .select('idempotency_key')
-    .limit(1);
+  try {
+    const { error } = await supabase
+      .from('ai_was_idempotency_keys')
+      .select('idempotency_key')
+      .limit(1);
 
-  if (!error) return { ok: true };
-  return {
-    ok: false,
-    code: error.code || null,
-    message: error.message || String(error),
-  };
+    if (!error) return { ok: true, status: 'available' };
+
+    logger.warn('Readiness idempotency check failed.');
+    return {
+      ok: false,
+      status: idempotencyTableIsMissing(error) ? 'missing' : 'unavailable',
+    };
+  } catch {
+    logger.error('Readiness idempotency check rejected.');
+    return { ok: false, status: 'unavailable' };
+  }
 }
 
 function idempotencyTableIsMissing(check) {
   return check?.code === 'PGRST205' || check?.code === '42P01';
 }
 
+const authRateLimiter = rateLimit({
+  windowMs: securityConfig.authRateLimitWindowMs,
+  limit: securityConfig.authRateLimitMax,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => {
+    res.status(429).json({ error: 'Too many authentication attempts.' });
+  },
+});
+
 // ─── 보안 및 기본 미들웨어 ────────────────────────────────────────────
 app.use(helmet()); // HTTP 보안 헤더 자동 설정
 
-// CORS: 허용할 프론트엔드 Origin을 환경변수로 관리
+// CORS: security config의 명시적 allowlist만 허용
 app.use(
   cors({
-    // 로컬과 Vercel 모두 접근 가능하도록 모든 출처 허용 (개발/프로토타입 단계)
-    origin: function (origin, callback) {
-      callback(null, true);
-    },
-    credentials: true, // 쿠키/인증 헤더 허용
+    origin: securityConfig.corsAllowedOrigins,
+    credentials: false,
   })
 );
 
@@ -76,13 +96,11 @@ app.get('/api/readiness', async (req, res) => {
   const blockingIssues = [];
   const warnings = [];
 
-  if (!idempotencyTable.ok && (!idempotencyTableIsMissing(idempotencyTable) || requireDatabaseIdempotency)) {
+  if (!idempotencyTable.ok && (idempotencyTable.status !== 'missing' || requireDatabaseIdempotency)) {
     blockingIssues.push('idempotency_table_unavailable');
   }
-  if (!idempotencyTable.ok && idempotencyTableIsMissing(idempotencyTable)) {
-    warnings.push(
-      'ai_was_idempotency_keys table is missing; using in-memory fallback until the Supabase migration is applied.'
-    );
+  if (!idempotencyTable.ok && idempotencyTable.status === 'missing') {
+    warnings.push('idempotency_database_unavailable');
   }
 
   const ok = blockingIssues.length === 0;
@@ -93,8 +111,9 @@ app.get('/api/readiness', async (req, res) => {
     idempotency: {
       mode: idempotencyMode,
       database_required: requireDatabaseIdempotency,
-      table: idempotencyTable,
-      memory_fallback: internalController.__private?.getMemoryIdempotencyStatus?.() || null,
+      table_status: idempotencyTable.status,
+      table_available: idempotencyTable.ok,
+      memory_fallback_enabled: idempotencyTable.status === 'missing' && !requireDatabaseIdempotency,
     },
     warnings,
     blocking_issues: blockingIssues,
@@ -102,6 +121,8 @@ app.get('/api/readiness', async (req, res) => {
 });
 
 // ─── API 라우터 (프론트엔드용) ────────────────────────────────────────
+app.post('/api/v1/auth/signup', authRateLimiter);
+app.post('/api/v1/auth/login', authRateLimiter);
 app.use('/api/v1/auth', require('./routes/auth'));
 app.use('/api/v1/users', require('./routes/users'));
 app.use('/api/v1/ai', require('./routes/ai'));

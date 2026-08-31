@@ -986,7 +986,7 @@ async def chat(
                 detail={"error": str(exc)},
             )
 
-        show_debug_state = settings.APP_ENV == "development" or bool(req.user_profile_override)
+        show_debug_state = settings.APP_ENV.strip().casefold() in {"development", "local"}
 
         background_tasks.add_task(
             update_session_activity,
