@@ -10,6 +10,7 @@
 
 | 브랜치 | 확인되는 범위 | 현재 관계 |
 | --- | --- | --- |
+| `portfolio/integration-deploy` | Phase 2C-2 non-root container, deployment trust/secret lifecycle, reproducible non-deploy CI | `portfolio/integration-runtime@bd3ed659b8336bf46d946fecdafb8a3452a19af2`에서 직접 시작한 deployment 후보 |
 | `portfolio/integration-runtime` | Phase 2C-1 runtime trace·log privacy, bounded retention, checkpoint TTL 검증 | `portfolio/integration-quality@8c5fe5cf66d1322dc85703dffb3aa722e9358c5a`에서 직접 시작한 runtime 후보 |
 | `portfolio/integration-quality` | Phase 2B-2 AI 품질 계약, tenant ownership, dependency·artifact 검증 | `portfolio/integration-security@35757ea60cc1e6d2647c527112d0e83be07d9f7b`에서 직접 시작한 품질 후보 |
 | `portfolio/integration-security` | Phase 2B-1 fail-closed auth, public/debug surface, CORS/readiness/rate-limit 경계 | `portfolio/integration-candidate@3ab3c4f8fe3b728bdf9aa7d7c69902bad23f91d0`에서 직접 시작한 보안 후보 |
@@ -122,8 +123,8 @@ Checkpoint schema 감사 결과 persisted channel에서 `user_id`가 제거되�
 
 - 운영 중앙 로그 수집기와 관리 통계의 별도 보존·삭제 정책
 - Supabase chat/profile/plan 제품 데이터 lifecycle 정책
-- non-root container user 미설정과 배포 SSH host-key 신뢰 방식
-- GCP/실제 deployment의 secret injection, network, TLS, firewall 및 운영 차이
+- GCP 실제 deployment의 network, DNS, certificate, firewall 및 운영 차이
+- SSH host key와 username의 실제 repository secret/variable 설정
 
 Phase 2B-2 current tree secret scan에서는 tracked runtime `.env`, API key/token/private key, credential URL, environment archive, fixed real credential을 확인하지 못했습니다. 실제 secret 값은 문서나 예제 파일에 기록하지 않습니다. 원본 팀 저장소에는 Fork current-tip 정리가 자동 반영되지 않습니다.
 
@@ -131,6 +132,7 @@ Phase 2B-2 current tree secret scan에서는 tracked runtime `.env`, API key/tok
 
 - Frontend와 Backend에는 lockfile이 있어 `npm ci`를 사용할 수 있습니다.
 - AI v2 `requirements.txt`는 하한 버전(`>=`) 중심이며 Python lockfile이 없습니다.
+- Windows clean environment에서도 `ZoneInfo("Asia/Seoul")`가 import되도록 실제 resolve한 `tzdata>=2026.3`을 direct requirement로 기록했습니다.
 - Backend Dockerfile은 Node.js 24, AI Dockerfile은 Python 3.11을 사용합니다.
 - 저장소 공통 Node.js version pin과 세 서비스를 한 번에 실행하는 root script/Compose는 없습니다.
 
@@ -138,11 +140,15 @@ Phase 2B-2 Backend production audit는 중간 5·높음 4(총 9)에서 시작했
 
 AI direct requirements와 실제 import, Docker의 `pip install -r requirements.txt` 경로를 감사했지만 사용 가능한 Python 3.11 runtime이 없었습니다. 제공된 Python 3.12.13에서만 credential-free 검증했으므로 이를 3.11 결과로 간주하지 않습니다. 3.12 `pip freeze`를 잘못된 기준으로 고정하지 않았고 `requirements.lock.txt`/constraints도 생성하지 않았습니다. 따라서 AI 의존성 집합은 설치 시점·환경에 따라 달라질 수 있으며 Python 3.11 clean resolve·install 검증 뒤에만 lock artifact를 추가해야 합니다.
 
+Phase 2C-2는 GitHub Actions의 clean Python 3.11 environment에서 `requirements.txt` install, `pip check`, import·구문과 credential-free regression을 실행합니다. Docker build도 같은 Python 3.11 base에서 current resolution을 설치합니다. 다만 한 시점의 성공한 lower-bound resolve는 lock artifact가 아니며, source requirements와 별도 lock의 갱신 규칙·cross-platform 범위·Docker/CI 재설치 identity를 이번 단계에서 확정하지 않았습니다. 따라서 platform-specific `pip freeze`나 constraints를 추가하지 않았습니다.
+
 ## 8. Deployment differences
 
 논문은 Oracle Cloud를 기준으로 기술됐지만 이 브랜치에는 [`develop/deploy/gcp-two-vm`](../develop/deploy/gcp-two-vm)의 GCP 2-VM 설정이 있습니다. Backend와 AI Compose는 분리되어 있고 각 container 내부의 `localhost`는 다른 VM/container를 가리키지 않으므로 환경별 주소 설정이 필요합니다.
 
-배포 파일과 GitHub Actions의 존재는 현재 공개 URL의 가동 상태나 실제 배포 성공을 입증하지 않습니다. 자동 배포 trigger, secret 주입, SSH host fingerprint, Docker/firewall 구성은 promotion 전에 검토해야 합니다.
+Phase 2C-2에서 application runtime은 Backend UID 1000과 AI UID 10001의 non-root user로 바뀌고, writable state는 release 밖 `/var/lib/healthmate`에 분리됐습니다. Deploy workflow는 `workflow_dispatch` only이며 사전 검증한 `GCP_SSH_KNOWN_HOSTS`, `StrictHostKeyChecking=yes`, configurable `GCP_SSH_USER`, mode 600 secret material과 양쪽 cleanup을 요구합니다. AI는 `AI_BIND_ADDRESS` private-interface bind와 GCP firewall boundary를 함께 요구합니다.
+
+이 설정과 CI의 Docker/Compose/Caddy 검증은 현재 공개 URL의 가동 상태나 실제 GCP deployment 성공을 입증하지 않습니다. Phase 2C-2에서는 VM, firewall, DNS, certificate, Supabase, 외부 provider 또는 production endpoint를 변경·호출하지 않았습니다.
 
 ## 9. Repository artifact 분류
 
@@ -162,7 +168,7 @@ Phase 2A에서는 다음 기준을 사용했습니다.
 
 AI v2 root의 `ruff_result.txt`, `simulation_results.json`, `simulation_memory_results.json`, `simulation_output.txt`도 생성된 evidence인 C로 분류해 유지했습니다. Backend의 `git_log.txt`는 Git metadata로 재생성 가능하지만 당시 문맥 보존 의도를 확정할 수 없어 E로 분류해 유지했습니다.
 
-`scratch_pw/tests/home_plan_sync_toast.spec.js`는 mock-only UI 검사였지만 정식 `develop/frontend-ui/scripts/smoke-home-recommendation-ux.cjs`가 동일한 success/already-exists/failure 계약을 이미 검증하므로 중복 spec을 제거했습니다. `approval_bottleneck.spec.js`는 고정 외부 endpoint와 실제 Backend `.env`/service role을 사용해 user·plan을 만들면서 cleanup을 보장하지 않는 experimental probe라 안전한 portfolio source로 유지하지 않았습니다. 새 Playwright dependency나 중복 package script는 추가하지 않았습니다.
+`scratch_pw/tests/home_plan_sync_toast.spec.js`는 mock-only UI 검사였지만 정식 `develop/frontend-ui/scripts/smoke-home-recommendation-ux.cjs`가 동일한 success/already-exists/failure 계약을 이미 검증하므로 중복 spec을 제거했습니다. `approval_bottleneck.spec.js`는 고정 외부 endpoint와 실제 Backend `.env`/service role을 사용해 user·plan을 만들면서 cleanup을 보장하지 않는 experimental probe라 안전한 portfolio source로 유지하지 않았습니다. Phase 2B-2에서는 새 browser dependency를 추가하지 않았지만 Phase 2C-2는 이 기존 smoke를 재현하기 위해 실제 install한 `playwright@1.62.1`을 devDependency/lockfile에 기록하고 시스템 전역 module fallback을 제거했습니다.
 
 ## 10. Validation과 알려진 한계
 
@@ -202,7 +208,18 @@ Phase 2C-1 최종 검증 결과는 다음과 같습니다. AI는 credential·tra
 
 Frontend home recommendation browser smoke는 설치된 Playwright browser executable이 없어 `NOT RUN`입니다. browser나 dependency를 자동 설치하지 않았습니다. Python 3.11 clean install·검증도 runtime 부재로 `NOT RUN`이며 lock을 만들지 않았습니다.
 
-외부 Supabase·Gemini·Pinecone·LangSmith 연결, 실제 deployment, migration 적용 상태, 의료·임상 안전성은 검증하지 않습니다.
+위 문장은 Phase 2C-1 당시의 역사적 local 환경 결과입니다. Phase 2C-2 Integration CI는 explicit Playwright Chromium과 clean Python 3.11을 추가하고 다음 네 job을 repository secret 없이 실행합니다.
+
+| 영역 | Phase 2C-2 검증 |
+| --- | --- |
+| Frontend | clean install, lint, production build, display contract, mock-route Playwright smoke |
+| Backend | contracts, security, tenant, logging privacy, JavaScript syntax, `npm audit --omit=dev` |
+| AI | Python 3.11 install/`pip check`, import/syntax, metadata·intent·routing·fast-plan·quality·quality guards·mixed WAS·offline chat E2E·security·trace privacy·checkpoint retention |
+| Containers/deploy static | Backend/AI build, UID 1000/10001, writable/read-only boundary, local-only health, Compose config, Caddy validate, bootstrap syntax, safe smoke self-test |
+
+과거 `e2e_intent_suite.py`는 hardcoded public hosts, TLS verification disable, signup/profile/plan mutation, cleanup 부재와 production-disabled `/debug/*` dependency 때문에 제거했습니다. 대체 `smoke_deployment.py`는 caller-supplied HTTPS origin에서 health/readiness GET만 수행하고 standard trust store로 certificate/hostname을 검증하며 redirect를 거부합니다.
+
+외부 Supabase·Gemini·Pinecone·LangSmith 연결, 실제 deployment, migration 적용 상태, production endpoint, 의료·임상 안전성은 검증하지 않습니다.
 
 ## 11. License와 재사용
 

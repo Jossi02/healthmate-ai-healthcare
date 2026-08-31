@@ -1,137 +1,64 @@
-# Next Steps For `test/all`
+# Remaining deployment steps
 
-This file summarizes the remaining manual work for the current GCP setup.
+Phase 2C-2 hardens source configuration and CI only. It does not perform a GCP deployment.
 
-Current fixed values:
+## 1. Confirm the promoted revision
 
-- backend public IP: `34.50.45.68`
-- backend private IP: `10.178.0.2`
-- AI public IP: `34.50.21.162`
-- AI private IP: `10.178.0.3`
-- frontend URL: `https://capstone-2team-test-all.vercel.app`
-- backend HTTPS hostname: `https://34.50.45.68.nip.io`
-- deploy branch: `test/all`
+Complete the final read-only audit and decide the canonical promotion strategy before deploying. Do not use an intermediate portfolio branch as an automatic production trigger.
 
-## 1. Set Vercel env
+## 2. Prepare the network outside the repository
 
-Add this environment variable in Vercel:
+- Backend: public 80/443, public 8080 closed
+- AI: tcp:8000 reachable only from the Backend VM/private network
+- SSH: IAP, a private/self-hosted runner, or tightly scoped reviewed source rules
+- no recommendation of public `0.0.0.0/0:22`
 
-```env
-NEXT_PUBLIC_BACKEND_URL=https://34.50.45.68.nip.io
-```
+Record the AI VM's actual private interface address in the deployment environment as `AI_BIND_ADDRESS`; do not commit it.
 
-Then redeploy the frontend.
+## 3. Prepare trusted SSH configuration
 
-## 2. Create one SSH deploy key pair
-
-Run this on your local machine:
-
-```powershell
-ssh-keygen -t ed25519 -C "github-actions-deploy" -f $HOME\.ssh\healthmate_github_actions
-```
-
-Files created:
-
-- private key: `$HOME\.ssh\healthmate_github_actions`
-- public key: `$HOME\.ssh\healthmate_github_actions.pub`
-
-## 3. Add the public key to both VMs
-
-On each VM:
-
-```bash
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
-nano ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
-```
-
-Append the contents of `healthmate_github_actions.pub` to `authorized_keys`.
-
-## 4. Add GitHub Actions secrets
+Verify both VM host-key fingerprints through an independent trusted channel such as the cloud console or an established administrative connection. Store the resulting known-host entries in `GCP_SSH_KNOWN_HOSTS`.
 
 Repository secrets:
 
 - `GCP_SSH_PRIVATE_KEY`
+- `GCP_SSH_KNOWN_HOSTS`
 - `GCP_BACKEND_HOST`
 - `GCP_AI_HOST`
 - `GCP_BACKEND_ENV`
 - `GCP_AI_ENV`
 
-Recommended values:
+Repository variable:
 
-```text
-GCP_BACKEND_HOST=34.50.45.68
-GCP_AI_HOST=34.50.21.162
-```
+- `GCP_SSH_USER`
 
-For `GCP_BACKEND_ENV`, paste the full contents of:
+Do not discover and trust host keys inside the deployment run.
 
-- `develop/deploy/gcp-two-vm/backend/.env.backend`
+## 4. Prepare service environments
 
-For `GCP_AI_ENV`, paste the full contents of:
+Use `backend/env.backend.example` and `ai/env.ai.example` as field lists. Replace all placeholders outside Git and ensure:
 
-- `develop/deploy/gcp-two-vm/ai/.env.ai`
+- shared `INTERNAL_API_KEY` is strong and identical
+- Backend `FASTAPI_URL` targets the AI private address
+- AI `AI_BIND_ADDRESS` is the AI VM private interface
+- AI `WAS_BASE_URL` is the Backend HTTPS origin
+- production debug and tracing exports remain disabled unless separately approved
 
-For `GCP_SSH_PRIVATE_KEY`, paste the full contents of:
+## 5. Require green non-deploy CI
 
-- `$HOME\.ssh\healthmate_github_actions`
+The `Integration CI` workflow must pass its Frontend, Backend, AI Python 3.11, and Containers jobs. It uses fixtures only and does not deploy.
 
-## 5. Fix firewall rules
+## 6. Dispatch deployment manually
 
-Backend VM:
+Run `Deploy GCP Two VM` with `workflow_dispatch` only after the promoted revision, trusted network path, variables, and secrets are reviewed. The workflow deploys Backend and AI in parallel; it does not mutate firewall, DNS, or other GCP resources.
 
-- keep `80` open to the internet
-- keep `443` open to the internet
-- keep `22` open for SSH-based deploy access
-- remove public `8080`
+## 7. Verify without destructive probes
 
-AI VM:
-
-- keep `22` open for SSH-based deploy access
-- allow `8000` only from `10.178.0.2/32`
-- do not allow public `8000`
-
-## 6. Push `test/all`
-
-```powershell
-git add .gitignore .github/workflows/gcp-two-vm-deploy.yml develop/deploy/gcp-two-vm
-git commit -m "chore: add GCP two-vm deploy pipeline"
-git push origin test/all
-```
-
-## 7. Watch the first deploy
-
-In GitHub:
-
-- `Actions`
-- `Deploy GCP Two VM`
-
-Expected result:
-
-- Docker gets installed automatically on both Ubuntu VMs if missing
-- backend deploys to `34.50.45.68`
-- AI deploys to `34.50.21.162`
-
-## 8. Verify after deploy
-
-From your browser:
-
-- `https://34.50.45.68.nip.io/api/health`
-
-From backend VM:
+After deployment, run:
 
 ```bash
-curl http://10.178.0.3:8000/health
+python develop/deploy/gcp-two-vm/scripts/smoke_deployment.py \
+  --base-url https://<backend-domain>
 ```
 
-From AI VM:
-
-```bash
-curl https://34.50.45.68.nip.io/api/health
-```
-
-From the frontend:
-
-- open `https://capstone-2team-test-all.vercel.app`
-- test login, chat, and home recommendations
+This checks TLS-verified Backend health and readiness only. Perform any authenticated application test with a separately managed test account and cleanup plan; no such production test is automated here.

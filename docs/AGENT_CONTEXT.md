@@ -28,18 +28,16 @@ AI also calls the backend through internal routes when it needs profile and plan
 
 ## 3. Current Deployment Facts
 
-Known deployment values from repository docs and latest verification:
+Current repository contract:
 
-- deploy branch: `test/all`
-- backend health URL: `https://34.50.45.68.nip.io/api/health`
-- frontend test URL: `https://capstone-2team-test-all.vercel.app`
+- deployment workflow: manual `workflow_dispatch` only
+- automatic deployment from `test/all` or portfolio branches: disabled
+- SSH trust: reviewed `GCP_SSH_KNOWN_HOSTS` plus `StrictHostKeyChecking=yes`
+- SSH username: repository variable `GCP_SSH_USER`
+- Backend public ingress: 80/443 only; 8080 stays private to Compose
+- AI ingress: `AI_BIND_ADDRESS` private interface plus GCP firewall limited to the Backend/private network
 
-Latest confirmed deploy state on `2026-04-13`:
-
-- pushed commit: `968875f`
-- GitHub Actions workflow `Deploy GCP Two VM` completed successfully
-- backend health endpoint returned `200 OK`
-- Vercel reported deployment completion for the pushed commit
+Historical public addresses and a past successful deployment are not evidence for the current candidate. Phase 2C-2 did not contact or mutate GCP, DNS, Supabase, external AI providers, or any production endpoint.
 
 ## 4. Source Of Truth Rules
 

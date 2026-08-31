@@ -1,232 +1,150 @@
 # GCP 2-VM deployment
 
-This layout is for the architecture below:
+This directory describes the repository's deployment contract:
 
-- `frontend-ui` on Vercel
-- `backend-api` on GCP VM 1
-- `ai-model/v2` on GCP VM 2
+`Browser -> Vercel frontend -> HTTPS Caddy -> Backend -> AI private interface`
 
-Traffic flow:
+It is configuration and automation source, not proof that a live GCP deployment currently exists.
 
-`Browser -> Vercel frontend -> HTTPS backend domain -> backend private call -> AI private IP`
+## Layout
 
-`AI -> HTTPS backend domain -> Caddy -> backend container`
+- `backend/docker-compose.yml`: Backend and Caddy on VM 1
+- `backend/Caddyfile`: HTTPS reverse proxy to `backend:8080`
+- `backend/env.backend.example`: Backend deployment template
+- `ai/docker-compose.yml`: AI service on VM 2
+- `ai/env.ai.example`: AI deployment template
+- `scripts/bootstrap_and_deploy.sh`: guarded remote bootstrap
+- `scripts/smoke_deployment.py`: non-destructive HTTPS Backend smoke
 
-For the current project-specific manual checklist, see [`NEXT_STEPS.md`](./NEXT_STEPS.md).
+## Container boundaries
 
-## Why this shape
+The Backend uses the official Node image's `node` user (UID/GID 1000). The AI image uses the dedicated `app` UID/GID 10001. Build steps can run as root, but neither application server does.
 
-The current codebase already matches this split:
+Both application services drop all Linux capabilities, set `no-new-privileges`, and use a read-only root filesystem. Their only persistent writable paths are:
 
-- frontend reads `NEXT_PUBLIC_BACKEND_URL` or `NEXT_PUBLIC_API_URL`
-- backend calls FastAPI through `FASTAPI_URL`
-- AI calls WAS through `WAS_BASE_URL`
+- Backend logs: `/var/lib/healthmate/backend/logs` on the host -> `/usr/src/app/logs`
+- AI checkpoints: `/var/lib/healthmate/ai/data` on the host -> `/app/data`
 
-For browser traffic, backend must be served over HTTPS. If the frontend runs on Vercel HTTPS and backend is only plain HTTP by public IP, the browser will hit mixed-content issues.
+The bootstrap creates those host directories with the matching numeric ownership. On the first hardened deployment it stops the old writer before copying Backend logs or AI `checkpoints.sqlite` plus its WAL/SHM sidecars from the former release-local paths without overwriting existing persistent files. If the old Compose/environment files needed for a safe stop are missing, migration fails closed.
 
-This deployment therefore uses:
+Caddy keeps its official runtime shape because it must bind 80/443 and write certificate/config state to its named volumes. It receives only `BACKEND_DOMAIN`, not the Backend's full secret environment.
 
-- backend VM: `backend-api` container + `Caddy` for HTTPS
-- AI VM: `ai-hub-v2` container only
-
-## Directory layout
-
-- `backend/docker-compose.yml`: backend VM compose
-- `backend/Caddyfile`: HTTPS reverse proxy for the backend VM
-- `backend/env.backend.example`: backend environment template
-- `backend/.env.backend`: backend deployment env
-- `ai/docker-compose.yml`: AI VM compose
-- `ai/env.ai.example`: AI environment template
-- `ai/.env.ai`: AI deployment env
-
-## VM plan
-
-Recommended layout:
-
-- VM 1 `backend-vm`
-  - public static IP
-  - open inbound `80`, `443`
-  - app traffic ends at Caddy and proxies to backend container `8080`
-- VM 2 `ai-vm`
-  - no public traffic if possible
-  - open inbound `8000` only from the backend VM private IP or backend network tag
-
-Both VMs should live in the same VPC and region so `FASTAPI_URL` can use a private IP.
-
-For this repository's current compose layout, `WAS_BASE_URL` should use the backend HTTPS domain, not the backend VM private `:8080`. The backend service is only exposed inside the backend compose network, and Caddy is the published entrypoint.
-
-## Domain
-
-Set a backend domain for HTTPS, for example:
-
-- `api.example.com`
-- `api.<your-domain>`
-
-If you do not have a domain, an IP-based testing hostname such as `34-12-34-56.sslip.io` can work temporarily as long as DNS resolves to the backend VM public IP.
-
-That hostname goes into `BACKEND_DOMAIN` and also into the Vercel frontend env:
-
-- `NEXT_PUBLIC_BACKEND_URL=https://api.example.com`
-
-## Backend VM setup
-
-On the backend VM, from the repo root:
-
-```bash
-cd backend
-cp env.backend.example .env.backend
-docker compose up -d --build
-```
-
-Set these values in `develop/deploy/gcp-two-vm/backend/.env.backend`:
-
-- `BACKEND_DOMAIN`
-- `CORS_ALLOWED_ORIGINS=https://<your-vercel-domain>`
-- `TRUST_PROXY_HOPS=1` for the single Caddy hop in this Compose topology
-- `FASTAPI_URL=http://<ai-private-ip>:8000`
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `INTERNAL_API_KEY`
-- `JWT_SECRET`
-- `REQUIRE_IDEMPOTENCY_TABLE=false` for demo fallback mode, or `true` after applying `20260531090000_add_ai_was_idempotency_keys.sql`
-
-Backend health checks:
-
-```bash
-docker compose ps
-docker compose logs -f backend
-curl http://127.0.0.1:8080/api/health
-curl http://127.0.0.1:8080/api/readiness
-curl https://<your-backend-domain>/api/health
-curl https://<your-backend-domain>/api/readiness
-```
-
-## AI VM setup
-
-On the AI VM, from the repo root:
-
-```bash
-cd ai
-cp env.ai.example .env.ai
-docker compose up -d --build
-```
-
-Set these values in `develop/deploy/gcp-two-vm/ai/.env.ai`:
-
-- `WAS_BASE_URL=https://<your-backend-domain>`
-- `GEMINI_API_KEY`
-- `INTERNAL_API_KEY`
-- `ROUTER_API_KEY` only if it should differ from `GEMINI_API_KEY`
-- `ENABLE_RAG_MEMORY=false` for the fast demo flow
-- `PINECONE_API_KEY` and `PINECONE_INDEX_NAME` only when `ENABLE_RAG_MEMORY=true`
-
-AI health checks:
-
-```bash
-docker compose ps
-docker compose logs -f ai-hub-v2
-curl http://127.0.0.1:8000/health
-```
-
-Private connectivity check from the backend VM:
-
-```bash
-curl http://<ai-private-ip>:8000/health
-```
-
-## Vercel setup
-
-Set one of these in Vercel:
-
-- `NEXT_PUBLIC_BACKEND_URL=https://<your-backend-domain>`
-- or `NEXT_PUBLIC_API_URL=https://<your-backend-domain>`
-
-The frontend code already reads either variable, so one is enough.
-
-## Firewall rules
+## Network and firewall contract
 
 Backend VM:
 
-- allow `tcp:22` from GitHub Actions runner traffic if using hosted runners
-- allow `tcp:80` from the internet
-- allow `tcp:443` from the internet
-- close public `tcp:8080`
+- public ingress: 80/443
+- public 8080: closed
+- SSH: a trusted administrative path only
 
 AI VM:
 
-- allow `tcp:22` from GitHub Actions runner traffic if using hosted runners
-- allow `tcp:8000` only from backend VM private IP, subnet, or backend network tag
-- do not expose `8000` to the public internet
+- `AI_BIND_ADDRESS` must be the VM's real private interface address
+- tcp:8000 ingress must also be restricted to the Backend VM/private network by GCP firewall
+- public tcp:8000 ingress is prohibited
+- SSH: a trusted administrative path only
 
-## Runtime contract
+Do not put a real private address in the repository. Set `AI_BIND_ADDRESS` in the deployed `.env.ai`; Compose interpolation works because every command uses `docker compose --env-file .env.ai`. The service-level `env_file` alone does not provide Compose interpolation values. Before replacing a release, the bootstrap rejects wildcard, loopback, public, and unassigned addresses; it requires an RFC1918 address present on the AI VM.
 
-Use the same `INTERNAL_API_KEY` value on both VMs:
+GitHub-hosted runner addresses are not a reason to recommend `0.0.0.0/0:22`. Use IAP, a private/self-hosted runner, or tightly scoped and reviewed source rules. Firewall and GCP resources are managed outside this repository.
 
-- backend sends it to FastAPI for `/internal/events/profile-updated`
-- AI sends it to backend for `/api/...` internal routes
+## Environment files
 
-Service URLs should look like:
-
-- backend `backend/.env.backend`: `FASTAPI_URL=http://10.0.0.5:8000`
-- AI `ai/.env.ai`: `WAS_BASE_URL=https://api.example.com`
-
-## Deploy updates
-
-After code changes:
-
-Backend VM:
+Copy the templates only on a trusted machine and replace every placeholder:
 
 ```bash
+cp backend/env.backend.example backend/.env.backend
+cp ai/env.ai.example ai/.env.ai
+chmod 600 backend/.env.backend ai/.env.ai
+```
+
+Important cross-service values:
+
+- Backend `FASTAPI_URL=http://<ai-private-address>:8000`
+- AI `AI_BIND_ADDRESS=<ai-private-interface-address>`
+- AI `WAS_BASE_URL=https://<backend-domain>`
+- the same strong `INTERNAL_API_KEY` on both services
+- `APP_ENV=production` and debug routes disabled
+
+## Compose and Caddy validation
+
+From the repository root:
+
+```bash
+docker compose \
+  --env-file develop/deploy/gcp-two-vm/backend/.env.backend \
+  -f develop/deploy/gcp-two-vm/backend/docker-compose.yml config --quiet
+
+docker compose \
+  --env-file develop/deploy/gcp-two-vm/ai/.env.ai \
+  -f develop/deploy/gcp-two-vm/ai/docker-compose.yml config --quiet
+
 cd develop/deploy/gcp-two-vm/backend
-docker compose up -d --build
+docker compose --env-file .env.backend run --rm --no-deps caddy \
+  caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 ```
 
-AI VM:
+`caddy validate` parses configuration only. It does not request a certificate or require public DNS.
+
+## Health and readiness
+
+The bootstrap runs `docker compose up -d --build --remove-orphans --wait --wait-timeout 180`. Compose waits for Backend/AI healthchecks and for Caddy to be running, then returns non-zero on failure or timeout. On failure the script prints Compose status and at most 80 recent lines per service, then exits non-zero. It never treats a failed probe as success.
+
+Backend readiness is checked inside the Backend container because port 8080 is intentionally not published on the host:
 
 ```bash
-cd develop/deploy/gcp-two-vm/ai
-docker compose up -d --build
+docker compose --env-file .env.backend exec -T backend \
+  wget -T 20 -t 1 -qO- http://127.0.0.1:8080/api/readiness
 ```
 
-## GitHub Actions
+## Manual deployment workflow
 
-The repository includes [`gcp-two-vm-deploy.yml`](../../../../.github/workflows/gcp-two-vm-deploy.yml) for VM deployment over SSH.
+`.github/workflows/gcp-two-vm-deploy.yml` has `workflow_dispatch` only. A push to `test/all`, `main`, or any portfolio branch does not deploy.
 
-Behavior:
-
-- manual trigger with `workflow_dispatch`
-- automatic deploy on push to `test/all`
-- deploys `backend` and `ai` in parallel
-- installs Docker on Ubuntu VMs if it is missing
-- normalizes the remote bootstrap script to UTF-8 without BOM and LF line endings before execution
-
-Firewall note:
-
-- if this workflow uses GitHub-hosted runners, SSH `tcp:22` must allow GitHub runner source IPs
-- for a fast capstone setup, teams often open `22` more broadly and rely on SSH key auth
-- a stricter alternative is a self-hosted runner inside GCP
-
-Required GitHub secrets:
+Required repository secrets:
 
 - `GCP_SSH_PRIVATE_KEY`
+- `GCP_SSH_KNOWN_HOSTS`
 - `GCP_BACKEND_HOST`
 - `GCP_AI_HOST`
 - `GCP_BACKEND_ENV`
 - `GCP_AI_ENV`
 
-Recommended values:
+Required repository variable:
 
-- `GCP_BACKEND_HOST=34.50.45.68`
-- `GCP_AI_HOST=34.50.21.162`
-- `GCP_BACKEND_ENV`: full contents of `backend/.env.backend`
-- `GCP_AI_ENV`: full contents of `ai/.env.ai`
+- `GCP_SSH_USER`
 
-This repository is currently configured to auto-deploy from `test/all`.
+`GCP_SSH_KNOWN_HOSTS` must contain entries verified through an independent trusted channel. The workflow does not run `ssh-keyscan`; SSH and SCP require `StrictHostKeyChecking=yes`.
 
-## Minimum verification
+The runner uses `umask 077`, mode 600 for env/key/archive files, and an always-run cleanup step. The remote bootstrap uses a private `mktemp` stage, validates staged Compose/Caddy and expected files before stopping an old writer or replacing the target, and removes both stage and `/tmp/healthmate-deploy.tar.gz` on success or failure. The deployed environment file remains mode 600 because Compose needs it for restarts.
 
-1. `https://<backend-domain>/api/health` returns `200`
-2. backend VM can reach `http://<ai-private-ip>:8000/health`
-3. login/signup requests succeed from the Vercel frontend
-4. chat request reaches backend, then AI, then returns to frontend
-5. profile update and home recommendation flows still work end-to-end
+## Safe post-deployment smoke
+
+The old live E2E probe was removed because it disabled TLS verification, created users/data, embedded public hosts, and required production debug traces.
+
+The replacement performs only HTTPS GET requests for Backend health and readiness:
+
+```bash
+python scripts/smoke_deployment.py --base-url https://api.example.com
+```
+
+Certificate and hostname verification are always enabled, and redirects are rejected. The script has no insecure option, credentials, signup, profile/plan mutation, AI public URL, or `/debug/*` dependency. Its offline self-check is:
+
+```bash
+python scripts/smoke_deployment.py --self-test
+```
+
+## Non-deploy CI
+
+`.github/workflows/integration-ci.yml` runs without repository secrets:
+
+- Frontend: clean install, lint, build, display contract, Playwright Chromium smoke with mocked routes
+- Backend: clean install, contracts, security, tenant, logging, syntax, production dependency audit
+- AI: clean Python 3.11 install, `pip check`, import/syntax, credential-free offline regressions
+- Containers: both image builds, non-root/write-boundary checks, local-only health, Compose config, Caddy validation, deployment script self-checks
+
+This CI never logs in to a registry and never deploys.
+
+## Current status
+
+No GCP VM, firewall, DNS, domain, Supabase, Gemini, Pinecone, LangSmith, or production endpoint was changed or contacted during Phase 2C-2. A real deployment and the post-deployment smoke remain explicit operator actions after final branch promotion.

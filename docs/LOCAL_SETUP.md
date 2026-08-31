@@ -1,13 +1,13 @@
 # HealthMate 로컬 실행 가이드
 
-이 문서는 `portfolio/integration-runtime` 브랜치에 함께 보존된 Frontend, Backend / WAS, AI Server를 로컬에서 준비하는 방법을 설명합니다. 저장소 루트에는 세 서비스를 한 번에 실행하는 script나 통합 Compose가 없습니다.
+이 문서는 `portfolio/integration-deploy` 브랜치에 함께 보존된 Frontend, Backend / WAS, AI Server를 로컬에서 준비하는 방법을 설명합니다. 저장소 루트에는 세 서비스를 한 번에 실행하는 script나 통합 Compose가 없습니다.
 
-## 1. Runtime candidate 직접 복제
+## 1. Deployment candidate 직접 복제
 
 다음 명령은 복제 후 별도 branch switch 없이 candidate를 checkout합니다.
 
 ```bash
-git clone --branch portfolio/integration-runtime --single-branch https://github.com/Jossi02/healthmate-ai-healthcare.git
+git clone --branch portfolio/integration-deploy --single-branch https://github.com/Jossi02/healthmate-ai-healthcare.git
 cd healthmate-ai-healthcare
 ```
 
@@ -36,7 +36,7 @@ cd healthmate-ai-healthcare
 - 실제 저장 기능을 사용할 경우 Supabase project와 compatible schema
 - AI 응답을 생성할 경우 사용 가능한 Gemini API access
 
-AI v2는 version lower bound 중심의 `requirements.txt`를 사용하고 Python lockfile이 없습니다. Phase 2B-2 환경에는 Python 3.11이 없어 3.12 resolve를 3.11 lock으로 고정하지 않았습니다. 서로 다른 시점의 설치가 완전히 같은 dependency set을 보장하지 않으므로 Dockerfile과 같은 Python 3.11에서 clean install을 다시 검증해야 합니다.
+AI v2는 version lower bound 중심의 `requirements.txt`를 사용하고 Python lockfile이 없습니다. Integration CI와 Dockerfile은 Python 3.11에서 clean resolve/install과 `pip check`를 수행하지만 서로 다른 시점의 dependency identity까지 고정하지는 않습니다. Windows의 standard-library `zoneinfo`에 필요한 IANA database는 direct `tzdata` requirement로 포함합니다. 한 platform의 `pip freeze`를 lock으로 오인하지 않기 위해 constraints는 추가하지 않았습니다.
 
 ## 4. Supabase requirements
 
@@ -149,7 +149,7 @@ AI 보안 경계 검사:
 python scripts/test_security_boundaries.py
 ```
 
-외부 credential 없이 실행 가능한 Phase 2C-1 AI 회귀 검사:
+외부 credential 없이 실행 가능한 Phase 2C-2 AI 회귀 검사:
 
 ```bash
 python scripts/test_pinecone_metadata_lint.py
@@ -188,6 +188,10 @@ PowerShell에서는 `Copy-Item .env.example .env.local`을 사용할 수 있습�
 npm run lint
 npm run build
 npm run test:display-contract
+npx playwright install chromium
+npm start -- --hostname 127.0.0.1 --port 3100
+# 별도 terminal
+npm run smoke:home-recommendation-ux -- --url http://127.0.0.1:3100
 ```
 
 ## 8. 실행 순서와 상태 확인
@@ -220,15 +224,15 @@ LangSmith tracing과 quality export도 선택 사항이며 기본 비활성입�
 
 ## 10. Docker와 deployment configuration
 
-Backend와 AI v2에는 각각 별도 container/deployment 설정이 있고, [`develop/deploy/gcp-two-vm`](../develop/deploy/gcp-two-vm)에 GCP 2-VM 참고 구성이 있습니다. 하나의 root Compose로 연결된 구조가 아닙니다.
+Backend와 AI v2에는 각각 별도 container/deployment 설정이 있고, [`develop/deploy/gcp-two-vm`](../develop/deploy/gcp-two-vm)에 GCP 2-VM 참고 구성이 있습니다. 하나의 root Compose로 연결된 구조가 아닙니다. Backend runtime은 official `node` UID 1000, AI runtime은 dedicated UID 10001이며 application source는 read-only입니다. Backend log와 AI checkpoint만 `/var/lib/healthmate` host path에 씁니다.
 
-Container 내부의 `localhost`는 다른 container나 VM을 가리키지 않습니다. 환경에 맞는 service address, network, firewall, TLS, secret injection을 구성해야 합니다. 보존된 파일의 존재는 live deployment나 성공 상태를 보장하지 않습니다.
+Container 내부의 `localhost`는 다른 container나 VM을 가리키지 않습니다. AI deployment env의 `AI_BIND_ADDRESS`는 실제 private interface여야 하고 GCP firewall도 Backend/private network만 tcp:8000에 접근하게 해야 합니다. Backend 8080은 host에 publish하지 않습니다. 상세 Compose/Caddy/SSH 검증은 [deployment README](../develop/deploy/gcp-two-vm/README.md)를 따르세요.
 
 ## 11. 검증 범위와 알려진 blocker
 
-Phase 2C-1에서는 Frontend install/lint/build/display, Backend contracts 21/21·security 33/33·tenant 8/8·logging privacy·구문 38/38·production audit 0, AI 구문 103/103과 요구된 offline 회귀군을 재검증했습니다. 신규 runtime privacy/retention 검사는 3개 entrypoint·5개 top-level case/scenario이며 TraceStore 3/3, Backend logging 1/1, checkpoint retention 1/1이 통과했습니다. 상세 결과는 [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)에 기록합니다.
+Phase 2C-2 `Integration CI`는 Frontend install/lint/build/display/Playwright, Backend contracts/security/tenant/logging/syntax/audit, AI clean Python 3.11 install과 offline 회귀군, 두 Docker image build/non-root/local health, Compose config와 Caddy validation을 네 job으로 실행합니다. 상세 범위는 [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)에 기록합니다.
 
-Python 3.11 clean install·lock 검증은 runtime 부재로 `NOT RUN`입니다. Frontend `smoke:home-recommendation-ux`도 이 검증 환경에 Playwright browser executable이 없어 `NOT RUN`이었습니다. 실제 Supabase mutation, Gemini·Pinecone·LangSmith 요청, production endpoint probe는 실행하지 않습니다.
+Python 3.11 clean install은 CI에서 실제 실행하지만 lock/constraints는 생성하지 않았습니다. Browser smoke는 explicit Playwright devDependency와 CI-installed Chromium을 사용하며 API route를 mock합니다. 실제 Supabase mutation, Gemini·Pinecone·LangSmith 요청, production endpoint, GCP deployment는 실행하지 않습니다.
 
 Phase 2B-2부터 AI chat 내부 checkpoint key가 tenant-scoped hash로 바뀌었습니다. 이전 raw `session_id` row에는 신뢰 가능한 owner가 없어 fallback·automatic rekey하지 않습니다. Phase 2C-1 startup은 activity row가 없던 기존 checkpoint/write에 현재 시각을 한 번 기록하므로 기본 72시간 TTL 뒤 삭제됩니다. Cleanup은 startup 직후와 이후 매시간 실행되며 live session lock을 제외하고, durable pending `was_outbox`는 삭제하지 않습니다.
 
