@@ -347,7 +347,7 @@ def build_active_proposal(state: GraphState) -> ActiveProposal | None:
 
 
 def sync_proposal_fields(active_proposal: ActiveProposal | None) -> dict[str, Any]:
-    if not active_proposal:
+    if not active_proposal or active_proposal_is_mixed_domain(active_proposal):
         return {
             "active_proposal": None,
             "awaiting_plan_confirmation": False,
@@ -373,7 +373,7 @@ def evolve_active_proposal(previous: ActiveProposal | None, state: GraphState) -
     if _should_clear_active_proposal(state):
         return None
 
-    if not previous:
+    if not previous or active_proposal_is_mixed_domain(previous):
         return None
 
     if _is_explicit_cancel(str(state.get("user_message") or "")):

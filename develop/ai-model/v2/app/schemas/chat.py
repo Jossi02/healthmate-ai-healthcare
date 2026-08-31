@@ -7,7 +7,7 @@ from pydantic import BaseModel
 class ChatRequest(BaseModel):
     user_id: str
     user_message: str
-    session_id: Optional[str] = None  # LangGraph checkpointer thread_id
+    session_id: Optional[str] = None  # Public conversation identifier; checkpoint keys are tenant-scoped internally.
     # -- Debug Overrides (개발/테스트용) --
     user_profile_override: Optional[dict[str, Any]] = None
 

@@ -97,6 +97,11 @@ async def _get_session_lock(session_id: str) -> asyncio.Lock:
         return lock
 
 
+def _checkpoint_thread_id(user_id: str, session_id: str) -> str:
+    identity = json.dumps([user_id, session_id], ensure_ascii=False, separators=(",", ":"))
+    return f"chat:{hashlib.sha256(identity.encode('utf-8')).hexdigest()}"
+
+
 def _build_initial_state(req: ChatRequest) -> GraphState:
     initial_state: GraphState = {
         "user_id": req.user_id,
@@ -783,6 +788,7 @@ async def chat(
     settings = get_settings()
 
     session_id = req.session_id or str(uuid.uuid4())
+    checkpoint_thread_id = _checkpoint_thread_id(req.user_id, session_id)
     trace_id = trace_store.start_trace(
         kind="chat",
         user_id=req.user_id,
@@ -793,17 +799,17 @@ async def chat(
     )
     token = bind_trace(trace_id)
     request_started_at = time.perf_counter()
-    config = {"configurable": {"thread_id": session_id}}
+    config = {"configurable": {"thread_id": checkpoint_thread_id}}
     checkpoint_db_path = str(
         getattr(request.app.state, "checkpoint_db_path", settings.CHECKPOINT_DB_PATH)
     )
-    session_lock = await _get_session_lock(session_id)
+    session_lock = await _get_session_lock(checkpoint_thread_id)
     await session_lock.acquire()
     db_session_lock = None
 
     try:
         try:
-            db_session_lock = await acquire_session_lock(checkpoint_db_path, session_id)
+            db_session_lock = await acquire_session_lock(checkpoint_db_path, checkpoint_thread_id)
         except TimeoutError:
             logger.warning("Timed out waiting for DB session lock: session=%s", session_id)
             trace_store.record_alert(
@@ -991,7 +997,7 @@ async def chat(
         background_tasks.add_task(
             update_session_activity,
             checkpoint_db_path,
-            session_id,
+            checkpoint_thread_id,
         )
         write_proposed_plan, write_proposed_plan_type, write_proposed_plan_action = _resolve_plan_write_fields(result)
         if intent == INTENT_APPROVAL and write_proposed_plan and not result.get("proposed_plan"):

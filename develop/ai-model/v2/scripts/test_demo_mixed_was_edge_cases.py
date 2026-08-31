@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = Path(__file__).resolve().parent
@@ -20,7 +22,7 @@ from test_fast_plan_flow_suite import (  # noqa: E402
 )
 
 
-TODAY = "2026-06-12"
+TODAY = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
 
 
 def _seed_was() -> FakeWAS:
@@ -46,7 +48,7 @@ async def _run(message: str) -> tuple[dict[str, Any], FakeWAS, dict[str, Any]]:
     was = _seed_was()
     deps = FakeDeps(was)
     profile = {
-        "profile_id": "demo_mixed",
+        "profile_id": "00000000-0000-4000-8000-000000000001",
         "selected_ai_persona": "cheer_sis",
         "activity_level": "beginner",
         "goal": "health",

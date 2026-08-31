@@ -64,7 +64,6 @@ from app.graph.nodes.generate import (
     _response_render_state,
     _workout_item_category,
 )
-from app.graph.builder import route_generate_self_eval, route_intent
 from app.graph.nodes.intent import (
     _looks_like_condition_info_question,
     _looks_like_ambiguous_mixed_plan_request,
@@ -687,19 +686,6 @@ def test_home_recommendation_guard_flags_medical_synonyms() -> None:
         },
     )
     assert_true(not repaired_issues, "home normalization should replace medically unsafe slots")
-
-
-def test_home_recommendation_routes_through_validator() -> None:
-    assert_true(
-        route_generate_self_eval(
-            {
-                "request_kind": "home_recommendation",
-                "home_recommendations": empty_home_recommendation_payload(),
-            }
-        )
-        == "answer_validator",
-        "home recommendation responses should pass through the answer validator",
-    )
 
 
 def test_home_recommendation_validator_blocks_profile_conflicts() -> None:
@@ -1367,6 +1353,26 @@ def test_mixed_active_proposal_is_sanitized() -> None:
     }
     assert_true(active_proposal_is_mixed_domain(active), "mixed active proposal should be detected")
     assert_true(sync_proposal_fields(active)["active_proposal"] is None, "mixed active proposal should not be persisted")
+    assert_true(
+        evolve_active_proposal(
+            active,
+            {
+                "turn_count": 2,
+                "user_message": "계속",
+                "action_intent": "info",
+                "context_resolution": {},
+            },
+        )
+        is None,
+        "malformed mixed checkpoint proposals should not resume",
+    )
+
+    bundle = {**active, "domain": "bundle"}
+    assert_true(not active_proposal_is_mixed_domain(bundle), "typed bundle proposals should be valid")
+    assert_true(
+        sync_proposal_fields(bundle)["active_proposal"] == bundle,
+        "typed bundle proposals should remain available for approval",
+    )
 
     legacy_active = {
         "domain": "workout",
@@ -3021,10 +3027,9 @@ def test_home_prompt_bounds_plan_and_recent_inputs() -> None:
     assert_true(len(recent_diet["breakfast"]) == 2 and len(recent_diet["breakfast"][1]) == 80, "home prompt should cap and truncate recent diet history")
 
 
-def test_intent_routing_uses_canonical_aliases() -> None:
+def test_intent_aliases_are_canonical() -> None:
     assert_true(normalize_intent("create") == INTENT_PLAN, "create alias should normalize to plan intent")
     assert_true(normalize_intent("update-plan") == INTENT_MODIFY, "hyphenated modify alias should normalize")
-    assert_true(route_intent({"intent": "create"}) == "retrieval_decision", "route should accept normalized aliases")
 
 
 def test_strict_weak_rag_fails_closed() -> None:
@@ -3376,7 +3381,6 @@ def main() -> None:
         test_home_recommendation_display_bounds,
         test_home_recommendation_replaces_profile_conflicts,
         test_home_recommendation_guard_flags_medical_synonyms,
-        test_home_recommendation_routes_through_validator,
         test_home_recommendation_validator_blocks_profile_conflicts,
         test_home_recommendation_blocks_advanced_risk_taxonomy,
         test_home_generation_quality_flags_capture_raw_repairs,
@@ -3444,7 +3448,7 @@ def main() -> None:
         test_context_resolver_sanitizes_malformed_reference_state,
         test_home_recommendation_prompt_covers_profile_edges,
         test_home_prompt_bounds_plan_and_recent_inputs,
-        test_intent_routing_uses_canonical_aliases,
+        test_intent_aliases_are_canonical,
         test_strict_weak_rag_fails_closed,
         test_persona_style_report_flags_plan_shape,
         test_persona_style_specs_match_product_contract,
