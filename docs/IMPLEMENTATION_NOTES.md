@@ -3,26 +3,26 @@
 이 문서는 포트폴리오용 `README.md`에서 덜어낸 구현 감사 내용을 보존합니다. 논문의 제안·평가와 저장소 코드의 구현 상태를 같은 것으로 간주하지 않으며, 다음 기준으로 구분합니다.
 
 - **연구 배경, 제안 구조, 평가 결과, 연구 한계:** 최종 논문
-- **구현 기능, API, 기술 스택, 실행 설정:** 현재 브랜치의 코드와 설정 파일
+- **구현 기능, API, 기술 스택, 실행 설정:** 현재 `main`의 코드와 설정 파일
 - **개인 역할과 수상 이력:** 프로젝트 참여 기록과 본인 확인
 
 ## 1. 브랜치와 provenance
 
 | 브랜치 | 확인되는 범위 | 현재 관계 |
 | --- | --- | --- |
-| `portfolio/integration-deploy` | Phase 2C-2 non-root container, deployment trust/secret lifecycle, reproducible non-deploy CI | `portfolio/integration-runtime@bd3ed659b8336bf46d946fecdafb8a3452a19af2`에서 직접 시작한 deployment 후보 |
-| `portfolio/integration-runtime` | Phase 2C-1 runtime trace·log privacy, bounded retention, checkpoint TTL 검증 | `portfolio/integration-quality@8c5fe5cf66d1322dc85703dffb3aa722e9358c5a`에서 직접 시작한 runtime 후보 |
-| `portfolio/integration-quality` | Phase 2B-2 AI 품질 계약, tenant ownership, dependency·artifact 검증 | `portfolio/integration-security@35757ea60cc1e6d2647c527112d0e83be07d9f7b`에서 직접 시작한 품질 후보 |
-| `portfolio/integration-security` | Phase 2B-1 fail-closed auth, public/debug surface, CORS/readiness/rate-limit 경계 | `portfolio/integration-candidate@3ab3c4f8fe3b728bdf9aa7d7c69902bad23f91d0`에서 직접 시작한 보안 후보 |
-| `portfolio/integration-candidate` | Frontend, Express Backend, Supabase migrations, AI v1/v2, GCP 배포 설정 | `test/all@5714945eab8379a875d8c536414b13fb2db0f47e`에서 직접 시작한 통합 후보. 완성본 아님 |
-| `main` | Next.js 프런트엔드 프로토타입과 포트폴리오·설계 문서 | 기존 portfolio landing/default branch. 기준 tip `3acaf4a79c3cf2c690a116d35ab838e948e4f612` |
-| `test/all` | 가장 넓은 통합 staging snapshot | candidate의 direct ancestor이며 그대로 유지됨 |
+| `main` | Frontend, Express Backend, Supabase migrations, AI v1/v2, deployment와 hardening 결과를 포함한 recruiter-facing canonical integration snapshot | 기존 default tip `3acaf4a79c3cf2c690a116d35ab838e948e4f612`와 `test/all` 기반 통합 ancestry를 모두 보존 |
+| `test/all` | 역사적 broad integration staging snapshot | canonical branch는 아니며 historical ancestor로 유지 |
+| `portfolio/integration-candidate` | Frontend, Express Backend, Supabase migrations, AI v1/v2, GCP 배포 설정 | `test/all@5714945eab8379a875d8c536414b13fb2db0f47e`에서 시작한 Phase 2 중간 branch. 최종 `main`에 포함된 뒤 제거됨 |
+| `portfolio/integration-security` | Phase 2B-1 fail-closed auth, public/debug surface, CORS/readiness/rate-limit 경계 | `portfolio/integration-candidate@3ab3c4f8fe3b728bdf9aa7d7c69902bad23f91d0`에서 시작한 중간 branch. 최종 `main`에 포함된 뒤 제거됨 |
+| `portfolio/integration-quality` | Phase 2B-2 AI 품질 계약, tenant ownership, dependency·artifact 검증 | `portfolio/integration-security@35757ea60cc1e6d2647c527112d0e83be07d9f7b`에서 시작한 중간 branch. 최종 `main`에 포함된 뒤 제거됨 |
+| `portfolio/integration-runtime` | Phase 2C-1 runtime trace·log privacy, bounded retention, checkpoint TTL 검증 | `portfolio/integration-quality@8c5fe5cf66d1322dc85703dffb3aa722e9358c5a`에서 시작한 중간 branch. 최종 `main`에 포함된 뒤 제거됨 |
+| `portfolio/integration-deploy` | Phase 2C-2 non-root container, deployment trust/secret lifecycle, reproducible non-deploy CI | `portfolio/integration-runtime@bd3ed659b8336bf46d946fecdafb8a3452a19af2`에서 시작한 중간 branch. 최종 `main`에 포함된 뒤 제거됨 |
 | `develop` | 로그인·회원가입·`PlanContext`가 추가된 프런트엔드 | 별도 개발 이력 |
 | `ai-model`, `ai-model-langgraph2` | AI v1 및 LangGraph v2 개발 과정 | 레거시·구조 변경 이력 |
 
-Candidate는 `main`을 merge, rebase, squash 또는 cherry-pick하지 않았습니다. `test/all`의 통합 ancestry를 그대로 두고, `main` 문서의 사실관계만 현재 트리에 맞게 새 문서로 작성했습니다. 기존 브랜치는 원래 커밋과 작성자 provenance를 계속 보존합니다.
+최종 통합은 `portfolio/integration-deploy` tree를 유지한 ancestry-only merge로 기존 `main`을 포함했습니다. Squash, rebase, cherry-pick, force update 또는 history rewrite는 수행하지 않았으므로 기존 `main`과 `test/all` 기반 통합의 원래 commit·작성자 provenance가 모두 `main` ancestry에 남습니다.
 
-이 브랜치는 통합 범위를 명확히 검토하기 위한 후보입니다. default branch 변경, release 선언 또는 운영 준비 완료를 의미하지 않습니다.
+Phase 2 중간 `portfolio/integration-*` branch는 최종 `main`에 content와 ancestry가 포함된 뒤 제거했습니다. Canonical `main`은 recruiter-facing 기준 snapshot이지만 release, production-ready 또는 실제 운영 배포 완료 선언은 아닙니다.
 
 ## 2. 개인 역할과 팀 역할
 
@@ -42,7 +42,7 @@ Frontend·Backend·AI 전체 시스템 또는 전체 AI 구조를 단독 구현�
 
 ## 3. 논문과 현재 코드의 차이
 
-| 주제 | 논문에서 설명한 범위 | 현재 브랜치에서 확인되는 상태 |
+| 주제 | 논문에서 설명한 범위 | 현재 `main`에서 확인되는 상태 |
 | --- | --- | --- |
 | 배포 | Vercel Frontend와 Oracle Cloud 기반 서버 | 보존된 최신 통합 배포 설정은 Vercel과 GCP 2-VM 대상 |
 | AI 그래프 | 의도 분류, 도메인 전문가, 검색 라우터, 답변 평가를 포함한 멀티에이전트 | 빠른 경로는 `preprocess → fast_router → fast_target_resource → fast_profile_constraints → fast_generate → fast_validate → fast_finalize` |
@@ -91,11 +91,11 @@ Backend의 일부 legacy AI route는 upstream에서 `/process-meal`, `/recommend
 
 ## 6. Security history와 현재 주의점
 
-과거 일부 브랜치에는 Backend runtime `.env`, 배포 archive, 테스트용 hardcoded API key가 추적된 이력이 있었습니다. 기존 감사와 프로젝트 기록에 따르면 확인된 Supabase service-role credential, 데이터베이스 비밀번호, Backend–AI internal key, 외부 서비스 key는 교체·폐기됐고 current branch tip에서는 관련 runtime 파일과 credential-bearing archive를 제거했습니다.
+과거 일부 브랜치에는 Backend runtime `.env`, 배포 archive, 테스트용 hardcoded API key가 추적된 이력이 있었습니다. 기존 감사와 프로젝트 기록에 따르면 확인된 Supabase service-role credential, 데이터베이스 비밀번호, Backend–AI internal key, 외부 서비스 key는 교체·폐기됐고 현재 `main` tip에서는 관련 runtime 파일과 credential-bearing archive를 제거했습니다.
 
-폐기된 credential이 포함된 과거 commit과 blob은 Fork와 upstream history에 남아 있습니다. Fork만 rewrite하면 upstream의 같은 공개 history는 유지되는 반면 다수 descendant SHA와 기존 clone이 바뀝니다. 이 비용과 제한된 효과 때문에 이 candidate에서도 history rewrite를 수행하지 않았습니다. 전체 팀과 upstream 관리자가 함께 결정할 때만 별도 최신 감사와 협업 절차로 다시 검토해야 합니다.
+폐기된 credential이 포함된 과거 commit과 blob은 Fork와 upstream history에 남아 있습니다. Fork만 rewrite하면 upstream의 같은 공개 history는 유지되는 반면 다수 descendant SHA와 기존 clone이 바뀝니다. 이 비용과 제한된 효과 때문에 이번 정리에서도 history rewrite를 수행하지 않았습니다. 전체 팀과 upstream 관리자가 함께 결정할 때만 별도 최신 감사와 협업 절차로 다시 검토해야 합니다.
 
-Phase 2A는 application behavior를 수정하지 않은 역사적 hygiene 단계였습니다. Phase 2B-1 candidate에는 다음과 같은 보안 경계를 적용하는 범위가 명시돼 있습니다.
+Phase 2A는 application behavior를 수정하지 않은 역사적 hygiene 단계였습니다. Phase 2B-1에서는 다음과 같은 보안 경계를 적용했습니다.
 
 - Backend startup은 `JWT_SECRET`과 `INTERNAL_API_KEY`의 blank/example/placeholder 값을 모든 환경에서 거부하며, production에서는 각각 최소 32자를 요구합니다. Development/test에서는 짧은 명시적 non-placeholder 값을 사용할 수 있습니다. JWT signing과 verification은 중앙 `JWT_SECRET`을 사용하고 HS256으로 제한합니다.
 - Browser 인증은 `Authorization: Bearer <JWT>`이고, Backend와 AI Server는 같은 `INTERNAL_API_KEY`를 사용합니다. Backend에서 AI로 나가는 호출에는 `x-api-key`가 항상 포함됩니다. Internal auth는 key 누락·불일치를 허용하지 않습니다.
@@ -119,7 +119,7 @@ Phase 2C-1은 이 경계를 다음처럼 좁혔습니다.
 
 Checkpoint schema 감사 결과 persisted channel에서 `user_id`가 제거되고 `session_activity`에도 owner가 없어 legacy raw-key row의 tenant owner를 신뢰성 있게 판정할 수 없습니다. 따라서 raw-key fallback·automatic rekey는 금지하고 세션 연속성보다 tenant isolation을 우선합니다. Upgrade 시 activity가 없던 checkpoint/write thread에는 현재 시각을 넣어 기본 `CHECKPOINT_TTL_HOURS=72` 안에 만료시키며, 필요하면 AI Server를 중지한 뒤 backup에서 확인한 정확한 legacy `thread_id`만 `writes` → `checkpoints` → `session_activity` 순으로 transaction purge합니다. 값을 추정하거나 hash key로 복사하지 않습니다. Cleanup은 startup 직후와 이후 매시간 실행되고 `BEGIN IMMEDIATE`와 120초 live lock 제외 조건을 사용합니다. Pending durable `was_outbox`는 checkpoint cleanup과 분리해 보존합니다. Credential 없는 SQLite regression에서 73시간 row 삭제, 71시간 row 보존, live lock 해제 전후, activity 없는 legacy row의 새 만료 시계, pending outbox 보존과 1,001개 초과 expired activity의 batched deletion을 실제 확인했습니다.
 
-다음 항목은 여전히 promotion 전 별도 검토가 필요한 deferred blocker입니다.
+다음 항목은 운영 전 별도 정책·검토가 필요한 deferred blocker입니다.
 
 - 운영 중앙 로그 수집기와 관리 통계의 별도 보존·삭제 정책
 - Supabase chat/profile/plan 제품 데이터 lifecycle 정책
@@ -140,15 +140,15 @@ Phase 2B-2 Backend production audit는 중간 5·높음 4(총 9)에서 시작했
 
 AI direct requirements와 실제 import, Docker의 `pip install -r requirements.txt` 경로를 감사했지만 사용 가능한 Python 3.11 runtime이 없었습니다. 제공된 Python 3.12.13에서만 credential-free 검증했으므로 이를 3.11 결과로 간주하지 않습니다. 3.12 `pip freeze`를 잘못된 기준으로 고정하지 않았고 `requirements.lock.txt`/constraints도 생성하지 않았습니다. 따라서 AI 의존성 집합은 설치 시점·환경에 따라 달라질 수 있으며 Python 3.11 clean resolve·install 검증 뒤에만 lock artifact를 추가해야 합니다.
 
-Phase 2C-2는 GitHub Actions의 clean Python 3.11 environment에서 `requirements.txt` install, `pip check`, import·구문과 credential-free regression을 실행합니다. Docker build도 같은 Python 3.11 base에서 current resolution을 설치합니다. 다만 한 시점의 성공한 lower-bound resolve는 lock artifact가 아니며, source requirements와 별도 lock의 갱신 규칙·cross-platform 범위·Docker/CI 재설치 identity를 이번 단계에서 확정하지 않았습니다. 따라서 platform-specific `pip freeze`나 constraints를 추가하지 않았습니다.
+현재 Integration CI는 GitHub Actions의 clean Python 3.11 environment에서 `requirements.txt` install, `pip check`, import·구문과 credential-free regression을 실행합니다. Docker build도 같은 Python 3.11 base에서 current resolution을 설치합니다. 다만 한 시점의 성공한 lower-bound resolve는 lock artifact가 아니며, source requirements와 별도 lock의 갱신 규칙·cross-platform 범위·Docker/CI 재설치 identity를 확정하지 않았습니다. 따라서 platform-specific `pip freeze`나 constraints를 추가하지 않았습니다.
 
 ## 8. Deployment differences
 
-논문은 Oracle Cloud를 기준으로 기술됐지만 이 브랜치에는 [`develop/deploy/gcp-two-vm`](../develop/deploy/gcp-two-vm)의 GCP 2-VM 설정이 있습니다. Backend와 AI Compose는 분리되어 있고 각 container 내부의 `localhost`는 다른 VM/container를 가리키지 않으므로 환경별 주소 설정이 필요합니다.
+논문은 Oracle Cloud를 기준으로 기술됐지만 현재 `main`에는 [`develop/deploy/gcp-two-vm`](../develop/deploy/gcp-two-vm)의 GCP 2-VM 설정이 있습니다. Backend와 AI Compose는 분리되어 있고 각 container 내부의 `localhost`는 다른 VM/container를 가리키지 않으므로 환경별 주소 설정이 필요합니다.
 
 Phase 2C-2에서 application runtime은 Backend UID 1000과 AI UID 10001의 non-root user로 바뀌고, writable state는 release 밖 `/var/lib/healthmate`에 분리됐습니다. Deploy workflow는 `workflow_dispatch` only이며 사전 검증한 `GCP_SSH_KNOWN_HOSTS`, `StrictHostKeyChecking=yes`, configurable `GCP_SSH_USER`, mode 600 secret material과 양쪽 cleanup을 요구합니다. AI는 `AI_BIND_ADDRESS` private-interface bind와 GCP firewall boundary를 함께 요구합니다.
 
-이 설정과 CI의 Docker/Compose/Caddy 검증은 현재 공개 URL의 가동 상태나 실제 GCP deployment 성공을 입증하지 않습니다. Phase 2C-2에서는 VM, firewall, DNS, certificate, Supabase, 외부 provider 또는 production endpoint를 변경·호출하지 않았습니다.
+이 설정과 CI의 Docker/Compose/Caddy 검증은 현재 공개 URL의 가동 상태나 실제 GCP deployment 성공을 입증하지 않습니다. Canonical snapshot 검증에서는 VM, firewall, DNS, certificate, Supabase, 외부 provider 또는 production endpoint를 변경·호출하지 않았습니다.
 
 ## 9. Repository artifact 분류
 
@@ -223,6 +223,6 @@ Frontend home recommendation browser smoke는 설치된 Playwright browser execu
 
 ## 11. License와 재사용
 
-이 저장소에는 `LICENSE` 파일이 없습니다. 팀 프로젝트·Fork provenance와 권리 상태를 임의로 바꾸지 않기 위해 candidate에서 새 license를 추가하지 않았습니다. 명시적 허가 없이 재사용·배포 조건을 추정하면 안 됩니다.
+이 저장소에는 `LICENSE` 파일이 없습니다. 팀 프로젝트·Fork provenance와 권리 상태를 임의로 바꾸지 않기 위해 현재 `main`에 새 license를 추가하지 않았습니다. 명시적 허가 없이 재사용·배포 조건을 추정하면 안 됩니다.
 
 로컬 준비 절차는 [LOCAL_SETUP.md](LOCAL_SETUP.md)를 참고하세요.

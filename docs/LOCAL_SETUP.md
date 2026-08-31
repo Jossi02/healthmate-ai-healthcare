@@ -1,17 +1,17 @@
 # HealthMate 로컬 실행 가이드
 
-이 문서는 `portfolio/integration-deploy` 브랜치에 함께 보존된 Frontend, Backend / WAS, AI Server를 로컬에서 준비하는 방법을 설명합니다. 저장소 루트에는 세 서비스를 한 번에 실행하는 script나 통합 Compose가 없습니다.
+이 문서는 현재 `main`에 함께 보존된 Frontend, Backend / WAS, AI Server를 로컬에서 준비하는 방법을 설명합니다. 저장소 루트에는 세 서비스를 한 번에 실행하는 script나 통합 Compose가 없습니다.
 
-## 1. Deployment candidate 직접 복제
+## 1. 저장소 복제
 
-다음 명령은 복제 후 별도 branch switch 없이 candidate를 checkout합니다.
+기본 브랜치인 `main`을 복제합니다.
 
 ```bash
-git clone --branch portfolio/integration-deploy --single-branch https://github.com/Jossi02/healthmate-ai-healthcare.git
+git clone https://github.com/Jossi02/healthmate-ai-healthcare.git
 cd healthmate-ai-healthcare
 ```
 
-현재 브랜치에는 다음 경로가 있어야 합니다.
+현재 `main`에는 다음 경로가 있어야 합니다.
 
 - `develop/frontend-ui`
 - `develop/backend-api`
@@ -44,7 +44,7 @@ AI v2는 version lower bound 중심의 `requirements.txt`를 사용하고 Python
 
 - [`develop/backend-api/supabase/migrations`](../develop/backend-api/supabase/migrations)
 
-Supabase `.temp`는 CLI local state이며 source가 아닙니다. Candidate에서 제거·ignore됐습니다.
+Supabase `.temp`는 CLI local state이며 source가 아닙니다. 현재 snapshot에서는 source에서 제거되고 ignore됩니다.
 
 저장소에는 모든 Supabase 환경에 공통으로 적용할 수 있는 확정된 root initialization command가 없습니다. Migration 적용 방식은 사용하는 Supabase project와 CLI/workflow에 맞춰 결정해야 합니다. Schema가 준비되지 않으면 Backend readiness와 데이터 기능이 실패할 수 있습니다.
 
@@ -149,7 +149,7 @@ AI 보안 경계 검사:
 python scripts/test_security_boundaries.py
 ```
 
-외부 credential 없이 실행 가능한 Phase 2C-2 AI 회귀 검사:
+외부 credential 없이 실행 가능한 AI 회귀 검사:
 
 ```bash
 python scripts/test_pinecone_metadata_lint.py
@@ -230,11 +230,11 @@ Container 내부의 `localhost`는 다른 container나 VM을 가리키지 않습
 
 ## 11. 검증 범위와 알려진 blocker
 
-Phase 2C-2 `Integration CI`는 Frontend install/lint/build/display/Playwright, Backend contracts/security/tenant/logging/syntax/audit, AI clean Python 3.11 install과 offline 회귀군, 두 Docker image build/non-root/local health, Compose config와 Caddy validation을 네 job으로 실행합니다. 상세 범위는 [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)에 기록합니다.
+현재 `Integration CI`는 Frontend install/lint/build/display/Playwright, Backend contracts/security/tenant/logging/syntax/audit, AI clean Python 3.11 install과 offline 회귀군, 두 Docker image build/non-root/local health, Compose config와 Caddy validation을 네 job으로 실행합니다. 상세 범위는 [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)에 기록합니다.
 
 Python 3.11 clean install은 CI에서 실제 실행하지만 lock/constraints는 생성하지 않았습니다. Browser smoke는 explicit Playwright devDependency와 CI-installed Chromium을 사용하며 API route를 mock합니다. 실제 Supabase mutation, Gemini·Pinecone·LangSmith 요청, production endpoint, GCP deployment는 실행하지 않습니다.
 
-Phase 2B-2부터 AI chat 내부 checkpoint key가 tenant-scoped hash로 바뀌었습니다. 이전 raw `session_id` row에는 신뢰 가능한 owner가 없어 fallback·automatic rekey하지 않습니다. Phase 2C-1 startup은 activity row가 없던 기존 checkpoint/write에 현재 시각을 한 번 기록하므로 기본 72시간 TTL 뒤 삭제됩니다. Cleanup은 startup 직후와 이후 매시간 실행되며 live session lock을 제외하고, durable pending `was_outbox`는 삭제하지 않습니다.
+현재 AI chat 내부 checkpoint key는 tenant-scoped hash입니다. 이전 raw `session_id` row에는 신뢰 가능한 owner가 없어 fallback·automatic rekey하지 않습니다. Checkpoint startup은 activity row가 없던 기존 checkpoint/write에 현재 시각을 한 번 기록하므로 기본 72시간 TTL 뒤 삭제됩니다. Cleanup은 startup 직후와 이후 매시간 실행되며 live session lock을 제외하고, durable pending `was_outbox`는 삭제하지 않습니다.
 
 즉시 purge가 필요하면 AI Server를 중지하고 SQLite 파일을 backup한 뒤, 확인된 정확한 legacy raw thread ID마다 다음 maintenance transaction을 실행합니다. Owner를 추정하거나 새 hash key로 복사하지 말고 `was_outbox`와 Supabase 제품 table은 이 절차에서 수정하지 않습니다.
 

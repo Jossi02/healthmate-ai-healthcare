@@ -147,4 +147,4 @@ This CI never logs in to a registry and never deploys.
 
 ## Current status
 
-No GCP VM, firewall, DNS, domain, Supabase, Gemini, Pinecone, LangSmith, or production endpoint was changed or contacted during Phase 2C-2. A real deployment and the post-deployment smoke remain explicit operator actions after final branch promotion.
+No GCP VM, firewall, DNS, domain, Supabase, Gemini, Pinecone, LangSmith, or production endpoint was changed or contacted while validating this canonical snapshot. A real deployment and the post-deployment smoke remain explicit operator actions.

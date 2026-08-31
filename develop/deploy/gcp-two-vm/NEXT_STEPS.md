@@ -1,10 +1,10 @@
 # Remaining deployment steps
 
-Phase 2C-2 hardens source configuration and CI only. It does not perform a GCP deployment.
+The repository contains hardened source configuration and non-deploy CI. Canonicalization did not perform a GCP deployment.
 
-## 1. Confirm the promoted revision
+## 1. Confirm the canonical revision
 
-Complete the final read-only audit and decide the canonical promotion strategy before deploying. Do not use an intermediate portfolio branch as an automatic production trigger.
+Deploy only an explicitly reviewed commit from canonical `main`. Do not use a historical or intermediate branch as an automatic production trigger.
 
 ## 2. Prepare the network outside the repository
 

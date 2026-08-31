@@ -4,7 +4,7 @@
 
 HealthMate는 건강 정보와 성향을 함께 고려해 운동·식단 코칭을 개인화하는 방법을 탐구한 **2026년 대학 심화캡스톤 팀 프로젝트**입니다.
 
-이 저장소의 `portfolio/integration-deploy` 브랜치는 `portfolio/integration-runtime@bd3ed659b8336bf46d946fecdafb8a3452a19af2`에서 직접 시작해 Phase 2C-2 container·deployment·CI 경계를 적용한 후보입니다. Frontend, Express Backend, Supabase migrations, FastAPI/LangGraph AI v2, deployment configuration이 함께 보존돼 있지만 실제 운영 배포본을 뜻하지 않습니다.
+이 저장소의 `main` 브랜치는 Frontend, Express Backend, Supabase migrations, FastAPI/LangGraph AI v2, deployment configuration을 함께 보존한 통합 코드 스냅샷입니다. 현재 코드와 CI로 검증한 범위는 아래에 구분해 기록하며, 실제 GCP 운영 배포를 재수행한 상태를 의미하지는 않습니다.
 
 ## 프로젝트 핵심 정보
 
@@ -15,7 +15,7 @@ HealthMate는 건강 정보와 성향을 함께 고려해 운동·식단 코칭�
 - Gemini 연동, 프롬프트 공동 설계, 평가 시나리오·테스트 방향·결과 분석
 - Pinecone/RAG 초기 구현 후 팀원에게 인계
 
-> 연구 배경과 논문 평가 결과는 최종 논문을, 현재 구현 범위와 실행 방법은 이 브랜치의 실제 코드와 설정을 기준으로 설명합니다. 논문에서 다룬 시스템과 이 코드 스냅샷은 완전히 동일한 배포본이 아닙니다.
+> 연구 배경과 논문 평가 결과는 최종 논문을, 현재 구현 범위와 실행 방법은 `main`의 실제 코드와 설정을 기준으로 설명합니다. 논문에서 다룬 시스템과 이 코드 스냅샷은 완전히 동일한 배포본이 아닙니다.
 
 ## 프로젝트 목적
 
@@ -46,7 +46,7 @@ flowchart LR
 
 현재 빠른 채팅 그래프는 프로필 제약과 결과 검증을 중심으로 동작합니다. 논문에 포함된 Pinecone 장기 기억 관련 코드와 평가 자산은 남아 있지만 RAG는 기본 비활성이고 현재 fast graph의 기본 경로와 동일하지 않습니다.
 
-## 현재 브랜치의 코드 범위
+## 현재 코드 범위
 
 | 영역 | 위치 | 확인되는 범위 |
 | --- | --- | --- |
@@ -59,29 +59,29 @@ flowchart LR
 
 저장소 루트에는 세 서비스를 한 번에 시작하는 명령이나 통합 Compose가 없습니다. 서비스별 준비와 실행은 [로컬 실행 가이드](docs/LOCAL_SETUP.md)를 따르세요.
 
-### Phase 2B-1 보안 경계 (현재 코드 범위)
+### 보안 경계
 
 - Backend는 `JWT_SECRET`과 `INTERNAL_API_KEY`가 비어 있지 않고 example/placeholder 값이 아닌 경우에만 시작합니다. Production에서는 각 값이 최소 32자여야 합니다.
 - JWT는 중앙 `JWT_SECRET`로 HS256 서명·검증하고 browser 요청은 `Authorization: Bearer <JWT>`를 사용합니다. Backend와 AI Server는 같은 `INTERNAL_API_KEY`를 `x-api-key`로 공유하며 Backend→AI 호출에도 항상 전달합니다.
 - CORS는 정확한 쉼표 구분 origin allowlist를 사용하고 credentials는 허용하지 않습니다. Development/local에서 allowlist를 생략하면 localhost 기본값을 사용하며 production에서는 명시값이 필요합니다.
 - AI debug/observability route는 기본 비활성이고 development/local에서만 명시적으로 켤 수 있습니다. 현재 `/api/v1/ai` legacy 경로는 v2 계약과 현재 callsite가 없어 정적 410, role source가 없는 `/api/v1/admin`은 정적 404를 반환합니다. Readiness는 coarse/redacted 상태만 반환하며 rate limit은 signup/login에만 적용됩니다.
 
-이는 Phase 2B-1의 구현 경계를 설명하는 것이며 운영 배포 완료나 최종 통합 검증을 선언하는 내용은 아닙니다.
+이 보안 경계는 운영 배포 완료나 운영 환경 검증을 선언하는 내용은 아닙니다.
 
-### Phase 2B-2 품질·tenant 경계 (현재 코드 범위)
+### 품질·Tenant 경계
 
 - 기존 AI 실패 3건은 현재 fast graph와 계약을 기준으로 다시 판정했습니다. 삭제된 route import, 과거 응답 문자열 기대, 고정 과거 날짜 fixture는 test drift였고, 그 과정에서 발견한 malformed mixed proposal 재사용 결함은 shared state guard에서 수정했습니다.
 - 공개 `session_id`는 API 계약에 그대로 두되 AI checkpoint·lock key는 `user_id + session_id`의 opaque hash로 분리합니다. Backend feedback은 인증 사용자가 소유한 저장 message만 사용하므로 다른 사용자의 session/message 내용으로 피드백을 조작할 수 없습니다.
 - Frontend에는 Supabase client가 없고 사용자 요청은 service-role Backend를 통과합니다. 따라서 현재 tenant 경계는 Backend의 JWT·ownership filter이며, 이 구조에서 RLS 부재 자체를 구현 결함으로 보지는 않습니다.
-- Backend production dependency audit 9건은 현재 major 범위의 lockfile 갱신으로 0건이 됐습니다. AI Dockerfile 대상인 Python 3.11은 로컬에 없어 3.11 설치·lock 검증은 수행하지 않았습니다.
+- Backend production dependency audit 9건은 현재 major 범위의 lockfile 갱신으로 0건이 됐습니다. AI는 Integration CI의 clean Python 3.11 environment에서 install·`pip check`·offline regression을 검증하지만 Python lock/constraints는 아직 없습니다.
 
-### Phase 2C-1 runtime privacy·retention 경계 (현재 코드 범위)
+### Runtime Privacy & Retention
 
 - AI TraceStore는 production/default에서 raw user/session identifier, message, request·response body, health profile, plan snapshot과 상세 event/log를 저장하지 않고 상태·시간·지연·count 중심 summary만 보존합니다. `TRACE_RETENTION_MINUTES` 기본값은 60분입니다. Development/local에서도 `ENABLE_DEBUG_ROUTES=true`를 명시해야 상세 trace가 활성화되며, nested object/list와 문자열 credential은 고정 `[REDACTED]` 값으로 치환됩니다.
 - Backend Winston 파일은 `error.log`와 `combined.log` 각각 5 MiB × 5개로 제한됩니다. Morgan은 method, query 없는 path, status, response time만 기록하고 Authorization/Cookie header는 기록하지 않습니다. Chat/home gateway와 공통 error handler는 raw upstream payload·stack·내부 message를 client에 반환하지 않습니다.
 - 기존 raw-key checkpoint는 저장 state에서 owner를 신뢰성 있게 증명할 수 없어 자동 fallback/rekey하지 않습니다. Upgrade 시 activity가 없던 row에는 새 72시간 만료 시계를 부여하고, cleanup은 live session lock을 건드리지 않으며 durable WAS outbox를 삭제하지 않습니다. Supabase 제품 데이터에는 retention migration을 추가하지 않았습니다.
 
-### Phase 2C-2 container·deployment·CI 경계 (현재 코드 범위)
+### Container · Deployment · CI
 
 - Backend는 official Node `node` user(UID 1000), AI는 dedicated `app` user(UID 10001)로 실행합니다. 두 application container는 read-only root filesystem, `no-new-privileges`, 전체 capability drop을 사용하며 Backend log와 AI checkpoint만 release 밖 `/var/lib/healthmate` 경로에 씁니다.
 - GCP deployment workflow는 manual-only입니다. 같은 run에서 발견한 SSH key를 신뢰하지 않고 사전 검증한 `GCP_SSH_KNOWN_HOSTS`를 요구하며, 개인 username은 `GCP_SSH_USER` variable로 분리했습니다. Secret-bearing env/key/archive와 remote stage는 제한된 mode와 success/failure cleanup을 사용합니다.
@@ -129,7 +129,7 @@ FastAPI 구현 과정에서는 생성형 AI를 보조 도구로 사용했습니�
 
 ## 검증 상태
 
-Phase 2C-2의 non-deploy Integration CI와 동일한 명령 집합은 다음 범위를 검증합니다.
+현재 non-deploy Integration CI의 명령 집합은 다음 범위를 검증합니다.
 
 - Frontend: clean `npm ci`, lint 오류 0·기존 경고 2, production build, display contract 7/7, explicit Playwright Chromium home-recommendation smoke
 - Backend: clean `npm ci`, contracts 21/21, security 33/33, tenant 8/8, logging privacy, JavaScript 구문 38/38, production audit 0건
@@ -141,7 +141,7 @@ Backend 8개와 AI 동일 공개 session A/B 격리 1개를 합친 tenant 회귀
 
 ## 논문 평가 결과
 
-다음은 현재 브랜치의 회귀 테스트 결과가 아니라 **최종 논문에 보고된 제한된 사전 시나리오 기반 예비 평가**입니다.
+다음은 현재 코드의 회귀 테스트 결과가 아니라 **최종 논문에 보고된 제한된 사전 시나리오 기반 예비 평가**입니다.
 
 | 평가 항목 | 평가 범위 | 논문 보고 결과 |
 | --- | ---: | ---: |
@@ -165,7 +165,7 @@ Backend 8개와 AI 동일 공개 session A/B 격리 1개를 합친 tenant 회귀
 
 ## 현재 한계
 
-- 이 브랜치는 deployment integration candidate이며 운영 준비 완료를 의미하지 않습니다.
+- 현재 통합 snapshot은 실제 운영 배포 완료나 production-ready 선언을 의미하지 않습니다.
 - 논문 시점의 시스템과 현재 코드 스냅샷은 배포 환경, AI 그래프, 기억 경로 등에서 차이가 있습니다.
 - AI v2 의존성은 하한 버전 중심이고 Python 3.11에서 검증한 lockfile이 없어 설치 시점별 차이가 생길 수 있습니다.
 - Tenant-scoped checkpoint key로 전환하기 전에 생성된 raw `session_id` checkpoint는 보안상 fallback·자동 migration하지 않으며 72시간 activity TTL 또는 명시적 offline purge로 제거합니다. 그 세션의 자동 연속성은 제공하지 않습니다.

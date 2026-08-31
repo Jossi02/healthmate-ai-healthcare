@@ -31,13 +31,13 @@ AI also calls the backend through internal routes when it needs profile and plan
 Current repository contract:
 
 - deployment workflow: manual `workflow_dispatch` only
-- automatic deployment from `test/all` or portfolio branches: disabled
+- automatic deployment from `main`, `test/all`, or portfolio branches: disabled
 - SSH trust: reviewed `GCP_SSH_KNOWN_HOSTS` plus `StrictHostKeyChecking=yes`
 - SSH username: repository variable `GCP_SSH_USER`
 - Backend public ingress: 80/443 only; 8080 stays private to Compose
 - AI ingress: `AI_BIND_ADDRESS` private interface plus GCP firewall limited to the Backend/private network
 
-Historical public addresses and a past successful deployment are not evidence for the current candidate. Phase 2C-2 did not contact or mutate GCP, DNS, Supabase, external AI providers, or any production endpoint.
+Historical public addresses and a past successful deployment are not evidence for the current canonical tree. Canonicalization did not contact or mutate GCP, DNS, Supabase, external AI providers, or any production endpoint.
 
 ## 4. Source Of Truth Rules
 
