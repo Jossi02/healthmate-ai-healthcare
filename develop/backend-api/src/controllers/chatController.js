@@ -180,11 +180,8 @@ exports.submitFeedback = async (req, res) => {
     const userId = req.user.user_id;
     const clientMessageId = normalizeText(req.body.client_message_id);
     const sessionId = normalizeText(req.body.session_id) || buildDailySessionId(userId);
-    const userMessage = normalizeText(req.body.user_message);
-    const assistantMessage = normalizeText(req.body.assistant_message);
     const rating = normalizeText(req.body.rating);
     const comment = normalizeText(req.body.comment) || null;
-    const intent = normalizeText(req.body.intent) || null;
     const reasonCodes = Array.isArray(req.body.reason_codes)
       ? req.body.reason_codes
         .map((item) => normalizeText(item))
@@ -193,14 +190,6 @@ exports.submitFeedback = async (req, res) => {
 
     if (!clientMessageId) {
       return res.status(400).json({ error: 'client_message_id is required.' });
-    }
-
-    if (!userMessage) {
-      return res.status(400).json({ error: 'user_message is required.' });
-    }
-
-    if (!assistantMessage) {
-      return res.status(400).json({ error: 'assistant_message is required.' });
     }
 
     if (!FEEDBACK_RATINGS.has(rating)) {
@@ -216,16 +205,28 @@ exports.submitFeedback = async (req, res) => {
       return res.status(400).json({ error: 'A downvote requires a reason or comment.' });
     }
 
+    const messages = await loadChatMessages(supabase, userId, sessionId);
+    const assistantIndex = messages.findIndex(
+      (message) => message.role === 'assistant'
+        && (message.client_message_id === clientMessageId || normalizeText(message.id) === clientMessageId)
+    );
+    const assistantMessage = messages[assistantIndex];
+    const userMessage = assistantIndex > 0 ? messages[assistantIndex - 1] : null;
+
+    if (!assistantMessage || userMessage?.role !== 'user') {
+      return res.status(404).json({ error: 'Chat message not found.' });
+    }
+
     const payload = {
       user_id: userId,
       client_message_id: clientMessageId,
       session_id: sessionId,
-      user_message: userMessage,
-      assistant_message: assistantMessage,
+      user_message: normalizeText(userMessage.content),
+      assistant_message: normalizeText(assistantMessage.content),
       rating,
       reason_codes: reasonCodes,
       comment,
-      intent,
+      intent: normalizeText(assistantMessage.intent) || null,
       updated_at: new Date().toISOString(),
     };
 
