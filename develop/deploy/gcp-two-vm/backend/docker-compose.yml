@@ -9,8 +9,15 @@ services:
     restart: unless-stopped
     expose:
       - "8080"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     volumes:
-      - ../../../backend-api/logs:/usr/src/app/logs
+      - /var/lib/healthmate/backend/logs:/usr/src/app/logs
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/health"]
       interval: 30s
@@ -21,8 +28,8 @@ services:
   caddy:
     image: caddy:2-alpine
     container_name: capstone-backend-proxy
-    env_file:
-      - ./.env.backend
+    environment:
+      BACKEND_DOMAIN: ${BACKEND_DOMAIN:?BACKEND_DOMAIN is required}
     restart: unless-stopped
     depends_on:
       backend:

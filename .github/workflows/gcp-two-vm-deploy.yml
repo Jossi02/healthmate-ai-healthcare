@@ -2,21 +2,13 @@ name: Deploy GCP Two VM
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - test/all
-    paths:
-      - "develop/backend-api/**"
-      - "develop/ai-model/v2/**"
-      - "develop/deploy/gcp-two-vm/**"
-      - ".github/workflows/gcp-two-vm-deploy.yml"
 
 permissions:
   contents: read
 
 concurrency:
   group: gcp-two-vm-deploy
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -30,19 +22,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Write deployment env files
+      - name: Build protected deployment archive
         shell: bash
+        env:
+          GCP_BACKEND_ENV: ${{ secrets.GCP_BACKEND_ENV }}
+          GCP_AI_ENV: ${{ secrets.GCP_AI_ENV }}
         run: |
-          if [ "${{ matrix.service }}" = "backend" ]; then
-            printf '%s\n' "${{ secrets.GCP_BACKEND_ENV }}" > develop/deploy/gcp-two-vm/backend/.env.backend
-          else
-            printf '%s\n' "${{ secrets.GCP_AI_ENV }}" > develop/deploy/gcp-two-vm/ai/.env.ai
-          fi
+          set -euo pipefail
+          umask 077
 
-      - name: Build deploy archive
-        shell: bash
-        run: |
           if [ "${{ matrix.service }}" = "backend" ]; then
+            : "${GCP_BACKEND_ENV:?GCP_BACKEND_ENV is required}"
+            printf '%s\n' "${GCP_BACKEND_ENV}" > develop/deploy/gcp-two-vm/backend/.env.backend
+            chmod 600 develop/deploy/gcp-two-vm/backend/.env.backend
             tar \
               --exclude='.git' \
               --exclude='develop/backend-api/node_modules' \
@@ -55,6 +47,9 @@ jobs:
               develop/deploy/gcp-two-vm/README.md \
               develop/deploy/gcp-two-vm/NEXT_STEPS.md
           else
+            : "${GCP_AI_ENV:?GCP_AI_ENV is required}"
+            printf '%s\n' "${GCP_AI_ENV}" > develop/deploy/gcp-two-vm/ai/.env.ai
+            chmod 600 develop/deploy/gcp-two-vm/ai/.env.ai
             tar \
               --exclude='.git' \
               --exclude='develop/ai-model/v2/__pycache__' \
@@ -74,45 +69,96 @@ jobs:
               develop/deploy/gcp-two-vm/NEXT_STEPS.md
           fi
 
-      - name: Configure SSH
+          chmod 600 .deploy-package.tar.gz
+
+      - name: Configure trusted SSH material
         shell: bash
+        env:
+          GCP_SSH_PRIVATE_KEY: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
+          GCP_SSH_KNOWN_HOSTS: ${{ secrets.GCP_SSH_KNOWN_HOSTS }}
         run: |
+          set -euo pipefail
+          umask 077
+          : "${GCP_SSH_PRIVATE_KEY:?GCP_SSH_PRIVATE_KEY is required}"
+          : "${GCP_SSH_KNOWN_HOSTS:?GCP_SSH_KNOWN_HOSTS is required}"
+
           install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.GCP_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "${{ secrets.GCP_BACKEND_HOST }}" >> ~/.ssh/known_hosts
-          ssh-keyscan -H "${{ secrets.GCP_AI_HOST }}" >> ~/.ssh/known_hosts
-
-      - name: Select target host
-        shell: bash
-        run: |
-          if [ "${{ matrix.service }}" = "backend" ]; then
-            echo "DEPLOY_HOST=${{ secrets.GCP_BACKEND_HOST }}" >> "$GITHUB_ENV"
-          else
-            echo "DEPLOY_HOST=${{ secrets.GCP_AI_HOST }}" >> "$GITHUB_ENV"
-          fi
-
-      - name: Upload archive
-        shell: bash
-        run: |
-          scp .deploy-package.tar.gz "kimseoungho0219@${DEPLOY_HOST}:/tmp/healthmate-deploy.tar.gz"
+          printf '%s\n' "${GCP_SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${GCP_SSH_KNOWN_HOSTS}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
 
       - name: Normalize deploy script
         shell: bash
         run: |
+          set -euo pipefail
+          umask 077
           python3 - <<'PY'
           from pathlib import Path
 
           src = Path("develop/deploy/gcp-two-vm/scripts/bootstrap_and_deploy.sh")
           dst = Path(".bootstrap_and_deploy.clean.sh")
-
           content = src.read_text(encoding="utf-8-sig")
-          content = content.replace("\r\n", "\n").replace("\r", "\n")
-          dst.write_text(content, encoding="utf-8", newline="\n")
+          dst.write_text(content.replace("\r\n", "\n").replace("\r", "\n"), encoding="utf-8", newline="\n")
           PY
-          chmod +x .bootstrap_and_deploy.clean.sh
+          chmod 700 .bootstrap_and_deploy.clean.sh
 
-      - name: Bootstrap and deploy
+      - name: Upload and deploy
+        shell: bash
+        env:
+          DEPLOY_SERVICE: ${{ matrix.service }}
+          GCP_BACKEND_HOST: ${{ secrets.GCP_BACKEND_HOST }}
+          GCP_AI_HOST: ${{ secrets.GCP_AI_HOST }}
+          GCP_SSH_USER: ${{ vars.GCP_SSH_USER }}
+        run: |
+          set -euo pipefail
+          : "${GCP_SSH_USER:?Repository variable GCP_SSH_USER is required}"
+
+          case "${DEPLOY_SERVICE}" in
+            backend) DEPLOY_HOST="${GCP_BACKEND_HOST}" ;;
+            ai) DEPLOY_HOST="${GCP_AI_HOST}" ;;
+            *) echo "Unknown deploy service" >&2; exit 2 ;;
+          esac
+          : "${DEPLOY_HOST:?Deployment host is required}"
+
+          if [[ ! "${GCP_SSH_USER}" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]; then
+            echo "GCP_SSH_USER has an unsupported format" >&2
+            exit 2
+          fi
+          if [[ ! "${DEPLOY_HOST}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+            echo "Deployment host has an unsupported format" >&2
+            exit 2
+          fi
+
+          DEPLOY_TARGET="${GCP_SSH_USER}@${DEPLOY_HOST}"
+          SSH_OPTIONS=(
+            -i "${HOME}/.ssh/id_ed25519"
+            -o BatchMode=yes
+            -o ConnectTimeout=15
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="${HOME}/.ssh/known_hosts"
+          )
+
+          cleanup_remote() {
+            set +e
+            ssh "${SSH_OPTIONS[@]}" "${DEPLOY_TARGET}" \
+              'rm -f -- /tmp/healthmate-deploy.tar.gz' >/dev/null 2>&1
+          }
+          trap cleanup_remote EXIT
+
+          scp -p "${SSH_OPTIONS[@]}" .deploy-package.tar.gz \
+            "${DEPLOY_TARGET}:/tmp/healthmate-deploy.tar.gz"
+          ssh "${SSH_OPTIONS[@]}" "${DEPLOY_TARGET}" \
+            "chmod 600 /tmp/healthmate-deploy.tar.gz && bash -s -- '${DEPLOY_SERVICE}' /tmp/healthmate-deploy.tar.gz" \
+            < .bootstrap_and_deploy.clean.sh
+
+      - name: Remove runner deployment material
+        if: always()
         shell: bash
         run: |
-          ssh "kimseoungho0219@${DEPLOY_HOST}" "bash -s -- ${{ matrix.service }} /tmp/healthmate-deploy.tar.gz" < .bootstrap_and_deploy.clean.sh
+          rm -f \
+            .deploy-package.tar.gz \
+            .bootstrap_and_deploy.clean.sh \
+            develop/deploy/gcp-two-vm/backend/.env.backend \
+            develop/deploy/gcp-two-vm/ai/.env.ai \
+            ~/.ssh/id_ed25519 \
+            ~/.ssh/known_hosts

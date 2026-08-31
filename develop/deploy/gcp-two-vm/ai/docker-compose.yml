@@ -11,10 +11,17 @@ services:
       APP_ENV: production
       LOG_LEVEL: INFO
       CHECKPOINT_DB_PATH: /app/data/checkpoints.sqlite
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
-      - "8000:8000"
+      - "${AI_BIND_ADDRESS:?AI_BIND_ADDRESS must be the VM private interface address}:8000:8000"
     volumes:
-      - ../../../ai-model/v2/data:/app/data
+      - /var/lib/healthmate/ai/data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]

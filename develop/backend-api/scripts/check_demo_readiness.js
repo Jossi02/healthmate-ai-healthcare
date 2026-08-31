@@ -70,6 +70,9 @@ async function main() {
   const aiEnv = parseEnvFile(path.join(repoRoot, 'develop', 'ai-model', 'v2', '.env'));
   const workflowPath = path.join(repoRoot, '.github', 'workflows', 'gcp-two-vm-deploy.yml');
   const workflowText = fs.existsSync(workflowPath) ? fs.readFileSync(workflowPath, 'utf8') : '';
+  const deployWorkflowManualOnly =
+    /^\s*workflow_dispatch\s*:/m.test(workflowText)
+    && !/^\s*push\s*:/m.test(workflowText);
   const migrationPath = path.join(
     __dirname,
     '..',
@@ -103,8 +106,8 @@ async function main() {
   if (!fs.existsSync(migrationPath)) {
     blockingIssues.push('missing_idempotency_migration_file');
   }
-  if (!workflowText.includes('test/all')) {
-    blockingIssues.push('deploy_workflow_not_bound_to_test_all');
+  if (!deployWorkflowManualOnly) {
+    blockingIssues.push('deploy_workflow_not_manual_only');
   }
   for (const check of checks) {
     if (!check.ok) {
@@ -122,7 +125,7 @@ async function main() {
   const result = {
     ok: blockingIssues.length === 0,
     current_branch: readCurrentBranch(),
-    deploy_branch_configured: workflowText.includes('test/all'),
+    deploy_trigger: deployWorkflowManualOnly ? 'manual_only' : 'unexpected',
     migration_file_present: fs.existsSync(migrationPath),
     env_checks: checks,
     idempotency_table: idempotencyTable,
