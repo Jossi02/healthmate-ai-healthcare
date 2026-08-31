@@ -81,7 +81,8 @@ docker compose up -d --build
 Set these values in `develop/deploy/gcp-two-vm/backend/.env.backend`:
 
 - `BACKEND_DOMAIN`
-- `CLIENT_URL=https://<your-vercel-domain>`
+- `CORS_ALLOWED_ORIGINS=https://<your-vercel-domain>`
+- `TRUST_PROXY_HOPS=1` for the single Caddy hop in this Compose topology
 - `FASTAPI_URL=http://<ai-private-ip>:8000`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`

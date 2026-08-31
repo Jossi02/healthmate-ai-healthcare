@@ -2,12 +2,12 @@
 
 이 문서는 `portfolio/integration-candidate` 브랜치에 함께 보존된 Frontend, Backend / WAS, AI Server를 로컬에서 준비하는 방법을 설명합니다. 저장소 루트에는 세 서비스를 한 번에 실행하는 script나 통합 Compose가 없습니다.
 
-## 1. Candidate 직접 복제
+## 1. Security candidate 직접 복제
 
 다음 명령은 복제 후 별도 branch switch 없이 candidate를 checkout합니다.
 
 ```bash
-git clone --branch portfolio/integration-candidate --single-branch https://github.com/Jossi02/healthmate-ai-healthcare.git
+git clone --branch portfolio/integration-security --single-branch https://github.com/Jossi02/healthmate-ai-healthcare.git
 cd healthmate-ai-healthcare
 ```
 
@@ -25,6 +25,8 @@ cd healthmate-ai-healthcare
 - 공개 Git history에 존재했던 과거 credential을 복사하거나 재사용하지 마세요.
 - `.env`, `.env.local`은 로컬 전용이며 root `.gitignore`에서 제외됩니다.
 - `NEXT_PUBLIC_*` 변수는 browser에 노출되므로 secret을 넣으면 안 됩니다.
+- Backend의 `JWT_SECRET`과 `INTERNAL_API_KEY`는 시작 시 필수이며 공백·example/placeholder 값을 거부합니다. Production에서는 각각 최소 32자여야 합니다.
+- Backend와 AI Server에는 같은 `INTERNAL_API_KEY`를 설정합니다. Backend→AI 요청은 `x-api-key`로 인증하고, browser→Backend 요청은 `Authorization: Bearer <JWT>`를 사용합니다. CORS credentials는 허용하지 않습니다.
 
 ## 3. 사전 요구사항
 
@@ -71,16 +73,23 @@ PowerShell에서는 `Copy-Item .env.example .env`를 사용할 수 있습니다.
 | `FASTAPI_URL` | AI Server base URL |
 | `INTERNAL_API_KEY` | Backend와 AI Server 사이의 shared local key |
 | `JWT_SECRET` | 사용자 JWT signing key |
+| `CORS_ALLOWED_ORIGINS` | 정확히 허용할 origin의 쉼표 구분 allowlist |
+| `TRUST_PROXY_HOPS` | 신뢰할 reverse proxy hop 수. 직접 실행은 0 |
 | `AI_REQUEST_TIMEOUT` | AI request timeout |
+| `AUTH_RATE_LIMIT_WINDOW_MS` | signup/login rate-limit window (ms) |
+| `AUTH_RATE_LIMIT_MAX` | 위 두 인증 endpoint의 window당 최대 요청 수 |
 | `REQUIRE_IDEMPOTENCY_TABLE` | idempotency table 강제 여부 |
 
-`INTERNAL_API_KEY`는 AI Server와 동일한 강한 값을 사용하고, `JWT_SECRET`은 development fallback에 의존하지 마세요. 현재 CORS와 internal auth behavior에는 Phase 2B 검토 항목이 있으므로 public network에 그대로 노출하지 마세요.
+`INTERNAL_API_KEY`와 `JWT_SECRET`은 비워 두거나 `.env.example`의 placeholder를 그대로 사용하면 Backend가 시작되지 않습니다. Development/test에서는 짧더라도 명시적인 non-placeholder 값을 deterministic local test에 사용할 수 있지만, 값 자체는 모든 환경에서 필수입니다. Production에서는 두 secret이 32자 미만이어도 시작되지 않습니다. `CORS_ALLOWED_ORIGINS`는 정확한 origin을 쉼표로 구분해 입력하고 `*`는 사용할 수 없습니다. 값을 생략하면 development/local에서만 `http://localhost:3000`과 `http://127.0.0.1:3000`을 사용하며 production에서는 명시값이 필요합니다. Rate limit은 signup/login에만 적용됩니다. `TRUST_PROXY_HOPS`는 직접 실행 시 0으로 두고, 신뢰하는 단일 Caddy/Nginx 뒤에서만 1로 설정합니다.
 
 검사 명령:
 
 ```bash
 npm run test:contracts
+npm run test:security
 ```
+
+위 보안 검사는 외부 service 호출 없이 설정·인증 계약을 확인합니다. `/api/v1/ai` legacy 경로는 현재 callsite가 없고 AI v2 계약과 달라 정적 `410`을 반환합니다. `/api/v1/admin`은 role source가 아직 없어 정적 `404`를 반환합니다.
 
 ## 6. AI Server
 
@@ -122,8 +131,16 @@ PowerShell에서는 `Copy-Item .env.example .env`를 사용할 수 있습니다.
 | `INTERNAL_API_KEY` | Backend와 같은 shared local key |
 | `CHECKPOINT_DB_PATH` | local SQLite checkpoint path |
 | `ENABLE_RAG_MEMORY` | 선택적 Pinecone RAG 활성화 여부. 기본 false |
+| `APP_ENV` | AI 실행 환경. 예제 기본값은 `development` |
+| `ENABLE_DEBUG_ROUTES` | debug/observability route 명시적 opt-in. 기본 false |
 
-`ROUTER_API_KEY`는 선택 사항이며 비어 있으면 Gemini key를 사용하는 코드 경로가 있습니다. 사용하는 account/API가 예제 model name을 실제 지원하는지 별도로 확인해야 합니다.
+`INTERNAL_API_KEY`는 Backend와 동일한 non-blank/non-placeholder 값을 사용해야 하며 production에서는 최소 32자여야 합니다. Development/test에서는 짧은 명시적 값이 허용되지만 placeholder는 허용되지 않습니다. `ENABLE_DEBUG_ROUTES`는 기본 false이고 `APP_ENV`가 `development` 또는 `local`일 때만 true로 설정할 수 있습니다. Production에서는 debug/observability route가 mount되지 않습니다. Debug HTML에는 service key를 넣지 않으므로 기존 browser submit은 보호된 `/chat` 인증을 우회하지 않습니다. `ROUTER_API_KEY`는 선택 사항이며 비어 있으면 Gemini key를 사용하는 코드 경로가 있습니다. 사용하는 account/API가 예제 model name을 실제 지원하는지 별도로 확인해야 합니다.
+
+AI 보안 경계 검사:
+
+```bash
+python scripts/test_security_boundaries.py
+```
 
 ## 7. Frontend
 
@@ -164,7 +181,7 @@ npm run test:display-contract
 | Backend readiness | `http://localhost:8080/api/readiness` |
 | AI health | `http://localhost:8000/health` |
 
-Backend readiness는 Supabase 연결과 schema 상태의 영향을 받습니다. 외부 service와 database가 준비되지 않으면 통합 기능은 정상 동작하지 않습니다.
+Backend readiness는 Supabase 연결과 schema 상태의 영향을 받습니다. 응답에는 coarse/redacted 상태와 제한된 warning·blocking code만 포함되며 provider/DB의 원문 오류나 secret을 노출하지 않습니다. 외부 service와 database가 준비되지 않으면 통합 기능은 정상 동작하지 않습니다.
 
 ## 9. Optional external integrations
 
@@ -184,9 +201,9 @@ Container 내부의 `localhost`는 다른 container나 VM을 가리키지 않습
 
 ## 11. 검증 범위와 알려진 blocker
 
-Phase 2A에서는 credential 없이 Frontend install/lint/build, Backend internal/static 검사, AI syntax와 offline smoke/static 검사를 수행해 통과 범위를 [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)에 기록했습니다.
+Phase 2B-1에서는 Frontend install/lint/build/display, Backend contracts·구문·security 33/33, AI 구문·기존 offline 통과 집합·security 13/13을 재검증했습니다. 상세 결과는 [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)에 기록합니다.
 
-다음 AI test failure는 기존 코드에 있던 Phase 2B blocker이며 이 문서·repository hygiene 단계에서는 수정하지 않습니다.
+다음 AI test failure는 기존 코드에 있던 Phase 2B-2 blocker이며 이번 보안 경계 단계에서는 수정하지 않습니다.
 
 - `scripts/test_plan_quality_guards.py`
 - `scripts/test_demo_mixed_was_edge_cases.py`

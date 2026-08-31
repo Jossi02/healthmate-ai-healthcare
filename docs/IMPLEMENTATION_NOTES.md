@@ -10,6 +10,7 @@
 
 | 브랜치 | 확인되는 범위 | 현재 관계 |
 | --- | --- | --- |
+| `portfolio/integration-security` | Phase 2B-1 fail-closed auth, public/debug surface, CORS/readiness/rate-limit 경계 | `portfolio/integration-candidate@3ab3c4f8fe3b728bdf9aa7d7c69902bad23f91d0`에서 직접 시작한 보안 후보 |
 | `portfolio/integration-candidate` | Frontend, Express Backend, Supabase migrations, AI v1/v2, GCP 배포 설정 | `test/all@5714945eab8379a875d8c536414b13fb2db0f47e`에서 직접 시작한 통합 후보. 완성본 아님 |
 | `main` | Next.js 프런트엔드 프로토타입과 포트폴리오·설계 문서 | 기존 portfolio landing/default branch. 기준 tip `3acaf4a79c3cf2c690a116d35ab838e948e4f612` |
 | `test/all` | 가장 넓은 통합 staging snapshot | candidate의 direct ancestor이며 그대로 유지됨 |
@@ -83,7 +84,7 @@ Frontend·Backend·AI 전체 시스템 또는 전체 AI 구조를 단독 구현�
 
 Backend의 일부 legacy AI route는 upstream에서 `/process-meal`, `/recommend`, `/user-instruction`을 호출하도록 작성돼 있습니다. AI v1 source에는 `/process-meal`, `/recommend`, `/ai-chat`이 확인되지만 `/user-instruction`은 확인되지 않으며, AI v2의 활성 통합 경로는 `/chat`과 `/home/recommendations...` 계열입니다.
 
-따라서 AI v2만 실행한 환경에서 legacy route가 그대로 동작한다고 단정할 수 없습니다. 현재 Frontend의 식단 영양 정보 흐름에도 legacy meal-record 계약과 수동 입력 경로가 함께 남은 흔적이 있습니다. 이 계약 정리는 문서 범위를 넘으므로 Phase 2B blocker로 남깁니다.
+따라서 AI v2만 실행한 환경에서 legacy route가 그대로 동작한다고 단정할 수 없습니다. 현재 Frontend에 해당 legacy route를 호출하는 callsite가 없고, 활성 Backend의 `/api/v1/ai`는 계약 혼선을 피하기 위해 정적 `410 Gone`을 반환합니다. 기존 controller source는 이력으로 남아 있지만 active app 경로에서는 도달하지 않습니다. 현재 `/api/v1/admin`도 role source가 없으므로 정적 `404 Not Found`를 반환합니다. 식단 영양 정보의 legacy meal-record 계약과 수동 입력 흔적은 별도 정리 대상으로 남깁니다.
 
 ## 6. Security history와 현재 주의점
 
@@ -91,14 +92,20 @@ Backend의 일부 legacy AI route는 upstream에서 `/process-meal`, `/recommend
 
 폐기된 credential이 포함된 과거 commit과 blob은 Fork와 upstream history에 남아 있습니다. Fork만 rewrite하면 upstream의 같은 공개 history는 유지되는 반면 다수 descendant SHA와 기존 clone이 바뀝니다. 이 비용과 제한된 효과 때문에 이 candidate에서도 history rewrite를 수행하지 않았습니다. 전체 팀과 upstream 관리자가 함께 결정할 때만 별도 최신 감사와 협업 절차로 다시 검토해야 합니다.
 
-현재 코드에는 다음 promotion blocker가 남아 있습니다. Phase 2A에서는 behavior를 수정하지 않았습니다.
+Phase 2A는 application behavior를 수정하지 않은 역사적 hygiene 단계였습니다. Phase 2B-1 candidate에는 다음과 같은 보안 경계를 적용하는 범위가 명시돼 있습니다.
 
-- 일부 legacy AI/API route가 인증 없이 caller 제공 `user_id`를 신뢰하는 경계
-- `INTERNAL_API_KEY`가 비어 있을 때 internal auth가 fail-open할 수 있는 경로
-- debug·trace·log·관리 통계 endpoint의 인증과 민감 데이터 보존 경계
-- credentials를 허용하는 wildcard CORS와 readiness 응답의 DB 오류 정보
+- Backend startup은 `JWT_SECRET`과 `INTERNAL_API_KEY`의 blank/example/placeholder 값을 모든 환경에서 거부하며, production에서는 각각 최소 32자를 요구합니다. Development/test에서는 짧은 명시적 non-placeholder 값을 사용할 수 있습니다. JWT signing과 verification은 중앙 `JWT_SECRET`을 사용하고 HS256으로 제한합니다.
+- Browser 인증은 `Authorization: Bearer <JWT>`이고, Backend와 AI Server는 같은 `INTERNAL_API_KEY`를 사용합니다. Backend에서 AI로 나가는 호출에는 `x-api-key`가 항상 포함됩니다. Internal auth는 key 누락·불일치를 허용하지 않습니다.
+- CORS는 정확한 쉼표 구분 allowlist를 사용하고 credentials는 false입니다. Development/local에는 localhost 기본값이 있고 production에서는 `CORS_ALLOWED_ORIGINS`가 필요하며 wildcard는 금지됩니다.
+- AI debug/observability route는 기본 false이며 development/local에서 명시적으로 켠 경우에만 mount됩니다. Readiness는 coarse/redacted 상태만 반환합니다. Auth rate limit은 `AUTH_RATE_LIMIT_WINDOW_MS`와 `AUTH_RATE_LIMIT_MAX` 설정으로 signup/login에만 적용되고, reverse proxy는 명시한 `TRUST_PROXY_HOPS`만 신뢰합니다.
+
+다음 항목은 여전히 promotion 전 별도 검토가 필요한 deferred blocker입니다.
+
+- trace·log·debug 결과와 관리 통계의 민감 데이터 보존 경계
 - non-root container user 미설정과 배포 SSH host-key 신뢰 방식
 - 추적된 migration에서 명시적 RLS policy가 확인되지 않아 별도 검증이 필요한 tenant 경계
+- GCP/실제 deployment의 secret injection, network, TLS, firewall 및 운영 차이
+- Backend production dependency audit의 기존 9개 package finding(중간 5·높음 4). 새 `express-rate-limit@8.7.0` finding은 없고 기준 candidate와 총계가 같으므로 별도 dependency 정리에서 다룹니다.
 
 실제 secret 값은 문서나 예제 파일에 기록하지 않습니다. 원본 팀 저장소에는 Fork current-tip 정리가 자동 반영되지 않습니다.
 
@@ -139,7 +146,7 @@ AI v2 root의 `ruff_result.txt`, `simulation_results.json`, `simulation_memory_r
 
 ## 10. Validation과 알려진 한계
 
-Phase 2A의 목표는 문서와 명백한 repository hygiene 변경이 application behavior를 바꾸지 않았는지 확인하는 것입니다. 다음 검사는 통과했습니다.
+아래 표는 Phase 2A 당시 문서와 명백한 repository hygiene 변경을 확인한 역사적 validation입니다. Phase 2B-1 보안 변경의 최종 통합 결과를 의미하지 않습니다.
 
 | 영역 | 결과 |
 | --- | --- |
@@ -149,7 +156,17 @@ Phase 2A의 목표는 문서와 명백한 repository hygiene 변경이 applicati
 
 AI 검사는 모든 외부 credential을 비우고 tracing을 끈 별도 복사본에서 실행했습니다. 실제 Supabase·Gemini·Pinecone·LangSmith 또는 production service request는 보내지 않았습니다. 사용 가능한 bundled Python 3.12와 설치 시점의 unlocked dependency를 사용했으므로 Dockerfile의 Python 3.11 재현 검증은 남아 있습니다.
 
-기존 감사에서 알려진 다음 실패는 Phase 2A에서 code 또는 expectation을 바꾸지 않고 blocker로 유지합니다.
+Phase 2B-1 검증 결과는 다음과 같습니다. 모든 AI 검사는 외부 service 호출 없이 disposable copy에서 실행했습니다.
+
+| 영역 | 결과 |
+| --- | --- |
+| Frontend | clean `npm ci`, lint 오류 0·기존 경고 2, production build, display contract 7/7 |
+| Backend | clean `npm ci`, internal contracts 21/21, JavaScript 구문 36/36, 신규 security 33/33 |
+| AI | Python 구문 101/101, metadata 44/44, intent 57/57, routing 12/12, fast plan 110/110, quality 2/2, 신규 security 13/13 |
+
+Backend `npm audit --omit=dev`는 기준 candidate와 security candidate 모두 중간 5·높음 4(총 9)였고 `express-rate-limit` 자체 finding은 없었습니다. 자동 dependency upgrade는 Phase 2B-1 범위에서 수행하지 않았습니다.
+
+기존 감사에서 알려진 다음 실패는 같은 원인으로 재현됐으며 Phase 2B-2 blocker로 남아 있습니다.
 
 - `scripts/test_plan_quality_guards.py`: source와 test import drift
 - `scripts/test_demo_mixed_was_edge_cases.py`: workout 삭제·식단 변경 조건 실패

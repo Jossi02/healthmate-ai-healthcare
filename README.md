@@ -4,7 +4,7 @@
 
 HealthMate는 건강 정보와 성향을 함께 고려해 운동·식단 코칭을 개인화하는 방법을 탐구한 **2026년 대학 심화캡스톤 팀 프로젝트**입니다.
 
-이 저장소의 `portfolio/integration-candidate` 브랜치에는 Frontend, Express Backend, Supabase migrations, FastAPI/LangGraph AI v2, deployment configuration이 함께 보존되어 있습니다. 통합 범위를 검토하기 위한 후보 스냅샷이며, 완전히 검증된 운영 배포본을 뜻하지 않습니다.
+이 저장소의 `portfolio/integration-security` 브랜치는 `portfolio/integration-candidate@3ab3c4f8fe3b728bdf9aa7d7c69902bad23f91d0`에서 시작해 Phase 2B-1 보안 경계를 적용한 후보입니다. Frontend, Express Backend, Supabase migrations, FastAPI/LangGraph AI v2, deployment configuration이 함께 보존돼 있지만 완전히 검증된 운영 배포본을 뜻하지 않습니다.
 
 ## 프로젝트 핵심 정보
 
@@ -59,6 +59,15 @@ flowchart LR
 
 저장소 루트에는 세 서비스를 한 번에 시작하는 명령이나 통합 Compose가 없습니다. 서비스별 준비와 실행은 [로컬 실행 가이드](docs/LOCAL_SETUP.md)를 따르세요.
 
+### Phase 2B-1 보안 경계 (현재 코드 범위)
+
+- Backend는 `JWT_SECRET`과 `INTERNAL_API_KEY`가 비어 있지 않고 example/placeholder 값이 아닌 경우에만 시작합니다. Production에서는 각 값이 최소 32자여야 합니다.
+- JWT는 중앙 `JWT_SECRET`로 HS256 서명·검증하고 browser 요청은 `Authorization: Bearer <JWT>`를 사용합니다. Backend와 AI Server는 같은 `INTERNAL_API_KEY`를 `x-api-key`로 공유하며 Backend→AI 호출에도 항상 전달합니다.
+- CORS는 정확한 쉼표 구분 origin allowlist를 사용하고 credentials는 허용하지 않습니다. Development/local에서 allowlist를 생략하면 localhost 기본값을 사용하며 production에서는 명시값이 필요합니다.
+- AI debug/observability route는 기본 비활성이고 development/local에서만 명시적으로 켤 수 있습니다. 현재 `/api/v1/ai` legacy 경로는 v2 계약과 현재 callsite가 없어 정적 410, role source가 없는 `/api/v1/admin`은 정적 404를 반환합니다. Readiness는 coarse/redacted 상태만 반환하며 rate limit은 signup/login에만 적용됩니다.
+
+이는 Phase 2B-1의 구현 경계를 설명하는 것이며 운영 배포 완료나 최종 통합 검증을 선언하는 내용은 아닙니다.
+
 ## 주요 기능
 
 | 기능 | 현재 코드에서 확인되는 범위 |
@@ -108,6 +117,8 @@ Phase 2A에서는 credential 없이 안전하게 실행 가능한 범위에서 �
 
 알려진 AI 테스트 실패 3건은 이 문서·hygiene 단계에서 수정하지 않았습니다. AI 검사는 credential을 비우고 tracing을 끈 격리 환경에서 수행했으며 실제 Supabase·Gemini·Pinecone·LangSmith 또는 운영 endpoint를 호출하지 않았습니다. Python 검사는 제공된 3.12 runtime에서 수행돼 Dockerfile의 3.11 환경과 정확히 같지는 않습니다. 상세 결과와 기존 한계는 [구현 상세 노트](docs/IMPLEMENTATION_NOTES.md)에 기록합니다.
 
+Phase 2B-1에서는 Backend 보안 경계 33/33과 AI 보안 경계 13/13이 통과했습니다. Frontend lint(오류 0·기존 경고 2), build, display contract 7/7, Backend contracts 21/21·구문 36/36, AI 구문 101/101과 기존 offline 통과 집합도 유지됐습니다. 외부 service는 호출하지 않았고, 지정된 기존 AI 실패 3건은 같은 원인으로 남겨 두었습니다. 재현 명령은 [로컬 실행 가이드](docs/LOCAL_SETUP.md)에 있습니다.
+
 ## 논문 평가 결과
 
 다음은 현재 브랜치의 회귀 테스트 결과가 아니라 **최종 논문에 보고된 제한된 사전 시나리오 기반 예비 평가**입니다.
@@ -134,9 +145,9 @@ Phase 2A에서는 credential 없이 안전하게 실행 가능한 범위에서 �
 
 ## 현재 한계
 
-- 이 브랜치는 integration candidate이며 운영 준비 완료를 의미하지 않습니다.
+- 이 브랜치는 security integration candidate이며 운영 준비 완료를 의미하지 않습니다.
 - 논문 시점의 시스템과 현재 코드 스냅샷은 배포 환경, AI 그래프, 기억 경로 등에서 차이가 있습니다.
-- 알려진 AI 회귀 테스트 실패와 보안 경계 검토 항목이 남아 있습니다.
+- 알려진 AI 회귀 테스트 실패와 별도 검토가 필요한 RLS·배포 항목이 남아 있습니다.
 - AI v2 의존성은 하한 버전 중심이고 Python lockfile이 없어 설치 시점별 차이가 생길 수 있습니다.
 - Supabase 프로젝트의 실제 migration 적용 상태와 외부 서비스의 현재 가용성은 저장소만으로 확인할 수 없습니다.
 - GCP 배포 설정은 보존돼 있지만 현재 라이브 서비스나 배포 성공을 보장하지 않습니다.
