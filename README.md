@@ -4,7 +4,7 @@
 
 HealthMate는 건강 정보와 성향을 함께 고려해 운동·식단 코칭을 개인화하는 방법을 탐구한 **2026년 대학 심화캡스톤 팀 프로젝트**입니다.
 
-이 저장소의 `portfolio/integration-security` 브랜치는 `portfolio/integration-candidate@3ab3c4f8fe3b728bdf9aa7d7c69902bad23f91d0`에서 시작해 Phase 2B-1 보안 경계를 적용한 후보입니다. Frontend, Express Backend, Supabase migrations, FastAPI/LangGraph AI v2, deployment configuration이 함께 보존돼 있지만 완전히 검증된 운영 배포본을 뜻하지 않습니다.
+이 저장소의 `portfolio/integration-quality` 브랜치는 `portfolio/integration-security@35757ea60cc1e6d2647c527112d0e83be07d9f7b`에서 직접 시작해 Phase 2B-2 품질·tenant 경계·재현성 검증을 적용한 후보입니다. Frontend, Express Backend, Supabase migrations, FastAPI/LangGraph AI v2, deployment configuration이 함께 보존돼 있지만 완전히 검증된 운영 배포본을 뜻하지 않습니다.
 
 ## 프로젝트 핵심 정보
 
@@ -68,6 +68,13 @@ flowchart LR
 
 이는 Phase 2B-1의 구현 경계를 설명하는 것이며 운영 배포 완료나 최종 통합 검증을 선언하는 내용은 아닙니다.
 
+### Phase 2B-2 품질·tenant 경계 (현재 코드 범위)
+
+- 기존 AI 실패 3건은 현재 fast graph와 계약을 기준으로 다시 판정했습니다. 삭제된 route import, 과거 응답 문자열 기대, 고정 과거 날짜 fixture는 test drift였고, 그 과정에서 발견한 malformed mixed proposal 재사용 결함은 shared state guard에서 수정했습니다.
+- 공개 `session_id`는 API 계약에 그대로 두되 AI checkpoint·lock key는 `user_id + session_id`의 opaque hash로 분리합니다. Backend feedback은 인증 사용자가 소유한 저장 message만 사용하므로 다른 사용자의 session/message 내용으로 피드백을 조작할 수 없습니다.
+- Frontend에는 Supabase client가 없고 사용자 요청은 service-role Backend를 통과합니다. 따라서 현재 tenant 경계는 Backend의 JWT·ownership filter이며, 이 구조에서 RLS 부재 자체를 구현 결함으로 보지는 않습니다.
+- Backend production dependency audit 9건은 현재 major 범위의 lockfile 갱신으로 0건이 됐습니다. AI Dockerfile 대상인 Python 3.11은 로컬에 없어 3.11 설치·lock 검증은 수행하지 않았습니다.
+
 ## 주요 기능
 
 | 기능 | 현재 코드에서 확인되는 범위 |
@@ -109,15 +116,13 @@ FastAPI 구현 과정에서는 생성형 AI를 보조 도구로 사용했습니�
 
 ## 검증 상태
 
-Phase 2A에서는 credential 없이 안전하게 실행 가능한 범위에서 다음을 확인했습니다.
+Phase 2B-2에서는 credential 없이 안전하게 실행 가능한 범위에서 다음을 확인했습니다.
 
-- Frontend: `npm ci`, lint(오류 0·경고 2), production build, display contract 7/7 통과
-- Backend: `npm ci`, internal contracts 21/21, JavaScript 33개 정적 구문 검사 통과
-- AI: Python 100개 구문 검사, metadata 44/44, intent 57/57, routing 12/12, fast plan flow 110/110, quality evaluation 2/2 통과
+- Frontend: clean `npm ci`, lint 오류 0·기존 경고 2, production build, display contract 7/7 통과
+- Backend: clean `npm ci`, contracts 21/21, security 33/33, tenant 8/8, JavaScript 구문 37/37, production audit 0건
+- AI: Python 구문 101/101, metadata 44/44, intent 57/57, routing 12/12, fast plan 110/110, quality 2/2, quality guards 94/94, mixed WAS edge case, chat E2E와 security 13/13 통과
 
-알려진 AI 테스트 실패 3건은 이 문서·hygiene 단계에서 수정하지 않았습니다. AI 검사는 credential을 비우고 tracing을 끈 격리 환경에서 수행했으며 실제 Supabase·Gemini·Pinecone·LangSmith 또는 운영 endpoint를 호출하지 않았습니다. Python 검사는 제공된 3.12 runtime에서 수행돼 Dockerfile의 3.11 환경과 정확히 같지는 않습니다. 상세 결과와 기존 한계는 [구현 상세 노트](docs/IMPLEMENTATION_NOTES.md)에 기록합니다.
-
-Phase 2B-1에서는 Backend 보안 경계 33/33과 AI 보안 경계 13/13이 통과했습니다. Frontend lint(오류 0·기존 경고 2), build, display contract 7/7, Backend contracts 21/21·구문 36/36, AI 구문 101/101과 기존 offline 통과 집합도 유지됐습니다. 외부 service는 호출하지 않았고, 지정된 기존 AI 실패 3건은 같은 원인으로 남겨 두었습니다. 재현 명령은 [로컬 실행 가이드](docs/LOCAL_SETUP.md)에 있습니다.
+Backend 8개와 AI 동일 공개 session A/B 격리 1개를 합쳐 tenant 회귀 시나리오 9/9가 통과했습니다. AI 검사는 credential을 비우고 tracing·RAG를 끈 Python 3.12.13 격리 환경에서 실행해 실제 Supabase·Gemini·Pinecone·LangSmith 또는 운영 endpoint를 호출하지 않았습니다. Dockerfile 대상 Python 3.11은 이 환경에 없어 3.11 결과나 lock을 주장하지 않습니다. Frontend home recommendation browser smoke는 설치된 browser executable이 없어 `NOT RUN`이며, 나머지 상세 결과는 [구현 상세 노트](docs/IMPLEMENTATION_NOTES.md)에 기록합니다. 재현 명령은 [로컬 실행 가이드](docs/LOCAL_SETUP.md)에 있습니다.
 
 ## 논문 평가 결과
 
@@ -145,10 +150,12 @@ Phase 2B-1에서는 Backend 보안 경계 33/33과 AI 보안 경계 13/13이 통
 
 ## 현재 한계
 
-- 이 브랜치는 security integration candidate이며 운영 준비 완료를 의미하지 않습니다.
+- 이 브랜치는 quality integration candidate이며 운영 준비 완료를 의미하지 않습니다.
 - 논문 시점의 시스템과 현재 코드 스냅샷은 배포 환경, AI 그래프, 기억 경로 등에서 차이가 있습니다.
-- 알려진 AI 회귀 테스트 실패와 별도 검토가 필요한 RLS·배포 항목이 남아 있습니다.
-- AI v2 의존성은 하한 버전 중심이고 Python lockfile이 없어 설치 시점별 차이가 생길 수 있습니다.
+- AI v2 의존성은 하한 버전 중심이고 Python 3.11에서 검증한 lockfile이 없어 설치 시점별 차이가 생길 수 있습니다.
+- Tenant-scoped checkpoint key로 전환하면서 이전 raw `session_id` checkpoint는 보안상 fallback하지 않습니다. Upgrade 전에 생성된 미완료 제안·pending write의 이행 또는 세션 종료 정책이 필요합니다.
+- trace/log에는 대화·프로필·플랜 health data가 남을 수 있어 redaction·retention·rotation 정책을 운영 전에 보강해야 합니다.
+- Frontend browser smoke는 이 검증 환경에 Playwright browser executable이 없어 실행하지 못했습니다.
 - Supabase 프로젝트의 실제 migration 적용 상태와 외부 서비스의 현재 가용성은 저장소만으로 확인할 수 없습니다.
 - GCP 배포 설정은 보존돼 있지만 현재 라이브 서비스나 배포 성공을 보장하지 않습니다.
 - MBTI 16유형 × DISC 4유형 전체, 모호한 경계 사례, 실제 리텐션 개선 RCT는 검증하지 못했습니다.

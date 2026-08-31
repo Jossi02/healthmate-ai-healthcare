@@ -10,6 +10,7 @@
 
 | 브랜치 | 확인되는 범위 | 현재 관계 |
 | --- | --- | --- |
+| `portfolio/integration-quality` | Phase 2B-2 AI 품질 계약, tenant ownership, dependency·artifact 검증 | `portfolio/integration-security@35757ea60cc1e6d2647c527112d0e83be07d9f7b`에서 직접 시작한 품질 후보 |
 | `portfolio/integration-security` | Phase 2B-1 fail-closed auth, public/debug surface, CORS/readiness/rate-limit 경계 | `portfolio/integration-candidate@3ab3c4f8fe3b728bdf9aa7d7c69902bad23f91d0`에서 직접 시작한 보안 후보 |
 | `portfolio/integration-candidate` | Frontend, Express Backend, Supabase migrations, AI v1/v2, GCP 배포 설정 | `test/all@5714945eab8379a875d8c536414b13fb2db0f47e`에서 직접 시작한 통합 후보. 완성본 아님 |
 | `main` | Next.js 프런트엔드 프로토타입과 포트폴리오·설계 문서 | 기존 portfolio landing/default branch. 기준 tip `3acaf4a79c3cf2c690a116d35ab838e948e4f612` |
@@ -99,15 +100,23 @@ Phase 2A는 application behavior를 수정하지 않은 역사적 hygiene 단계
 - CORS는 정확한 쉼표 구분 allowlist를 사용하고 credentials는 false입니다. Development/local에는 localhost 기본값이 있고 production에서는 `CORS_ALLOWED_ORIGINS`가 필요하며 wildcard는 금지됩니다.
 - AI debug/observability route는 기본 false이며 development/local에서 명시적으로 켠 경우에만 mount됩니다. Readiness는 coarse/redacted 상태만 반환합니다. Auth rate limit은 `AUTH_RATE_LIMIT_WINDOW_MS`와 `AUTH_RATE_LIMIT_MAX` 설정으로 signup/login에만 적용되고, reverse proxy는 명시한 `TRUST_PROXY_HOPS`만 신뢰합니다.
 
+Phase 2B-2 tenant data flow 감사에서는 Frontend에 Supabase client/direct DB 경로가 없고 Backend만 service role을 사용하는 것을 다시 확인했습니다. Public API는 JWT의 `req.user.user_id`와 parent ownership filter를 경계로 사용합니다. 확정 finding은 2건이었습니다.
+
+- **High:** AI checkpoint와 process/DB lock이 caller가 정한 raw `session_id`만 사용해 같은 값을 아는 다른 사용자가 state를 공유할 수 있었습니다. Public session 계약은 유지하고 내부 thread key를 `user_id + session_id`의 SHA-256 값으로 바꿨습니다. 보안 경계를 다시 열 수 있는 raw-key fallback은 추가하지 않았으므로 upgrade 전에 생성된 active proposal·pending write checkpoint는 자동 재개되지 않습니다.
+- **Medium:** feedback가 client가 보낸 message snapshot을 그대로 저장해 session/message ownership과 내용 무결성을 보장하지 못했습니다. 저장된 assistant message를 인증 사용자와 session으로 다시 조회하고 바로 앞 user message·저장 intent만 사용하도록 수정했습니다.
+
+Backend API 8개와 AI checkpoint A/B 격리 1개, 총 9개 외부 서비스 없는 tenant 회귀 시나리오가 통과했습니다. 현재 구조에서는 RLS 부재 자체를 구현 결함으로 분류하지 않습니다. Browser/direct Supabase access가 없고 service role은 RLS를 우회하므로 실제 경계는 application auth·ownership입니다. 향후 browser 또는 user-context DB 접근을 추가할 때 RLS를 별도 blocker로 올려야 합니다.
+
+Trace/log read-only 감사에서는 AI memory trace가 user message, user/session ID, request payload, WAS request/response와 profile·plan snapshot을 최대 trace 120개·global log 1,200개·trace별 120개까지 보관하며 일반 TTL/redaction이 없음을 확인했습니다. SQLite checkpoint는 disk에 기록되고 기본 72시간 activity TTL을 사용합니다. Backend Winston은 `logs/error.log`와 `logs/combined.log`에 rotation/redaction 제한 없이 기록하고 Morgan은 URL을 남깁니다. 현재 auth header나 실제 credential을 trace payload에 기록하는 경로는 확인되지 않았지만 health-data retention·redaction·rotation은 Phase 2C 전 hardening 후보입니다.
+
 다음 항목은 여전히 promotion 전 별도 검토가 필요한 deferred blocker입니다.
 
 - trace·log·debug 결과와 관리 통계의 민감 데이터 보존 경계
+- tenant-scoped checkpoint 전환 전 raw-key active session의 drain/migration 또는 명시적 만료 정책
 - non-root container user 미설정과 배포 SSH host-key 신뢰 방식
-- 추적된 migration에서 명시적 RLS policy가 확인되지 않아 별도 검증이 필요한 tenant 경계
 - GCP/실제 deployment의 secret injection, network, TLS, firewall 및 운영 차이
-- Backend production dependency audit의 기존 9개 package finding(중간 5·높음 4). 새 `express-rate-limit@8.7.0` finding은 없고 기준 candidate와 총계가 같으므로 별도 dependency 정리에서 다룹니다.
 
-실제 secret 값은 문서나 예제 파일에 기록하지 않습니다. 원본 팀 저장소에는 Fork current-tip 정리가 자동 반영되지 않습니다.
+Phase 2B-2 current tree secret scan에서는 tracked runtime `.env`, API key/token/private key, credential URL, environment archive, fixed real credential을 확인하지 못했습니다. 실제 secret 값은 문서나 예제 파일에 기록하지 않습니다. 원본 팀 저장소에는 Fork current-tip 정리가 자동 반영되지 않습니다.
 
 ## 7. Dependency reproducibility
 
@@ -116,7 +125,9 @@ Phase 2A는 application behavior를 수정하지 않은 역사적 hygiene 단계
 - Backend Dockerfile은 Node.js 24, AI Dockerfile은 Python 3.11을 사용합니다.
 - 저장소 공통 Node.js version pin과 세 서비스를 한 번에 실행하는 root script/Compose는 없습니다.
 
-따라서 AI 의존성 집합과 로컬 runtime은 설치 시점·환경에 따라 달라질 수 있습니다. 검증은 AI Dockerfile과 같은 Python 3.11 환경에서 다시 수행해야 완전한 재현성을 주장할 수 있습니다.
+Phase 2B-2 Backend production audit는 중간 5·높음 4(총 9)에서 시작했습니다. Direct dependency는 Axios·Express·Morgan이었고 나머지는 production transitive dependency였습니다. `npm audit fix --omit=dev`가 제안한 현재 major 범위의 lockfile 갱신만 적용한 뒤 clean `npm ci`와 전체 Backend 회귀를 통과했고 audit은 0건이 됐습니다. `--force`, major migration, `package.json` range 변경은 사용하지 않았습니다.
+
+AI direct requirements와 실제 import, Docker의 `pip install -r requirements.txt` 경로를 감사했지만 사용 가능한 Python 3.11 runtime이 없었습니다. 제공된 Python 3.12.13에서만 credential-free 검증했으므로 이를 3.11 결과로 간주하지 않습니다. 3.12 `pip freeze`를 잘못된 기준으로 고정하지 않았고 `requirements.lock.txt`/constraints도 생성하지 않았습니다. 따라서 AI 의존성 집합은 설치 시점·환경에 따라 달라질 수 있으며 Python 3.11 clean resolve·install 검증 뒤에만 lock artifact를 추가해야 합니다.
 
 ## 8. Deployment differences
 
@@ -138,11 +149,11 @@ Phase 2A에서는 다음 기준을 사용했습니다.
 
 `develop/backend-api/supabase/.temp`의 8개 파일은 Supabase CLI가 생성한 project/version/connection local state로 D에 해당해 제거했습니다. 기존 exact ignore rule은 유지했습니다. `supabase/migrations`의 SQL은 source이므로 그대로 보존했습니다.
 
-`develop/ai-model/v2/docs/quality`의 `quality_requirements.yaml`, `risk_catalog.md`, `standard_mapping.md`는 A입니다. 같은 디렉터리의 report 29개(약 4.12 MB)는 관련 script로 재생성되는 C이지만 연구·품질 evidence 가치가 있어 Phase 2A에서 삭제하지 않았습니다. 일부 report에는 stale absolute path나 현재 없는 fixture 참조가 있어 현재 검증 결과의 source of truth로 간주하지 않습니다.
+`develop/ai-model/v2/docs/quality`의 `quality_requirements.yaml`, `risk_catalog.md`, `standard_mapping.md` 3개는 A입니다. 같은 디렉터리의 generated report 29개는 관련 script의 출력 이름과 일치하고 연구·품질 provenance 가치가 있어 보존했습니다. 이 중 JSON report 9개는 stale absolute path와 현재 없는 fixture를 참조하고, 현재 script output 5개는 추적되지 않으며 전체 report를 재생성하는 단일 명령도 없습니다. 따라서 29개는 historical/generated evidence이지 current regression의 source of truth가 아니며 대량 삭제하지 않습니다.
 
 AI v2 root의 `ruff_result.txt`, `simulation_results.json`, `simulation_memory_results.json`, `simulation_output.txt`도 생성된 evidence인 C로 분류해 유지했습니다. Backend의 `git_log.txt`는 Git metadata로 재생성 가능하지만 당시 문맥 보존 의도를 확정할 수 없어 E로 분류해 유지했습니다.
 
-`scratch_pw/tests`의 두 Playwright spec은 이름은 scratch이지만 단순 cache/build output은 아닙니다. 하나는 mock API 기반 Frontend UI 회귀 검사이고, 하나는 외부 Backend/Supabase를 사용하는 experimental probe입니다. 연결된 root package/config가 없어 E로 분류해 유지했습니다. 정식 test 위치로 이동할지, 외부 probe에 production 실행 차단과 계정 cleanup을 추가할지는 Phase 2B에서 결정합니다.
+`scratch_pw/tests/home_plan_sync_toast.spec.js`는 mock-only UI 검사였지만 정식 `develop/frontend-ui/scripts/smoke-home-recommendation-ux.cjs`가 동일한 success/already-exists/failure 계약을 이미 검증하므로 중복 spec을 제거했습니다. `approval_bottleneck.spec.js`는 고정 외부 endpoint와 실제 Backend `.env`/service role을 사용해 user·plan을 만들면서 cleanup을 보장하지 않는 experimental probe라 안전한 portfolio source로 유지하지 않았습니다. 새 Playwright dependency나 중복 package script는 추가하지 않았습니다.
 
 ## 10. Validation과 알려진 한계
 
@@ -156,21 +167,21 @@ AI v2 root의 `ruff_result.txt`, `simulation_results.json`, `simulation_memory_r
 
 AI 검사는 모든 외부 credential을 비우고 tracing을 끈 별도 복사본에서 실행했습니다. 실제 Supabase·Gemini·Pinecone·LangSmith 또는 production service request는 보내지 않았습니다. 사용 가능한 bundled Python 3.12와 설치 시점의 unlocked dependency를 사용했으므로 Dockerfile의 Python 3.11 재현 검증은 남아 있습니다.
 
-Phase 2B-1 검증 결과는 다음과 같습니다. 모든 AI 검사는 외부 service 호출 없이 disposable copy에서 실행했습니다.
+Phase 2B-2 검증 결과는 다음과 같습니다. 모든 AI 검사는 credential·tracing·RAG를 비활성화하고 외부 service 호출 없이 disposable copy에서 실행했습니다.
 
 | 영역 | 결과 |
 | --- | --- |
 | Frontend | clean `npm ci`, lint 오류 0·기존 경고 2, production build, display contract 7/7 |
-| Backend | clean `npm ci`, internal contracts 21/21, JavaScript 구문 36/36, 신규 security 33/33 |
-| AI | Python 구문 101/101, metadata 44/44, intent 57/57, routing 12/12, fast plan 110/110, quality 2/2, 신규 security 13/13 |
+| Backend | clean `npm ci`, internal contracts 21/21, security 33/33, tenant 8/8, JavaScript 구문 37/37, production audit 0 |
+| AI | Python 3.12.13 구문 101/101, metadata 44/44, intent 57/57, routing 12/12, fast plan 110/110, quality 2/2, quality guards 94/94, mixed WAS edge·chat E2E·security 13/13 통과 |
 
-Backend `npm audit --omit=dev`는 기준 candidate와 security candidate 모두 중간 5·높음 4(총 9)였고 `express-rate-limit` 자체 finding은 없었습니다. 자동 dependency upgrade는 Phase 2B-1 범위에서 수행하지 않았습니다.
+기존 AI 실패 3건의 최종 판정과 상태는 다음과 같습니다.
 
-기존 감사에서 알려진 다음 실패는 같은 원인으로 재현됐으며 Phase 2B-2 blocker로 남아 있습니다.
+- `test_plan_quality_guards.py`: 삭제된 `route_generate_self_eval`/builder route 기대는 **TEST DRIFT**였습니다. 현재 fast validation path를 검증하도록 갱신했습니다. 감사 중 발견한 malformed mixed-domain checkpoint 재사용은 별도 **CODE BUG**였고 shared state guard와 valid bundle 회귀 검사를 추가해 94/94 통과했습니다.
+- `test_demo_mixed_was_edge_cases.py`: undated 요청과 맞지 않는 고정 과거 날짜는 **TEST DRIFT**, non-UUID profile fixture는 **CONTRACT MISMATCH**였습니다. 현재 KST 날짜와 valid UUID를 사용해 workout delete·diet modify write가 모두 통과했습니다.
+- `test_chat_e2e.py`: 과거 slow-flow/FakeRouter exact response 기대는 **TEST DRIFT**였습니다. 현재 Frontend가 사용하는 structured proposal·intent·sync 계약으로 갱신했습니다. 삭제된 generator/validator route 전용 sparse·semantic helper와 sequential mixed-plan 기대는 **OBSOLETE / DEAD PATH**로 제거했습니다. Profile record·plan check·관련 pending/outbox endpoint helper도 현재 builder의 deterministic fast router가 노출하는 operation이 아니어서 복구 시 실제 route가 `casual`로 판정됨을 재확인하고 obsolete coverage로 제거했습니다. Current fast-flow, resilience, partial profile, tenant A/B isolation은 모두 통과했습니다.
 
-- `scripts/test_plan_quality_guards.py`: source와 test import drift
-- `scripts/test_demo_mixed_was_edge_cases.py`: workout 삭제·식단 변경 조건 실패
-- `scripts/test_chat_e2e.py`: create 응답의 workout plan assertion 실패
+Frontend home recommendation browser smoke는 설치된 Playwright browser executable이 없어 `NOT RUN`입니다. browser나 dependency를 자동 설치하지 않았습니다. Python 3.11 clean install·검증도 runtime 부재로 `NOT RUN`이며 lock을 만들지 않았습니다.
 
 외부 Supabase·Gemini·Pinecone·LangSmith 연결, 실제 deployment, migration 적용 상태, 의료·임상 안전성은 검증하지 않습니다.
 

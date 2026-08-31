@@ -1,13 +1,13 @@
 # HealthMate 로컬 실행 가이드
 
-이 문서는 `portfolio/integration-candidate` 브랜치에 함께 보존된 Frontend, Backend / WAS, AI Server를 로컬에서 준비하는 방법을 설명합니다. 저장소 루트에는 세 서비스를 한 번에 실행하는 script나 통합 Compose가 없습니다.
+이 문서는 `portfolio/integration-quality` 브랜치에 함께 보존된 Frontend, Backend / WAS, AI Server를 로컬에서 준비하는 방법을 설명합니다. 저장소 루트에는 세 서비스를 한 번에 실행하는 script나 통합 Compose가 없습니다.
 
-## 1. Security candidate 직접 복제
+## 1. Quality candidate 직접 복제
 
 다음 명령은 복제 후 별도 branch switch 없이 candidate를 checkout합니다.
 
 ```bash
-git clone --branch portfolio/integration-security --single-branch https://github.com/Jossi02/healthmate-ai-healthcare.git
+git clone --branch portfolio/integration-quality --single-branch https://github.com/Jossi02/healthmate-ai-healthcare.git
 cd healthmate-ai-healthcare
 ```
 
@@ -36,7 +36,7 @@ cd healthmate-ai-healthcare
 - 실제 저장 기능을 사용할 경우 Supabase project와 compatible schema
 - AI 응답을 생성할 경우 사용 가능한 Gemini API access
 
-AI v2는 version lower bound 중심의 `requirements.txt`를 사용하고 Python lockfile이 없습니다. 서로 다른 시점의 설치가 완전히 같은 dependency set을 보장하지 않습니다.
+AI v2는 version lower bound 중심의 `requirements.txt`를 사용하고 Python lockfile이 없습니다. Phase 2B-2 환경에는 Python 3.11이 없어 3.12 resolve를 3.11 lock으로 고정하지 않았습니다. 서로 다른 시점의 설치가 완전히 같은 dependency set을 보장하지 않으므로 Dockerfile과 같은 Python 3.11에서 clean install을 다시 검증해야 합니다.
 
 ## 4. Supabase requirements
 
@@ -87,6 +87,8 @@ PowerShell에서는 `Copy-Item .env.example .env`를 사용할 수 있습니다.
 ```bash
 npm run test:contracts
 npm run test:security
+npm run test:tenant
+npm audit --omit=dev
 ```
 
 위 보안 검사는 외부 service 호출 없이 설정·인증 계약을 확인합니다. `/api/v1/ai` legacy 경로는 현재 callsite가 없고 AI v2 계약과 달라 정적 `410`을 반환합니다. `/api/v1/admin`은 role source가 아직 없어 정적 `404`를 반환합니다.
@@ -141,6 +143,22 @@ AI 보안 경계 검사:
 ```bash
 python scripts/test_security_boundaries.py
 ```
+
+외부 credential 없이 실행 가능한 Phase 2B-2 AI 회귀 검사:
+
+```bash
+python scripts/test_pinecone_metadata_lint.py
+python scripts/test_intent_matrix.py
+python scripts/test_demo_routing_edge_cases.py
+python scripts/test_fast_plan_flow_suite.py
+python scripts/test_quality_evaluation.py
+python scripts/test_plan_quality_guards.py
+python scripts/test_demo_mixed_was_edge_cases.py
+python scripts/test_chat_e2e.py
+python scripts/test_security_boundaries.py
+```
+
+실행 전 Gemini·Pinecone·LangSmith credential을 비우고 `ENABLE_RAG_MEMORY=false`, tracing 비활성 상태를 확인하세요. 일부 quality script는 report 파일을 갱신하므로 결과를 commit하기 전 diff와 provenance를 검토해야 합니다.
 
 ## 7. Frontend
 
@@ -201,12 +219,8 @@ Container 내부의 `localhost`는 다른 container나 VM을 가리키지 않습
 
 ## 11. 검증 범위와 알려진 blocker
 
-Phase 2B-1에서는 Frontend install/lint/build/display, Backend contracts·구문·security 33/33, AI 구문·기존 offline 통과 집합·security 13/13을 재검증했습니다. 상세 결과는 [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)에 기록합니다.
+Phase 2B-2에서는 Frontend install/lint/build/display, Backend contracts 21/21·security 33/33·tenant 8/8·구문 37/37·production audit 0, AI 구문과 offline suite를 재검증했습니다. 기존 AI 실패 3건의 test drift/contract mismatch를 현재 architecture에 맞춰 정리했고 관련 regression은 모두 통과합니다. 상세 결과는 [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)에 기록합니다.
 
-다음 AI test failure는 기존 코드에 있던 Phase 2B-2 blocker이며 이번 보안 경계 단계에서는 수정하지 않습니다.
+Python 3.11 clean install·lock 검증은 runtime 부재로 `NOT RUN`입니다. Frontend `smoke:home-recommendation-ux`도 이 검증 환경에 Playwright browser executable이 없어 `NOT RUN`이었습니다. 실제 Supabase mutation, Gemini·Pinecone·LangSmith 요청, production endpoint probe는 실행하지 않습니다.
 
-- `scripts/test_plan_quality_guards.py`
-- `scripts/test_demo_mixed_was_edge_cases.py`
-- `scripts/test_chat_e2e.py`
-
-Production endpoint를 호출하는 browser probe, 실제 Supabase mutation, Gemini·Pinecone·LangSmith 요청은 local 준비만으로 자동 실행되지 않으며 Phase 2A 검증에서도 제외합니다.
+Phase 2B-2부터 AI 내부 checkpoint key가 tenant-scoped hash로 바뀌었습니다. 이전 raw `session_id` checkpoint를 fallback하면 cross-user 경계를 다시 열 수 있어 자동 호환하지 않습니다. 기존 환경을 upgrade할 때는 미완료 active session을 먼저 종료하거나, owner를 검증하는 별도 migration을 운영 절차로 준비해야 합니다.
