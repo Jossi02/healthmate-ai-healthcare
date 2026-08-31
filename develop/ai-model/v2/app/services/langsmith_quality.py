@@ -112,8 +112,18 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
     """Create a compact, deterministic quality report for a completed trace."""
     state_summary = _safe_dict(trace.get("state_summary"))
     response_payload = _safe_dict(trace.get("response"))
+    response_flags = _safe_dict(trace.get("response_flags"))
     response_text = _response_text(trace).strip()
-    response_length = len(response_text)
+    stored_response_length = trace.get("response_length")
+    try:
+        response_length = (
+            int(stored_response_length)
+            if not response_text and stored_response_length is not None
+            else len(response_text)
+        )
+    except (TypeError, ValueError):
+        response_length = len(response_text)
+    has_response = bool(response_text) or response_length > 0
     status = str(trace.get("status") or "")
     action_intent = state_summary.get("action_intent")
     intent = state_summary.get("intent")
@@ -144,7 +154,7 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
             message=f"Trace completed with status '{status}'.",
             penalty=0.45,
         )
-    if not response_text:
+    if not has_response:
         _issue(
             issues,
             severity="critical",
@@ -163,7 +173,9 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
 
     lowered = response_text.lower()
     fallback_markers = ("오류", "다시 시도", "error", "failed", "fallback")
-    if any(marker in lowered for marker in fallback_markers):
+    if response_flags.get("fallback_or_error_language") or any(
+        marker in lowered for marker in fallback_markers
+    ):
         _issue(
             issues,
             severity="warning",
@@ -277,12 +289,14 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
             message="Safety intent did not expose structured safety notes.",
             penalty=0.20,
         )
-    if semantic_judge.get("mode") == "observe" and _safe_int_signal(semantic_judge.get("issue_count")) > 0:
+    if semantic_judge.get("mode") in {"observe", "blocking"} and _safe_int_signal(
+        semantic_judge.get("issue_count")
+    ) > 0:
         _issue(
             issues,
             severity="warning",
             code="semantic_observer_warning",
-            message="Plan semantic observer reported non-blocking fit concerns.",
+            message="Plan semantic validation reported fit concerns.",
             penalty=0.08,
         )
     if generation_quality_flags.get("persona_style_violations"):
@@ -419,8 +433,8 @@ def evaluate_trace_quality(trace: dict[str, Any]) -> dict[str, Any]:
             "semantic_judge": semantic_judge,
             "plan_sync_applied": (
                 response_payload.get("plan_sync_applied")
-                if isinstance(response_payload, dict)
-                else None
+                if isinstance(response_payload.get("plan_sync_applied"), bool)
+                else response_flags.get("plan_sync_applied")
             ),
             "needs_clarification": needs_clarification,
         },
@@ -810,13 +824,19 @@ class LangSmithQualityExporter:
 
     def _build_outputs(self, trace: dict[str, Any], quality: dict[str, Any]) -> dict[str, Any]:
         response_text = _response_text(trace)
+        response_length = len(response_text)
+        if not response_text and trace.get("response_length") is not None:
+            try:
+                response_length = max(0, int(trace["response_length"]))
+            except (TypeError, ValueError):
+                pass
         outputs = {
             "status": trace.get("status"),
             "state_summary": trace.get("state_summary") or {},
             "node_events": _node_event_summary(trace),
             "was_calls": _was_call_summary(trace),
             "fallback_diagnosis": _fallback_diagnosis(trace),
-            "response_length": len(response_text),
+            "response_length": response_length,
             "quality": quality,
         }
         if self.send_full_text:
@@ -893,8 +913,7 @@ async def export_quality_trace(
             langsmith_export={
                 "enabled": True,
                 "sent": False,
-                "error": str(exc),
-                "failed_at": _utcnow_iso(),
+                "error_code": type(exc).__name__,
             },
         )
         trace_store.record_alert(

@@ -11,6 +11,8 @@ import aiosqlite
 
 logger = logging.getLogger(__name__)
 
+SESSION_LOCK_TTL_SECONDS = 120
+
 
 @dataclass
 class SessionLockHandle:
@@ -46,7 +48,7 @@ async def acquire_session_lock(
     db_path: str,
     session_id: str,
     *,
-    ttl_seconds: int = 120,
+    ttl_seconds: int = SESSION_LOCK_TTL_SECONDS,
     wait_timeout_seconds: float = 30.0,
     poll_interval_seconds: float = 0.08,
 ) -> SessionLockHandle:

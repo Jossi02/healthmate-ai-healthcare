@@ -18,7 +18,7 @@ from app.clients.was import WASClient
 from app.core.checkpoint_filter import FilteringAsyncSqliteSaver
 from app.core.config import get_settings
 from app.core.profile_sync import ProfileSyncTracker
-from app.core.session_lock import ensure_session_lock_table
+from app.core.session_lock import SESSION_LOCK_TTL_SECONDS, ensure_session_lock_table
 from app.core.trace_store import TraceLogHandler, TraceStore
 from app.core.was_outbox import ensure_was_outbox_table, periodic_was_outbox_replay
 from app.graph.builder import build_graph
@@ -52,30 +52,55 @@ async def update_session_activity(db_path: str, thread_id: str) -> None:
         logger.warning("Failed to update session activity: %s", exc)
 
 
+async def _seed_missing_session_activity(db_path: str) -> None:
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                "INSERT OR IGNORE INTO session_activity (thread_id, last_active) "
+                "SELECT thread_id, datetime('now') FROM ("
+                "  SELECT thread_id FROM checkpoints "
+                "  UNION "
+                "  SELECT thread_id FROM writes"
+                ")"
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.warning("Failed to seed session activity: %s", exc)
+
+
 async def _cleanup_old_checkpoints(db_path: str, ttl_hours: int) -> None:
     try:
         async with aiosqlite.connect(db_path) as db:
+            await db.execute("BEGIN IMMEDIATE")
             cursor = await db.execute(
                 "SELECT thread_id FROM session_activity "
-                "WHERE last_active < datetime('now', ?)",
-                (f"-{ttl_hours} hours",),
+                "WHERE last_active < datetime('now', ?) "
+                "AND NOT EXISTS ("
+                "  SELECT 1 FROM session_locks "
+                "  WHERE session_locks.session_id = session_activity.thread_id "
+                "  AND session_locks.acquired_at >= datetime('now', ?)"
+                ")",
+                (f"-{ttl_hours} hours", f"-{SESSION_LOCK_TTL_SECONDS} seconds"),
             )
             expired = [row[0] for row in await cursor.fetchall()]
 
             if not expired:
+                await db.commit()
                 logger.info("No expired sessions to clean up")
                 return
 
-            placeholders = ",".join("?" for _ in expired)
-            for table in ("checkpoints", "writes"):
+            for start in range(0, len(expired), 500):
+                batch = expired[start : start + 500]
+                placeholders = ",".join("?" for _ in batch)
+                for table in ("checkpoints", "writes"):
+                    await db.execute(
+                        f"DELETE FROM {table} WHERE thread_id IN ({placeholders})",
+                        batch,
+                    )
                 await db.execute(
-                    f"DELETE FROM {table} WHERE thread_id IN ({placeholders})",
-                    expired,
+                    f"DELETE FROM session_activity WHERE thread_id IN ({placeholders})",
+                    batch,
                 )
-            await db.execute(
-                f"DELETE FROM session_activity WHERE thread_id IN ({placeholders})",
-                expired,
-            )
             await db.commit()
             await db.execute("VACUUM")
             logger.info("Cleaned up %d expired sessions", len(expired))
@@ -86,6 +111,7 @@ async def _cleanup_old_checkpoints(db_path: str, ttl_hours: int) -> None:
 async def _periodic_cleanup(db_path: str, ttl_hours: int, interval: int = 3600) -> None:
     while True:
         await asyncio.sleep(interval)
+        await _seed_missing_session_activity(db_path)
         await _cleanup_old_checkpoints(db_path, ttl_hours)
 
 
@@ -136,7 +162,14 @@ async def lifespan(app: FastAPI):
     )
     logger.info("RouterClient initialized (model=%s)", settings.ROUTER_MODEL_NAME)
 
-    trace_store = TraceStore()
+    debug_enabled = (
+        settings.APP_ENV.strip().casefold() in {"development", "local"}
+        and settings.ENABLE_DEBUG_ROUTES
+    )
+    trace_store = TraceStore(
+        debug_enabled=debug_enabled,
+        ttl_seconds=max(0, settings.TRACE_RETENTION_MINUTES) * 60,
+    )
     trace_handler = TraceLogHandler(trace_store)
     logging.getLogger().addHandler(trace_handler)
     app.state.trace_store = trace_store
@@ -191,6 +224,7 @@ async def lifespan(app: FastAPI):
     await _ensure_activity_table(db_path)
     await ensure_session_lock_table(db_path)
     await ensure_was_outbox_table(db_path)
+    await _seed_missing_session_activity(db_path)
     cleanup_task = asyncio.create_task(
         _periodic_cleanup(db_path, settings.CHECKPOINT_TTL_HOURS)
     )

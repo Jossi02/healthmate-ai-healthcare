@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     # App
     APP_ENV: str = "production"
     ENABLE_DEBUG_ROUTES: bool = False
+    TRACE_RETENTION_MINUTES: int = 60
     LOG_LEVEL: str = "INFO"
 
     # LangChain / LangSmith Tracing

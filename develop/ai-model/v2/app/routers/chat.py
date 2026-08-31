@@ -840,6 +840,7 @@ async def chat(
             detail={"session_id_generated": req.session_id is None},
         )
 
+        await update_session_activity(checkpoint_db_path, checkpoint_thread_id)
         saved = await graph.aget_state(config)
         is_new_session = not saved or not saved.values
         trace_store.record_event(
@@ -992,13 +993,11 @@ async def chat(
                 detail={"error": str(exc)},
             )
 
-        show_debug_state = settings.APP_ENV.strip().casefold() in {"development", "local"}
-
-        background_tasks.add_task(
-            update_session_activity,
-            checkpoint_db_path,
-            checkpoint_thread_id,
+        show_debug_state = (
+            settings.APP_ENV.strip().casefold() in {"development", "local"}
+            and settings.ENABLE_DEBUG_ROUTES
         )
+
         write_proposed_plan, write_proposed_plan_type, write_proposed_plan_action = _resolve_plan_write_fields(result)
         if intent == INTENT_APPROVAL and write_proposed_plan and not result.get("proposed_plan"):
             result["proposed_plan"] = write_proposed_plan

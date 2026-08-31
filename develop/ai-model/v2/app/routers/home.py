@@ -8,6 +8,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Request
 
 from app.core.conversation_state import empty_context_resolution, empty_recent_dialogue
 from app.core.internal_auth import require_internal_api_key
+from app.core.lifespan import update_session_activity
 from app.core.trace_store import bind_trace, reset_trace, timed_ms
 from app.schemas.home import HomeRecommendationRequest, HomeRecommendationResponse
 from app.schemas.state import GraphState
@@ -100,7 +101,7 @@ async def _run_home_recommendations(
     trace_store = request.app.state.trace_store
 
     date = kst_today_iso()
-    session_id = f"home:{req.user_id}:{date}:{req.type}:{uuid.uuid4().hex[:8]}"
+    session_id = f"home:{date}:{req.type}:{uuid.uuid4().hex[:8]}"
     trace_id = trace_store.start_trace(
         kind="home_recommendation",
         user_id=req.user_id,
@@ -112,6 +113,7 @@ async def _run_home_recommendations(
     token = bind_trace(trace_id)
     request_started_at = time.perf_counter()
     config = {"configurable": {"thread_id": session_id}}
+    checkpoint_db_path = getattr(request.app.state, "checkpoint_db_path", None)
 
     try:
         trace_store.record_event(
@@ -121,6 +123,8 @@ async def _run_home_recommendations(
             title="Home recommendation request received",
             detail={"scope": req.type},
         )
+        if checkpoint_db_path:
+            await update_session_activity(str(checkpoint_db_path), session_id)
         result: GraphState = await graph.ainvoke(
             _build_home_initial_state(req),
             config=config,

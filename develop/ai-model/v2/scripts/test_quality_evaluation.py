@@ -83,7 +83,35 @@ def main() -> None:
     require(bad_quality["grade"] == "fail", "bad trace should fail")
     require(bad_quality["issue_count"] >= 2, "bad trace should expose issues")
 
-    print("[quality-evaluation] 2/2 passed")
+    summary_trace_id = store.start_trace(kind="chat", message="private-health")
+    store.finish_trace(
+        summary_trace_id,
+        status="response_sent",
+        response={"response": "fallback response", "plan_sync_applied": True},
+        state_summary={
+            "action_intent": "create",
+            "search_results_count": 0,
+            "proposed_plan_count": 1,
+            "draft_components": {"suggested_action": "private-health"},
+            "validation_report": {
+                "quality_dimensions": {
+                    "profile_fit_warning_codes": ["medical_history"],
+                    "semantic_judge": {"mode": "blocking", "issue_count": 1},
+                }
+            },
+            "generation_quality_flags": {"semantic_fallback_applied": True},
+        },
+    )
+    summary_quality = record_quality_for_trace(store, summary_trace_id)
+    issue_codes = {item["code"] for item in summary_quality["issues"]}
+    require("fallback_or_error_language" in issue_codes, "summary should retain response flags")
+    require("profile_fit_warning" in issue_codes, "summary should retain quality warning codes")
+    require("semantic_observer_warning" in issue_codes, "summary should retain semantic counts")
+    require("semantic_fallback_recovery_used" in issue_codes, "summary should retain generation flags")
+    require(summary_quality["signals"]["plan_sync_applied"] is True, "summary should retain plan sync")
+    require("private-health" not in repr(store.get_trace(summary_trace_id)), "summary must omit raw text")
+
+    print("[quality-evaluation] 3/3 passed")
 
 
 if __name__ == "__main__":
